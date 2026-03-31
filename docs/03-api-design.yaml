@@ -1,0 +1,1293 @@
+openapi: 3.0.3
+info:
+  title: SaaS Project Management Tool API
+  description: |
+    Complete REST API for the multi-tenant project management platform.
+
+    ## Authentication
+    All protected endpoints require a Bearer JWT token in the Authorization header.
+    Tokens expire in 15 minutes. Use `/auth/refresh` with the refresh token cookie
+    to obtain a new access token.
+
+    ## Multi-Tenancy
+    The active organization is determined from the JWT payload (`org_id` claim).
+    Pass `X-Org-ID` header when a user belongs to multiple organizations.
+
+    ## Rate Limiting
+    - 100 requests/minute per IP (unauthenticated)
+    - 1000 requests/minute per organization (authenticated)
+    - AI endpoints: 20 requests/minute per organization
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: api@yourdomain.com
+
+servers:
+  - url: https://api.yourdomain.com/v1
+    description: Production
+  - url: https://staging-api.yourdomain.com/v1
+    description: Staging
+  - url: http://localhost:4000/v1
+    description: Local Development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication & session management
+  - name: Organizations
+    description: Organization management
+  - name: Members
+    description: User & role management within organizations
+  - name: Projects
+    description: Project CRUD
+  - name: Tasks
+    description: Task management (CRUD, assignments, status)
+  - name: Comments
+    description: Task comments & threads
+  - name: Workflows
+    description: Configurable workflow statuses
+  - name: Custom Fields
+    description: Dynamic form fields per organization
+  - name: Dashboard
+    description: Analytics & reporting
+  - name: AI
+    description: Claude AI-powered features
+  - name: Notifications
+    description: User notifications
+
+# ============================================================
+# PATHS
+# ============================================================
+
+paths:
+
+  # ------------------------------------------------------------
+  # AUTH
+  # ------------------------------------------------------------
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user and create an organization
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              first_name: "Alice"
+              last_name: "Chen"
+              email: "alice@acme.com"
+              password: "SecurePass123!"
+              org_name: "Acme Corporation"
+              org_slug: "acme-corp"
+      responses:
+        '201':
+          description: User and organization created
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  user:
+                    id: "u0000001-0000-0000-0000-000000000001"
+                    email: "alice@acme.com"
+                    first_name: "Alice"
+                    last_name: "Chen"
+                  organization:
+                    id: "a1b2c3d4-0001-0000-0000-000000000001"
+                    name: "Acme Corporation"
+                    slug: "acme-corp"
+                    plan: "free"
+                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  token_type: "Bearer"
+                  expires_in: 900
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email & password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "alice@acme.com"
+              password: "SecurePass123!"
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: HttpOnly refresh_token cookie (7 days)
+              schema:
+                type: string
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  token_type: "Bearer"
+                  expires_in: 900
+                  user:
+                    id: "u0000001-0000-0000-0000-000000000001"
+                    email: "alice@acme.com"
+                    first_name: "Alice"
+                    last_name: "Chen"
+                    avatar_url: null
+                  organizations:
+                    - id: "a1b2c3d4-0001-0000-0000-000000000001"
+                      name: "Acme Corporation"
+                      slug: "acme-corp"
+                      role: "org_admin"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token using HttpOnly cookie
+      security: []
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  expires_in: 900
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke refresh token and clear cookie
+      responses:
+        '204':
+          description: Logged out successfully
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset email
+      security: []
+      requestBody:
+        content:
+          application/json:
+            example:
+              email: "alice@acme.com"
+      responses:
+        '200':
+          description: Reset email sent (always returns 200 to prevent enumeration)
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with token from email
+      security: []
+      requestBody:
+        content:
+          application/json:
+            example:
+              token: "reset_token_from_email"
+              password: "NewSecurePass123!"
+      responses:
+        '200':
+          description: Password updated
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  # ------------------------------------------------------------
+  # ORGANIZATIONS
+  # ------------------------------------------------------------
+
+  /organizations/me:
+    get:
+      tags: [Organizations]
+      summary: Get current organization details
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  id: "a1b2c3d4-0001-0000-0000-000000000001"
+                  name: "Acme Corporation"
+                  slug: "acme-corp"
+                  plan: "professional"
+                  max_members: 50
+                  max_projects: 20
+                  settings:
+                    theme: "light"
+                    timezone: "America/New_York"
+                  stats:
+                    total_members: 4
+                    total_projects: 2
+                    total_tasks: 7
+
+    patch:
+      tags: [Organizations]
+      summary: Update organization settings (org_admin only)
+      requestBody:
+        content:
+          application/json:
+            example:
+              name: "Acme Corporation Ltd"
+              settings:
+                theme: "dark"
+                timezone: "America/Chicago"
+                require_task_estimates: true
+      responses:
+        '200':
+          description: Organization updated
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ------------------------------------------------------------
+  # MEMBERS
+  # ------------------------------------------------------------
+
+  /members:
+    get:
+      tags: [Members]
+      summary: List organization members
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [org_admin, project_manager, member, viewer]
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or email
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Member list
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  items:
+                    - id: "u0000001-0000-0000-0000-000000000001"
+                      email: "alice@acme.com"
+                      first_name: "Alice"
+                      last_name: "Chen"
+                      role: "org_admin"
+                      joined_at: "2026-01-01T00:00:00Z"
+                      avatar_url: null
+                  pagination:
+                    page: 1
+                    page_size: 20
+                    total: 4
+                    total_pages: 1
+
+  /members/invite:
+    post:
+      tags: [Members]
+      summary: Invite a user to the organization (org_admin)
+      requestBody:
+        content:
+          application/json:
+            example:
+              email: "newuser@acme.com"
+              role: "member"
+      responses:
+        '201':
+          description: Invitation sent
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  invitation_id: "inv-uuid-here"
+                  email: "newuser@acme.com"
+                  expires_at: "2026-04-07T00:00:00Z"
+
+  /members/{user_id}/role:
+    patch:
+      tags: [Members]
+      summary: Change a member's role (org_admin)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            example:
+              role: "project_manager"
+      responses:
+        '200':
+          description: Role updated
+
+  /members/{user_id}:
+    delete:
+      tags: [Members]
+      summary: Remove member from organization (org_admin)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Member removed
+
+  # ------------------------------------------------------------
+  # PROJECTS
+  # ------------------------------------------------------------
+
+  /projects:
+    get:
+      tags: [Projects]
+      summary: List accessible projects
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, archived, completed, on_hold]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Project list
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  items:
+                    - id: "proj0001-0000-0000-0000-000000000001"
+                      name: "Customer Portal Redesign"
+                      key: "CPR"
+                      status: "active"
+                      color: "#3B82F6"
+                      owner:
+                        id: "u0000001-0000-0000-0000-000000000002"
+                        name: "Bob Martinez"
+                      stats:
+                        total_tasks: 5
+                        completed_tasks: 1
+                        overdue_tasks: 0
+                        completion_pct: 20.0
+                      due_date: "2026-06-30"
+                  pagination:
+                    page: 1
+                    page_size: 20
+                    total: 2
+
+    post:
+      tags: [Projects]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "Mobile App v2"
+              description: "Complete rebuild of mobile app"
+              key: "MAV2"
+              visibility: "org_wide"
+              color: "#F59E0B"
+              workflow_config_id: "wf000001-0000-0000-0000-000000000001"
+              start_date: "2026-04-01"
+              due_date: "2026-12-31"
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  id: "proj-new-uuid"
+                  name: "Mobile App v2"
+                  key: "MAV2"
+                  status: "active"
+
+  /projects/{project_id}:
+    get:
+      tags: [Projects]
+      summary: Get project details
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project details with full config
+
+    patch:
+      tags: [Projects]
+      summary: Update project
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        content:
+          application/json:
+            example:
+              name: "Updated Project Name"
+              status: "on_hold"
+              due_date: "2026-09-30"
+      responses:
+        '200':
+          description: Project updated
+
+    delete:
+      tags: [Projects]
+      summary: Archive/delete project (org_admin)
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '204':
+          description: Project deleted
+
+  /projects/{project_id}/members:
+    get:
+      tags: [Projects]
+      summary: List project members
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project member list
+
+    post:
+      tags: [Projects]
+      summary: Add member to project
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        content:
+          application/json:
+            example:
+              user_id: "u0000001-0000-0000-0000-000000000003"
+              role: "member"
+      responses:
+        '201':
+          description: Member added
+
+  # ------------------------------------------------------------
+  # TASKS
+  # ------------------------------------------------------------
+
+  /projects/{project_id}/tasks:
+    get:
+      tags: [Tasks]
+      summary: List project tasks (with filters)
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: status_id
+          in: query
+          schema:
+            type: string
+        - name: assignee_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low, none]
+        - name: due_date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: due_date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: tags
+          in: query
+          schema:
+            type: string
+          description: Comma-separated tags
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [list, kanban, calendar]
+          description: View format (kanban returns tasks grouped by status)
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Task list
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  items:
+                    - id: "task0001-0001-0000-0000-000000000001"
+                      seq_number: 1
+                      task_key: "CPR-1"
+                      title: "Design new navigation component"
+                      status_id: "s3"
+                      status_name: "In Progress"
+                      priority: "high"
+                      assignee:
+                        id: "u0000001-0000-0000-0000-000000000003"
+                        name: "Carol Johnson"
+                        avatar_url: null
+                      due_date: "2026-02-15"
+                      estimated_hours: 8.0
+                      logged_hours: 3.5
+                      tags: ["frontend", "design"]
+                      comment_count: 2
+                      subtask_count: 0
+                      position: 10.0
+                  pagination:
+                    page: 1
+                    page_size: 50
+                    total: 5
+
+    post:
+      tags: [Tasks]
+      summary: Create a new task
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              title: "Implement search functionality"
+              description: "## Overview\nAdd full-text search across tasks and comments."
+              priority: "high"
+              assignee_id: "u0000001-0000-0000-0000-000000000003"
+              due_date: "2026-03-01"
+              estimated_hours: 10.0
+              tags: ["backend", "search"]
+              status_id: "s2"
+              custom_fields:
+                story_points: 5
+                epic: "Dashboard"
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  id: "task-new-uuid"
+                  seq_number: 6
+                  task_key: "CPR-6"
+                  title: "Implement search functionality"
+
+  /projects/{project_id}/tasks/{task_id}:
+    get:
+      tags: [Tasks]
+      summary: Get full task details
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Full task with comments, activity, subtasks
+
+    patch:
+      tags: [Tasks]
+      summary: Update task (any field)
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        content:
+          application/json:
+            example:
+              title: "Updated title"
+              status_id: "s4"
+              status_name: "In Review"
+              priority: "critical"
+              assignee_id: "u0000001-0000-0000-0000-000000000004"
+              due_date: "2026-02-20"
+      responses:
+        '200':
+          description: Task updated
+
+    delete:
+      tags: [Tasks]
+      summary: Delete task (soft delete)
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '204':
+          description: Task deleted
+
+  /projects/{project_id}/tasks/{task_id}/move:
+    post:
+      tags: [Tasks]
+      summary: Reorder task (Kanban drag-and-drop)
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        content:
+          application/json:
+            example:
+              status_id: "s4"
+              status_name: "In Review"
+              position: 15.5
+      responses:
+        '200':
+          description: Position updated
+
+  /projects/{project_id}/tasks/{task_id}/assign:
+    post:
+      tags: [Tasks]
+      summary: Assign/unassign task
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        content:
+          application/json:
+            example:
+              assignee_id: "u0000001-0000-0000-0000-000000000004"
+      responses:
+        '200':
+          description: Assignment updated
+
+  /projects/{project_id}/tasks/{task_id}/time:
+    post:
+      tags: [Tasks]
+      summary: Log time on a task
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        content:
+          application/json:
+            example:
+              hours: 2.5
+              description: "Worked on mobile responsive layout"
+              logged_date: "2026-02-10"
+      responses:
+        '201':
+          description: Time logged
+
+  /tasks/my:
+    get:
+      tags: [Tasks]
+      summary: Get current user's tasks across all projects
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, overdue, completed]
+        - name: priority
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: My tasks list
+
+  # ------------------------------------------------------------
+  # COMMENTS
+  # ------------------------------------------------------------
+
+  /tasks/{task_id}/comments:
+    get:
+      tags: [Comments]
+      summary: Get task comments (threaded)
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Comment thread
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  items:
+                    - id: "comment-uuid-1"
+                      author:
+                        id: "u0000001-0000-0000-0000-000000000002"
+                        name: "Bob Martinez"
+                        avatar_url: null
+                      body: "Great progress! Please test in Safari."
+                      created_at: "2026-02-08T14:30:00Z"
+                      is_edited: false
+                      replies:
+                        - id: "comment-uuid-2"
+                          author:
+                            name: "Carol Johnson"
+                          body: "Safari issues fixed!"
+                          created_at: "2026-02-08T16:00:00Z"
+
+    post:
+      tags: [Comments]
+      summary: Add a comment
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        content:
+          application/json:
+            example:
+              body: "I've updated the component. @carol.dev can you review?"
+              parent_id: null
+      responses:
+        '201':
+          description: Comment created
+
+  /tasks/{task_id}/comments/{comment_id}:
+    patch:
+      tags: [Comments]
+      summary: Edit own comment
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            example:
+              body: "Updated comment body"
+      responses:
+        '200':
+          description: Comment updated
+
+    delete:
+      tags: [Comments]
+      summary: Delete comment
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Comment deleted
+
+  # ------------------------------------------------------------
+  # WORKFLOWS
+  # ------------------------------------------------------------
+
+  /workflows:
+    get:
+      tags: [Workflows]
+      summary: List organization workflow configurations
+      responses:
+        '200':
+          description: Workflow list with statuses
+
+    post:
+      tags: [Workflows]
+      summary: Create new workflow (org_admin / pm)
+      requestBody:
+        content:
+          application/json:
+            example:
+              name: "Engineering Workflow"
+              statuses:
+                - name: "Backlog"
+                  color: "#6B7280"
+                  is_initial: true
+                  is_final: false
+                  order: 1
+                - name: "In Progress"
+                  color: "#F59E0B"
+                  is_initial: false
+                  is_final: false
+                  order: 2
+                - name: "Done"
+                  color: "#10B981"
+                  is_initial: false
+                  is_final: true
+                  order: 3
+      responses:
+        '201':
+          description: Workflow created
+
+  /workflows/{workflow_id}:
+    patch:
+      tags: [Workflows]
+      summary: Update workflow
+      parameters:
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            example:
+              statuses:
+                - id: "s1"
+                  name: "Backlog"
+                  color: "#374151"
+      responses:
+        '200':
+          description: Workflow updated
+
+  # ------------------------------------------------------------
+  # CUSTOM FIELDS
+  # ------------------------------------------------------------
+
+  /custom-fields:
+    get:
+      tags: [Custom Fields]
+      summary: List org custom field definitions
+      responses:
+        '200':
+          description: Field definitions
+
+    post:
+      tags: [Custom Fields]
+      summary: Create custom field definition (org_admin)
+      requestBody:
+        content:
+          application/json:
+            example:
+              name: "Sprint Velocity"
+              field_key: "sprint_velocity"
+              field_type: "number"
+              options:
+                min: 0
+                max: 200
+              is_required: false
+              applies_to: "task"
+      responses:
+        '201':
+          description: Field created
+
+  # ------------------------------------------------------------
+  # DASHBOARD & REPORTS
+  # ------------------------------------------------------------
+
+  /dashboard/overview:
+    get:
+      tags: [Dashboard]
+      summary: Get org-wide dashboard data (role-filtered)
+      responses:
+        '200':
+          description: Dashboard overview
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  stats:
+                    total_projects: 2
+                    active_projects: 2
+                    total_tasks: 7
+                    completed_tasks: 1
+                    overdue_tasks: 0
+                    my_open_tasks: 3
+                  project_progress:
+                    - project_id: "proj0001-0000-0000-0000-000000000001"
+                      name: "Customer Portal Redesign"
+                      completion_pct: 20.0
+                      total_tasks: 5
+                      overdue_tasks: 0
+                  recent_activity:
+                    - actor: "Carol Johnson"
+                      action: "status_changed"
+                      entity: "CPR-1"
+                      detail: "In Progress → In Review"
+                      at: "2026-02-08T16:00:00Z"
+                  team_workload:
+                    - user_id: "u0000001-0000-0000-0000-000000000003"
+                      name: "Carol Johnson"
+                      open_tasks: 2
+                      overdue_tasks: 0
+                      estimated_hours_open: 12.0
+
+  /dashboard/reports/burndown:
+    get:
+      tags: [Dashboard]
+      summary: Sprint/project burndown chart data
+      parameters:
+        - name: project_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sprint_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Burndown data points (date + remaining tasks)
+
+  /dashboard/reports/velocity:
+    get:
+      tags: [Dashboard]
+      summary: Team velocity over sprints
+      parameters:
+        - name: project_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: last_n_sprints
+          in: query
+          schema:
+            type: integer
+            default: 6
+      responses:
+        '200':
+          description: Velocity per sprint
+
+  /dashboard/reports/time-tracking:
+    get:
+      tags: [Dashboard]
+      summary: Time tracked per user/project/date range
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Time tracking report
+
+  /dashboard/activity:
+    get:
+      tags: [Dashboard]
+      summary: Organization activity feed
+      parameters:
+        - name: entity_type
+          in: query
+          schema:
+            type: string
+            enum: [task, project, comment, member]
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Activity feed items
+
+  # ------------------------------------------------------------
+  # NOTIFICATIONS
+  # ------------------------------------------------------------
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Get user notifications
+      parameters:
+        - name: unread_only
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Notification list
+
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      responses:
+        '204':
+          description: All marked read
+
+  # ------------------------------------------------------------
+  # AI
+  # ------------------------------------------------------------
+
+  /ai/generate-tasks:
+    post:
+      tags: [AI]
+      summary: Generate task breakdown from a feature description
+      requestBody:
+        content:
+          application/json:
+            example:
+              project_id: "proj0001-0000-0000-0000-000000000001"
+              feature_description: "Build a real-time notification system with WebSockets"
+              max_tasks: 10
+      responses:
+        '200':
+          description: AI-generated task list
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  generated_tasks:
+                    - title: "Design WebSocket server architecture"
+                      description: "Define connection pooling, authentication handshake, and message schema."
+                      priority: "high"
+                      estimated_hours: 4.0
+                      tags: ["backend", "architecture"]
+                    - title: "Implement WebSocket server with Socket.io"
+                      description: "Set up Socket.io server with namespaces and room management."
+                      priority: "high"
+                      estimated_hours: 8.0
+                      tags: ["backend"]
+
+  /ai/summarize-task:
+    post:
+      tags: [AI]
+      summary: Generate AI summary of a task thread
+      requestBody:
+        content:
+          application/json:
+            example:
+              task_id: "task0001-0001-0000-0000-000000000001"
+      responses:
+        '200':
+          description: Task summary
+          content:
+            application/json:
+              example:
+                success: true
+                data:
+                  summary: "The navigation component task is in progress. Carol is working on responsive layout and has fixed Safari animation issues. Bob is waiting for the PR review before moving to 'In Review' status. Estimated completion: Feb 15."
+
+  /ai/generate-report:
+    post:
+      tags: [AI]
+      summary: Generate a natural-language project status report
+      requestBody:
+        content:
+          application/json:
+            example:
+              project_id: "proj0001-0000-0000-0000-000000000001"
+              report_type: "weekly_status"
+              audience: "executive"
+      responses:
+        '200':
+          description: Generated report text
+
+  /ai/decompose-task:
+    post:
+      tags: [AI]
+      summary: Decompose a complex task into subtasks
+      requestBody:
+        content:
+          application/json:
+            example:
+              task_id: "task0001-0001-0000-0000-000000000002"
+              task_title: "Implement authentication flow"
+      responses:
+        '200':
+          description: Subtask suggestions
+
+# ============================================================
+# COMPONENTS
+# ============================================================
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ProjectId:
+      name: project_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [first_name, last_name, email, password, org_name, org_slug]
+      properties:
+        first_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        last_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          pattern: '^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{8,}$'
+        org_name:
+          type: string
+          minLength: 2
+          maxLength: 255
+        org_slug:
+          type: string
+          pattern: '^[a-z0-9-]{3,100}$'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+
+  responses:
+    Unauthorized:
+      description: Authentication required or token expired
+      content:
+        application/json:
+          example:
+            success: false
+            error:
+              code: "UNAUTHORIZED"
+              message: "Authentication required"
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          example:
+            success: false
+            error:
+              code: "FORBIDDEN"
+              message: "You don't have permission to perform this action"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          example:
+            success: false
+            error:
+              code: "NOT_FOUND"
+              message: "Resource not found"
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          example:
+            success: false
+            error:
+              code: "VALIDATION_ERROR"
+              message: "Validation failed"
+              details:
+                - field: "email"
+                  message: "Invalid email format"
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          example:
+            success: false
+            error:
+              code: "CONFLICT"
+              message: "Email already registered"
