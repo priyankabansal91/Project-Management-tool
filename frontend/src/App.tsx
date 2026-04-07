@@ -10,6 +10,8 @@ import { MyTasksPage } from '@/pages/user/MyTasksPage';
 import { TaskDetailPage } from '@/pages/user/TaskDetailPage';
 import { UserManagementPage } from '@/pages/admin/UserManagementPage';
 import { WorkflowsPage } from '@/pages/admin/WorkflowsPage';
+import { OutlookIntegrationPage } from '@/pages/admin/integrations/OutlookIntegrationPage';
+import { MicrosoftCallbackPage } from '@/pages/auth/MicrosoftCallbackPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -29,6 +31,7 @@ export default function App() {
       {/* Public routes */}
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+      <Route path="/auth/microsoft-callback" element={<MicrosoftCallbackPage />} />
 
       {/* Protected routes */}
       <Route
@@ -49,6 +52,8 @@ export default function App() {
         <Route path="/admin/custom-fields" element={<WorkflowsPage />} />
         <Route path="/reports" element={<DashboardPage />} />
         <Route path="/settings" element={<UserManagementPage />} />
+        <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />
+        <Route path="/admin/integrations" element={<OutlookIntegrationPage />} />
       </Route>
 
       {/* Default redirect */}

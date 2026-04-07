@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, Settings, BarChart3,
-  Workflow, FormInput, Shield, ListTodo, Bell, ChevronLeft, ChevronRight,
+  Workflow, FormInput, Shield, ListTodo, Bell, ChevronLeft, ChevronRight, Plug,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
   { label: 'Workflows', path: '/admin/workflows', icon: Workflow, roles: ['org_admin'] },
   { label: 'Custom Fields', path: '/admin/custom-fields', icon: FormInput, roles: ['org_admin'] },
   { label: 'User Management', path: '/admin/users', icon: Shield, roles: ['org_admin'] },
+  { label: 'Integrations', path: '/settings/integrations', icon: Plug, roles: ['org_admin', 'project_manager', 'member'] },
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['org_admin'] },
 ];
 

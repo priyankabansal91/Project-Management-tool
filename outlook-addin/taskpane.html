@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProjectFlow - Create Task</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; padding: 16px; color: #1a1a1a; font-size: 14px; }
+    .header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
+    .header .logo { width: 28px; height: 28px; background: #3B82F6; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 12px; }
+    .header h1 { font-size: 16px; font-weight: 600; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; font-family: inherit; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.15s; }
+    .btn-primary { background: #3B82F6; color: white; }
+    .btn-primary:hover { background: #2563EB; }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; margin-top: 8px; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .btn-ai { background: #7C3AED; color: white; margin-bottom: 12px; }
+    .btn-ai:hover { background: #6D28D9; }
+    .status { padding: 10px; border-radius: 6px; margin-top: 12px; font-size: 12px; }
+    .status.success { background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+    .status.error { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+    .tag { display: inline-flex; align-items: center; gap: 2px; background: #EFF6FF; color: #1D4ED8; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin: 2px; }
+    .email-preview { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 12px; color: #6b7280; }
+    .email-preview strong { color: #1a1a1a; display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">PF</div>
+    <h1>Create Task from Email</h1>
+  </div>
+
+  <div id="emailPreview" class="email-preview" style="display:none;">
+    <strong id="emailSubject"></strong>
+    <span id="emailFrom"></span>
+  </div>
+
+  <button class="btn btn-ai" id="aiGenerateBtn" onclick="generateWithAI()">
+    ✨ Auto-fill with Claude AI
+  </button>
+
+  <form id="taskForm" onsubmit="createTask(event)">
+    <div class="form-group">
+      <label>Project</label>
+      <select id="projectId" required>
+        <option value="">Select project...</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="title" placeholder="Task title" required />
+    </div>
+
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="description" placeholder="Task description (Markdown supported)"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Priority</label>
+      <select id="priority">
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+        <option value="critical">Critical</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Due Date</label>
+      <input type="date" id="dueDate" />
+    </div>
+
+    <div class="form-group">
+      <label>Tags</label>
+      <input type="text" id="tags" placeholder="Comma-separated (e.g. email, follow-up)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary" id="submitBtn">
+      Create Task
+    </button>
+
+    <button type="button" class="btn btn-secondary" onclick="createAndLink()">
+      Create & Link to Email
+    </button>
+  </form>
+
+  <div id="statusMsg" class="status" style="display:none;"></div>
+
+  <script>
+    const API_BASE = 'https://your-domain.com/v1'; // Configure this
+    let emailData = {};
+
+    // Initialize Office.js
+    Office.onReady(function(info) {
+      if (info.host === Office.HostType.Outlook) {
+        loadEmailData();
+        loadProjects();
+      }
+    });
+
+    // Read current email data
+    function loadEmailData() {
+      const item = Office.context.mailbox.item;
+      emailData = {
+        subject: item.subject,
+        from: item.from ? item.from.emailAddress : '',
+        body: '', // Will be loaded async
+      };
+
+      // Show preview
+      document.getElementById('emailPreview').style.display = 'block';
+      document.getElementById('emailSubject').textContent = emailData.subject;
+      document.getElementById('emailFrom').textContent = 'From: ' + emailData.from;
+
+      // Pre-fill title from subject
+      document.getElementById('title').value = emailData.subject;
+
+      // Load body
+      item.body.getAsync(Office.CoercionType.Text, function(result) {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+          emailData.body = result.value.substring(0, 2000); // Limit body length
+        }
+      });
+    }
+
+    // Load projects from API
+    async function loadProjects() {
+      try {
+        const token = await getAuthToken();
+        const response = await fetch(API_BASE + '/projects', {
+          headers: { 'Authorization': 'Bearer ' + token },
+        });
+        const data = await response.json();
+
+        const select = document.getElementById('projectId');
+        (data.data.items || []).forEach(function(p) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.key + ' — ' + p.name;
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        showStatus('error', 'Failed to load projects. Check your login.');
+      }
+    }
+
+    // AI auto-fill using Claude
+    async function generateWithAI() {
+      const btn = document.getElementById('aiGenerateBtn');
+      btn.textContent = '⏳ Generating with AI...';
+      btn.disabled = true;
+
+      try {
+        const token = await getAuthToken();
+        const projectId = document.getElementById('projectId').value;
+
+        const response = await fetch(API_BASE + '/ai/generate-tasks', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project_id: projectId || undefined,
+            feature_description: 'Email from ' + emailData.from + ': ' + emailData.subject + '\n\n' + emailData.body,
+            max_tasks: 1,
+          }),
+        });
+
+        const data = await response.json();
+        if (data.data && data.data.generated_tasks && data.data.generated_tasks.length > 0) {
+          const task = data.data.generated_tasks[0];
+          document.getElementById('title').value = task.title || emailData.subject;
+          document.getElementById('description').value = task.description || '';
+          if (task.priority) document.getElementById('priority').value = task.priority;
+          if (task.tags) document.getElementById('tags').value = task.tags.join(', ');
+          showStatus('success', 'AI filled in task details!');
+        }
+      } catch (err) {
+        showStatus('error', 'AI generation failed. You can fill in manually.');
+      } finally {
+        btn.textContent = '✨ Auto-fill with Claude AI';
+        btn.disabled = false;
+      }
+    }
+
+    // Create task
+    async function createTask(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      btn.textContent = 'Creating...';
+      btn.disabled = true;
+
+      try {
+        const token = await getAuthToken();
+        const projectId = document.getElementById('projectId').value;
+        const tags = document.getElementById('tags').value
+          .split(',').map(function(t) { return t.trim(); }).filter(Boolean);
+
+        const taskData = {
+          title: document.getElementById('title').value,
+          description: document.getElementById('description').value +
+            '\n\n---\n*Created from Outlook email: "' + emailData.subject + '" from ' + emailData.from + '*',
+          priority: document.getElementById('priority').value,
+          due_date: document.getElementById('dueDate').value || null,
+          tags: tags.length > 0 ? tags : ['email'],
+        };
+
+        const response = await fetch(API_BASE + '/tasks/project/' + projectId, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(taskData),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showStatus('success', 'Task created: ' + (data.data.task_key || data.data.title));
+          // Optionally categorize the email
+          try {
+            Office.context.mailbox.item.categories.addAsync(['ProjectFlow Task Created']);
+          } catch (catErr) { /* ignore */ }
+        } else {
+          showStatus('error', data.error?.message || 'Failed to create task');
+        }
+      } catch (err) {
+        showStatus('error', 'Error: ' + err.message);
+      } finally {
+        btn.textContent = 'Create Task';
+        btn.disabled = false;
+      }
+    }
+
+    // Create and link (adds task URL to email)
+    async function createAndLink() {
+      await createTask(new Event('submit'));
+    }
+
+    // Get auth token (stored from SSO or manual login)
+    async function getAuthToken() {
+      // Try SSO first
+      try {
+        const result = await Office.auth.getAccessToken({ allowConsentPrompt: true });
+        return result;
+      } catch {
+        // Fall back to stored token
+        return localStorage.getItem('pm_outlook_token') || '';
+      }
+    }
+
+    function showStatus(type, message) {
+      const el = document.getElementById('statusMsg');
+      el.className = 'status ' + type;
+      el.textContent = message;
+      el.style.display = 'block';
+      setTimeout(function() { el.style.display = 'none'; }, 5000);
+    }
+  </script>
+</body>
+</html>

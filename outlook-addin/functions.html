@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+</head>
+<body>
+  <script>
+    // Quick Create Task function (ribbon button action)
+    // Creates a task from email subject + body using AI, without opening the task pane
+
+    Office.onReady(function() {
+      // Register function
+    });
+
+    function quickCreateTask(event) {
+      var item = Office.context.mailbox.item;
+      var subject = item.subject || 'Untitled Task';
+      var from = item.from ? item.from.emailAddress : 'unknown';
+
+      // Get email body
+      item.body.getAsync(Office.CoercionType.Text, function(result) {
+        var body = result.status === Office.AsyncResultStatus.Succeeded
+          ? result.value.substring(0, 1000)
+          : '';
+
+        var API_BASE = 'https://your-domain.com/v1';
+        var token = localStorage.getItem('pm_outlook_token') || '';
+
+        // Use AI to generate task
+        fetch(API_BASE + '/ai/generate-tasks', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            feature_description: 'Email from ' + from + ': ' + subject + '\n\n' + body,
+            max_tasks: 1,
+          }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.data && data.data.generated_tasks && data.data.generated_tasks[0]) {
+            var task = data.data.generated_tasks[0];
+            // Show notification
+            Office.context.mailbox.item.notificationMessages.replaceAsync(
+              'taskCreated',
+              {
+                type: Office.MailboxEnums.ItemNotificationMessageType.InformationalMessage,
+                message: 'ProjectFlow task created: ' + task.title,
+                icon: 'icon16',
+                persistent: false,
+              }
+            );
+          }
+          event.completed();
+        })
+        .catch(function(err) {
+          Office.context.mailbox.item.notificationMessages.replaceAsync(
+            'taskError',
+            {
+              type: Office.MailboxEnums.ItemNotificationMessageType.ErrorMessage,
+              message: 'Failed to create task. Open the task pane to try again.',
+            }
+          );
+          event.completed();
+        });
+      });
+    }
+
+    // Register the function
+    if (Office.actions) {
+      Office.actions.associate('quickCreateTask', quickCreateTask);
+    }
+  </script>
+</body>
+</html>

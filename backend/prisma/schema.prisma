@@ -130,6 +130,7 @@ model User {
   notifications   Notification[]
   timeLogs        TimeLog[]
   aiLogs          AiLog[]
+  integrations    UserIntegration[]
 
   @@map("users")
 }
@@ -454,4 +455,26 @@ model AiLog {
   user         User         @relation(fields: [userId], references: [id])
 
   @@map("ai_logs")
+}
+
+// ─── USER INTEGRATIONS (OAuth tokens for external services) ──
+
+model UserIntegration {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  provider        String    @db.VarChar(50)              // microsoft, google, slack
+  providerUserId  String?   @map("provider_user_id") @db.VarChar(255)
+  providerEmail   String?   @map("provider_email") @db.VarChar(320)
+  tokenData       Json      @map("token_data")           // { access_token, refresh_token, expires_at }
+  settings        Json      @default("{}")                // { sync_calendar, email_notifications, ... }
+  calendarMapping Json      @default("{}") @map("calendar_mapping") // { taskId: outlookEventId, ... }
+  connectedAt     DateTime  @default(now()) @map("connected_at") @db.Timestamptz()
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz()
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("user_integrations")
 }

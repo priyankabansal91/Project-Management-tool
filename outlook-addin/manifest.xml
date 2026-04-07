@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
+           xsi:type="MailApp">
+
+  <!-- === Basic Add-in Identity === -->
+  <Id>a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>ProjectFlow</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="ProjectFlow - Create Task" />
+  <Description DefaultValue="Create ProjectFlow tasks directly from Outlook emails. Convert emails into actionable tasks with AI-powered descriptions." />
+
+  <IconUrl DefaultValue="https://your-domain.com/assets/icon-64.png" />
+  <HighResolutionIconUrl DefaultValue="https://your-domain.com/assets/icon-128.png" />
+  <SupportUrl DefaultValue="https://your-domain.com/support" />
+
+  <AppDomains>
+    <AppDomain>https://your-domain.com</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Mailbox" />
+  </Hosts>
+
+  <Requirements>
+    <Sets>
+      <Set Name="Mailbox" MinVersion="1.1" />
+    </Sets>
+  </Requirements>
+
+  <FormSettings>
+    <Form xsi:type="ItemRead">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://your-domain.com/outlook-addin/taskpane.html" />
+        <RequestedHeight>450</RequestedHeight>
+      </DesktopSettings>
+    </Form>
+  </FormSettings>
+
+  <Permissions>ReadWriteItem</Permissions>
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read" />
+  </Rule>
+
+  <DisableEntityHighlighting>false</DisableEntityHighlighting>
+
+  <!-- === Version Overrides for Modern UI === -->
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides"
+                    xsi:type="VersionOverridesV1_0">
+
+    <Hosts>
+      <Host xsi:type="MailHost">
+        <DesktopFormFactor>
+          <!-- Function file for quick actions -->
+          <FunctionFile resid="functionFile" />
+
+          <!-- Message Read surface -->
+          <ExtensionPoint xsi:type="MessageReadCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="msgReadGroup">
+                <Label resid="groupLabel" />
+
+                <!-- Main button: Open task creation panel -->
+                <Control xsi:type="Button" id="createTaskBtn">
+                  <Label resid="createTaskLabel" />
+                  <Supertip>
+                    <Title resid="createTaskLabel" />
+                    <Description resid="createTaskDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="icon16" />
+                    <bt:Image size="32" resid="icon32" />
+                    <bt:Image size="80" resid="icon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="taskpaneUrl" />
+                  </Action>
+                </Control>
+
+                <!-- Quick action: Create task with AI -->
+                <Control xsi:type="Button" id="quickCreateBtn">
+                  <Label resid="quickCreateLabel" />
+                  <Supertip>
+                    <Title resid="quickCreateLabel" />
+                    <Description resid="quickCreateDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="icon16" />
+                    <bt:Image size="32" resid="icon32" />
+                    <bt:Image size="80" resid="icon80" />
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>quickCreateTask</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Images>
+        <bt:Image id="icon16" DefaultValue="https://your-domain.com/assets/icon-16.png" />
+        <bt:Image id="icon32" DefaultValue="https://your-domain.com/assets/icon-32.png" />
+        <bt:Image id="icon80" DefaultValue="https://your-domain.com/assets/icon-80.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://your-domain.com/outlook-addin/taskpane.html" />
+        <bt:Url id="functionFile" DefaultValue="https://your-domain.com/outlook-addin/functions.html" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="groupLabel" DefaultValue="ProjectFlow" />
+        <bt:String id="createTaskLabel" DefaultValue="Create Task" />
+        <bt:String id="quickCreateLabel" DefaultValue="Quick Task (AI)" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="createTaskDesc" DefaultValue="Open the task creation panel to create a ProjectFlow task from this email." />
+        <bt:String id="quickCreateDesc" DefaultValue="Use AI to automatically create a task from this email's subject and body." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
