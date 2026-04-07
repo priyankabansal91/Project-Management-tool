@@ -8,3 +8,5 @@ build/
 .idea/
 coverage/
 *.tsbuildinfo
+node_modules/
+screenshots/
