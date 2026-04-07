@@ -36,4 +36,13 @@ module.exports = {
   },
 
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+
+  microsoft: {
+    clientId: process.env.MS_CLIENT_ID || '',
+    clientSecret: process.env.MS_CLIENT_SECRET || '',
+    tenantId: process.env.MS_TENANT_ID || 'common',
+    redirectUri: `${process.env.BACKEND_URL || 'http://localhost:4000'}/v1/integrations/outlook/callback`,
+  },
+
+  backendUrl: process.env.BACKEND_URL || 'http://localhost:4000',
 };

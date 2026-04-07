@@ -18,6 +18,7 @@ const commentRoutes = require('./routes/comments');
 const dashboardRoutes = require('./routes/dashboard');
 const memberRoutes = require('./routes/members');
 const workflowRoutes = require('./routes/workflows');
+const outlookRoutes = require('./routes/integrations/outlook');
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/v1/comments', commentRoutes);
 app.use('/v1/dashboard', dashboardRoutes);
 app.use('/v1/members', memberRoutes);
 app.use('/v1/workflows', workflowRoutes);
+app.use('/v1/integrations/outlook', outlookRoutes);
 
 // ─── 404 ────────────────────────────────────────────────
 

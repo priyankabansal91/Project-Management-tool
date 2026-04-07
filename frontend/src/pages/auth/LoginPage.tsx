@@ -63,6 +63,25 @@ export function LoginPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
 
+            {/* Microsoft SSO */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or continue with</span></div>
+            </div>
+
+            <a
+              href="/v1/integrations/outlook/login"
+              className="flex w-full items-center justify-center gap-3 rounded-md border bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              <svg viewBox="0 0 23 23" className="h-5 w-5">
+                <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+                <rect x="12" y="1" width="10" height="10" fill="#7FBA00" />
+                <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
+                <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
+              </svg>
+              Sign in with Microsoft
+            </a>
+
             <p className="text-center text-sm text-muted-foreground">
               Don't have an account? <Link to="/register" className="text-primary hover:underline">Sign up</Link>
             </p>
