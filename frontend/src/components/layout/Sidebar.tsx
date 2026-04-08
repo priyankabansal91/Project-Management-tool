@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, Settings, BarChart3,
   Workflow, FormInput, Shield, ListTodo, Bell, ChevronLeft, ChevronRight, Plug,
+  Zap, Calendar, Clock, Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -19,7 +20,10 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: ['org_admin', 'project_manager', 'member', 'viewer'] },
   { label: 'Projects', path: '/projects', icon: FolderKanban, roles: ['org_admin', 'project_manager', 'member', 'viewer'] },
   { label: 'My Tasks', path: '/my-tasks', icon: CheckSquare, roles: ['org_admin', 'project_manager', 'member', 'viewer'] },
+  { label: 'Calendar', path: '/calendar', icon: Calendar, roles: ['org_admin', 'project_manager', 'member', 'viewer'] },
+  { label: 'Sprints', path: '/sprints', icon: Target, roles: ['org_admin', 'project_manager'] },
   { label: 'Team', path: '/team', icon: Users, roles: ['org_admin', 'project_manager'] },
+  { label: 'Time Tracking', path: '/time-tracking', icon: Clock, roles: ['org_admin', 'project_manager', 'member'] },
   { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['org_admin', 'project_manager'] },
   { label: 'Workflows', path: '/admin/workflows', icon: Workflow, roles: ['org_admin'] },
   { label: 'Custom Fields', path: '/admin/custom-fields', icon: FormInput, roles: ['org_admin'] },
