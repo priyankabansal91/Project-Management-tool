@@ -10,6 +10,8 @@ import { MyTasksPage } from '@/pages/user/MyTasksPage';
 import { TaskDetailPage } from '@/pages/user/TaskDetailPage';
 import { UserManagementPage } from '@/pages/admin/UserManagementPage';
 import { WorkflowsPage } from '@/pages/admin/WorkflowsPage';
+import { CustomFieldsPage } from '@/pages/admin/CustomFieldsPage';
+import { ReportsPage } from '@/pages/pm/ReportsPage';
 import { OutlookIntegrationPage } from '@/pages/admin/integrations/OutlookIntegrationPage';
 import { MicrosoftCallbackPage } from '@/pages/auth/MicrosoftCallbackPage';
 
@@ -49,8 +51,8 @@ export default function App() {
         <Route path="/team" element={<UserManagementPage />} />
         <Route path="/admin/users" element={<UserManagementPage />} />
         <Route path="/admin/workflows" element={<WorkflowsPage />} />
-        <Route path="/admin/custom-fields" element={<WorkflowsPage />} />
-        <Route path="/reports" element={<DashboardPage />} />
+        <Route path="/admin/custom-fields" element={<CustomFieldsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/settings" element={<UserManagementPage />} />
         <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />
         <Route path="/admin/integrations" element={<OutlookIntegrationPage />} />

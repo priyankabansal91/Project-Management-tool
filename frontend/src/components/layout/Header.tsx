@@ -1,8 +1,8 @@
-import { Bell, Search, LogOut, User as UserIcon } from 'lucide-react';
+import { Search, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NotificationBell } from '@/components/shared/NotificationPanel';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -36,12 +36,7 @@ export function Header() {
         </span>
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-white">
-            3
-          </span>
-        </Button>
+        <NotificationBell />
 
         {/* User Menu */}
         <div className="relative">

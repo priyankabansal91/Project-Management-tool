@@ -1,12 +1,13 @@
-import { FolderKanban, CheckSquare, AlertTriangle, ListTodo, Users, Clock } from 'lucide-react';
+import { FolderKanban, CheckSquare, AlertTriangle, ListTodo, Users, Clock, RefreshCw } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { useAuthStore } from '@/store/authStore';
 import { cn, timeAgo, priorityColor } from '@/lib/utils';
+import { useDashboard } from '@/api/hooks';
 
-// Mock data for demo
+// Fallback mock data (used when API is unavailable)
 const mockStats = {
   total_projects: 5, active_projects: 3, total_tasks: 47, completed_tasks: 18, overdue_tasks: 3, my_open_tasks: 8,
 };
@@ -33,6 +34,13 @@ const mockTeamWorkload = [
 export function DashboardPage() {
   const { user, currentRole } = useAuthStore();
   const firstName = user?.first_name || user?.firstName || 'User';
+  const dashboardQuery = useDashboard();
+
+  // Use API data when available, fallback to mock
+  const stats = dashboardQuery.data?.stats || mockStats;
+  const projectProgress = dashboardQuery.data?.project_progress || mockProjectProgress;
+  const recentActivity = dashboardQuery.data?.recent_activity || mockActivity;
+  const teamWorkload = dashboardQuery.data?.team_workload || mockTeamWorkload;
 
   return (
     <div className="space-y-6">
@@ -44,10 +52,10 @@ export function DashboardPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Active Projects" value={mockStats.active_projects} icon={FolderKanban} trend={{ value: 12, label: 'vs last month' }} />
-        <StatCard title="Total Tasks" value={mockStats.total_tasks} icon={ListTodo} subtitle={`${mockStats.completed_tasks} completed`} />
-        <StatCard title="My Open Tasks" value={mockStats.my_open_tasks} icon={CheckSquare} iconColor="text-blue-600" />
-        <StatCard title="Overdue" value={mockStats.overdue_tasks} icon={AlertTriangle} iconColor="text-red-600" className={mockStats.overdue_tasks > 0 ? 'border-red-200' : ''} />
+        <StatCard title="Active Projects" value={stats.active_projects} icon={FolderKanban} trend={{ value: 12, label: 'vs last month' }} />
+        <StatCard title="Total Tasks" value={stats.total_tasks} icon={ListTodo} subtitle={`${stats.completed_tasks} completed`} />
+        <StatCard title="My Open Tasks" value={stats.my_open_tasks} icon={CheckSquare} iconColor="text-blue-600" />
+        <StatCard title="Overdue" value={stats.overdue_tasks} icon={AlertTriangle} iconColor="text-red-600" className={stats.overdue_tasks > 0 ? 'border-red-200' : ''} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -57,7 +65,7 @@ export function DashboardPage() {
             <CardTitle className="text-lg">Project Progress</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {mockProjectProgress.map((p) => (
+            {projectProgress.map((p) => (
               <div key={p.project_id} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -85,7 +93,7 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockActivity.map((a, i) => (
+              {recentActivity.map((a, i) => (
                 <div key={i} className="flex gap-3">
                   <Avatar name={a.actor} size="sm" />
                   <div className="flex-1 min-w-0">
@@ -122,7 +130,7 @@ export function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockTeamWorkload.map((m) => (
+                  {teamWorkload.map((m) => (
                     <tr key={m.user_id} className="border-b last:border-0">
                       <td className="py-3">
                         <div className="flex items-center gap-2">
