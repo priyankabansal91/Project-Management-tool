@@ -10,6 +10,12 @@ import { MyTasksPage } from '@/pages/user/MyTasksPage';
 import { TaskDetailPage } from '@/pages/user/TaskDetailPage';
 import { UserManagementPage } from '@/pages/admin/UserManagementPage';
 import { WorkflowsPage } from '@/pages/admin/WorkflowsPage';
+import { CustomFieldsPage } from '@/pages/admin/CustomFieldsPage';
+import { OrgSettingsPage } from '@/pages/admin/OrgSettingsPage';
+import { ReportsPage } from '@/pages/pm/ReportsPage';
+import { SprintManagementPage } from '@/pages/pm/SprintManagementPage';
+import { TimeLoggingPage } from '@/pages/pm/TimeLoggingPage';
+import { CalendarViewPage } from '@/pages/pm/CalendarViewPage';
 import { OutlookIntegrationPage } from '@/pages/admin/integrations/OutlookIntegrationPage';
 import { MicrosoftCallbackPage } from '@/pages/auth/MicrosoftCallbackPage';
 
@@ -41,17 +47,26 @@ export default function App() {
           </ProtectedRoute>
         }
       >
+        {/* Core */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/projects" element={<ProjectListPage />} />
         <Route path="/projects/:projectId/board" element={<KanbanBoardPage />} />
+        <Route path="/projects/:projectId/calendar" element={<CalendarViewPage />} />
         <Route path="/my-tasks" element={<MyTasksPage />} />
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
+
+        {/* PM Views */}
+        <Route path="/sprints" element={<SprintManagementPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/time-tracking" element={<TimeLoggingPage />} />
+        <Route path="/calendar" element={<CalendarViewPage />} />
         <Route path="/team" element={<UserManagementPage />} />
+
+        {/* Admin */}
         <Route path="/admin/users" element={<UserManagementPage />} />
         <Route path="/admin/workflows" element={<WorkflowsPage />} />
-        <Route path="/admin/custom-fields" element={<WorkflowsPage />} />
-        <Route path="/reports" element={<DashboardPage />} />
-        <Route path="/settings" element={<UserManagementPage />} />
+        <Route path="/admin/custom-fields" element={<CustomFieldsPage />} />
+        <Route path="/settings" element={<OrgSettingsPage />} />
         <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />
         <Route path="/admin/integrations" element={<OutlookIntegrationPage />} />
       </Route>
