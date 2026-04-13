@@ -16,7 +16,10 @@ import { WorkflowsPage } from '@/pages/admin/WorkflowsPage';
 import { CustomFieldsPage } from '@/pages/admin/CustomFieldsPage';
 import { OrgSettingsPage } from '@/pages/admin/OrgSettingsPage';
 import { AuditLogPage } from '@/pages/admin/AuditLogPage';
+import { IssueTypesPage } from '@/pages/admin/IssueTypesPage';
+import { TaskTemplatesPage } from '@/pages/admin/TaskTemplatesPage';
 import { ReportsPage } from '@/pages/pm/ReportsPage';
+import { ReportsAdvancedPage } from '@/pages/pm/ReportsAdvancedPage';
 import { SprintManagementPage } from '@/pages/pm/SprintManagementPage';
 import { TimeLoggingPage } from '@/pages/pm/TimeLoggingPage';
 import { CalendarViewPage } from '@/pages/pm/CalendarViewPage';
@@ -76,7 +79,10 @@ export default function App() {
         <Route path="/admin/users" element={<UserManagementPage />} />
         <Route path="/admin/workflows" element={<WorkflowsPage />} />
         <Route path="/admin/custom-fields" element={<CustomFieldsPage />} />
+        <Route path="/admin/issue-types" element={<IssueTypesPage />} />
+        <Route path="/admin/templates" element={<TaskTemplatesPage />} />
         <Route path="/admin/audit-log" element={<AuditLogPage />} />
+        <Route path="/reports/advanced" element={<ReportsAdvancedPage />} />
         <Route path="/settings" element={<OrgSettingsPage />} />
         <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />
         <Route path="/admin/integrations" element={<OutlookIntegrationPage />} />
