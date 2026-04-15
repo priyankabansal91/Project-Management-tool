@@ -97,9 +97,9 @@ export function DashboardPage() {
                 <div key={i} className="flex gap-3">
                   <Avatar name={a.actor} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm"><span className="font-medium">{a.actor}</span> {a.detail}</p>
+                    <p className="text-sm"><span className="font-medium">{a.actor}</span> {String((a as { detail?: unknown }).detail ?? '')}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="outline" className="text-xs">{a.entity}</Badge>
+                      <Badge variant="outline" className="text-xs">{(a as { entity?: string; entity_id?: string }).entity ?? (a as { entity_id?: string }).entity_id ?? ''}</Badge>
                       <span className="text-xs text-muted-foreground">{timeAgo(a.at)}</span>
                     </div>
                   </div>
