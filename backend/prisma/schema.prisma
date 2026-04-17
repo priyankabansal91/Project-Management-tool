@@ -94,8 +94,60 @@ model Organization {
   timeLogs        TimeLog[]
   invitations     Invitation[]
   aiLogs          AiLog[]
+  divisions       Division[]
+  customRoles     CustomRole[]
+  externalUsers   ExternalUser[]
+  exports         Export[]
 
   @@map("organizations")
+}
+
+// ─── DIVISIONS ──────────────────────────────────────────
+
+model Division {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  parentId      String?  @map("parent_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  description   String?  @db.Text
+  code          String   @db.VarChar(50)
+  icon          String?  @db.VarChar(50)
+  color         String?  @db.VarChar(7)
+  settings      Json     @default("{}")
+  budget        Decimal? @db.Decimal(15, 2)
+  headCount     Int?     @map("head_count")
+  managerId     String?  @map("manager_id") @db.Uuid
+  isActive      Boolean  @default(true) @map("is_active")
+  displayOrder  Int      @default(0) @map("display_order")
+  createdBy     String   @map("created_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz()
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parent       Division?     @relation("DivisionHierarchy", fields: [parentId], references: [id])
+  children     Division[]    @relation("DivisionHierarchy")
+  manager      User?         @relation(fields: [managerId], references: [id])
+  members      DivisionMember[]
+  projects     Project[]
+
+  @@unique([orgId, code])
+  @@map("divisions")
+}
+
+model DivisionMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  divisionId String  @map("division_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      String   @db.VarChar(100)
+  addedBy   String?  @map("added_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  division Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([divisionId, userId])
+  @@map("division_members")
 }
 
 // ─── USERS ──────────────────────────────────────────────
@@ -133,6 +185,9 @@ model User {
   integrations    UserIntegration[]
   approvalRequests Approval[]      @relation("ApprovalRequester")
   approvalRecords ApprovalRecord[]
+  divisionMembers DivisionMember[]
+  customRoleMembers CustomRoleMember[]
+  managedDivisions Division[]
 
   @@map("users")
 }
@@ -194,9 +249,85 @@ model WorkflowConfig {
   @@map("workflow_configs")
 }
 
-// ─── CUSTOM FIELD DEFINITIONS ───────────────────────────
+// ─── CUSTOM ROLES & PERMISSIONS ────────────────────────
 
-model CustomFieldDefinition {
+model CustomRole {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  color       String?  @db.VarChar(7)
+  permissions Json     @default("[]")
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdBy   String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  members      CustomRoleMember[]
+
+  @@unique([orgId, name])
+  @@map("custom_roles")
+}
+
+model CustomRoleMember {
+  id         String   @id @default(uuid()) @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  scope      String   @default("org") @db.VarChar(50)
+  scopeId    String?  @map("scope_id") @db.Uuid
+  assignedBy String   @map("assigned_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  role CustomRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, userId, scope, scopeId])
+  @@map("custom_role_members")
+}
+
+// ─── EXTERNAL USERS ────────────────────────────────────
+
+model ExternalUser {
+  id            String    @id @default(uuid()) @db.Uuid
+  orgId         String    @map("org_id") @db.Uuid
+  email         String    @db.VarChar(320)
+  firstName     String    @map("first_name") @db.VarChar(100)
+  lastName      String    @map("last_name") @db.VarChar(100)
+  avatarUrl     String?   @map("avatar_url") @db.VarChar(500)
+  accessLevel   String    @default("viewer") @db.VarChar(50)
+  permissions   Json      @default("[]")
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz()
+  invitedBy     String    @map("invited_by") @db.Uuid
+  invitedAt     DateTime  @default(now()) @map("invited_at") @db.Timestamptz()
+  acceptedAt    DateTime? @map("accepted_at") @db.Timestamptz()
+  lastAccessAt  DateTime? @map("last_access_at") @db.Timestamptz()
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  guestAccess  GuestAccess[]
+
+  @@unique([orgId, email])
+  @@map("external_users")
+}
+
+model GuestAccess {
+  id             String   @id @default(uuid()) @db.Uuid
+  externalUserId String   @map("external_user_id") @db.Uuid
+  resourceType   String   @map("resource_type") @db.VarChar(50)
+  resourceId     String   @map("resource_id") @db.Uuid
+  accessLevel    String   @db.VarChar(50)
+  grantedBy      String   @map("granted_by") @db.Uuid
+  grantedAt      DateTime @default(now()) @map("granted_at") @db.Timestamptz()
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz()
+
+  externalUser ExternalUser @relation(fields: [externalUserId], references: [id], onDelete: Cascade)
+
+  @@unique([externalUserId, resourceType, resourceId])
+  @@map("guest_access")
+}
   id           String   @id @default(uuid()) @db.Uuid
   orgId        String   @map("org_id") @db.Uuid
   name         String   @db.VarChar(100)
@@ -222,6 +353,7 @@ model CustomFieldDefinition {
 model Project {
   id               String            @id @default(uuid()) @db.Uuid
   orgId            String            @map("org_id") @db.Uuid
+  divisionId       String?           @map("division_id") @db.Uuid
   name             String            @db.VarChar(255)
   description      String?           @db.Text
   key              String            @db.VarChar(10)
@@ -241,6 +373,7 @@ model Project {
   deletedAt        DateTime?         @map("deleted_at") @db.Timestamptz()
 
   organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  division       Division?       @relation(fields: [divisionId], references: [id])
   workflowConfig WorkflowConfig? @relation(fields: [workflowConfigId], references: [id])
   members        ProjectMember[]
   tasks          Task[]
@@ -462,7 +595,63 @@ model AiLog {
   @@map("ai_logs")
 }
 
-// ─── APPROVALS ──────────────────────────────────────────
+// ─── POINT-IN-TIME HISTORY & VERSIONING ────────────────
+
+model EntityVersion {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  entityType  String   @map("entity_type") @db.VarChar(50)
+  entityId    String   @map("entity_id") @db.Uuid
+  version     Int
+  data        Json
+  changes     Json?
+  changedBy   String   @map("changed_by") @db.Uuid
+  changeReason String? @map("change_reason") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@unique([entityId, entityType, version])
+  @@map("entity_versions")
+}
+
+model Snapshot {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  description String? @db.Text
+  snapshotType String @map("snapshot_type") @db.VarChar(50)
+  data        Json
+  createdBy   String  @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("snapshots")
+}
+
+// ─── EXPORT FRAMEWORK ──────────────────────────────────
+
+model Export {
+  id            String    @id @default(uuid()) @db.Uuid
+  orgId         String    @map("org_id") @db.Uuid
+  name          String    @db.VarChar(255)
+  description   String?   @db.Text
+  exportType    String    @map("export_type") @db.VarChar(50)
+  format        String    @db.VarChar(20)
+  filters       Json      @default("{}")
+  columns       Json      @default("[]")
+  status        String    @default("pending") @db.VarChar(50)
+  fileUrl       String?   @map("file_url") @db.VarChar(500)
+  fileSize      Int?      @map("file_size")
+  recordCount   Int?      @map("record_count")
+  errorMessage  String?   @map("error_message") @db.Text
+  requestedBy   String    @map("requested_by") @db.Uuid
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz()
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz()
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("exports")
+}
 
 model Approval {
   id               String   @id @default(uuid()) @db.Uuid

@@ -20,6 +20,11 @@ const memberRoutes = require('./routes/members');
 const workflowRoutes = require('./routes/workflows');
 const approvalsRoutes = require('./routes/approvals');
 const formsRoutes = require('./routes/forms');
+const divisionsRoutes = require('./routes/divisions');
+const customRolesRoutes = require('./routes/customRoles');
+const externalUsersRoutes = require('./routes/externalUsers');
+const versioningRoutes = require('./routes/versioning');
+const exportsRoutes = require('./routes/exports');
 const outlookRoutes = require('./routes/integrations/outlook');
 
 const app = express();
@@ -60,6 +65,11 @@ app.use('/v1/members', memberRoutes);
 app.use('/v1/workflows', workflowRoutes);
 app.use('/v1/approvals', approvalsRoutes);
 app.use('/v1/forms', formsRoutes);
+app.use('/v1/divisions', divisionsRoutes);
+app.use('/v1/roles', customRolesRoutes);
+app.use('/v1/external-users', externalUsersRoutes);
+app.use('/v1/versioning', versioningRoutes);
+app.use('/v1/exports', exportsRoutes);
 app.use('/v1/integrations/outlook', outlookRoutes);
 
 // ─── 404 ────────────────────────────────────────────────

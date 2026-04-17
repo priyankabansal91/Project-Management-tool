@@ -374,3 +374,284 @@ export function useFormSubmissions(params?: { form_id?: string; status?: string;
     },
   });
 }
+
+// ─── Divisions ──────────────────────────────────────────
+
+export function useDivisions(params?: { search?: string; parent_id?: string; page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['divisions', params],
+    queryFn: async () => {
+      const { data } = await api.get('/divisions', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useDivisionHierarchy() {
+  return useQuery({
+    queryKey: ['divisionHierarchy'],
+    queryFn: async () => {
+      const { data } = await api.get('/divisions/hierarchy');
+      return data.data;
+    },
+  });
+}
+
+export function useDivision(divisionId: string) {
+  return useQuery({
+    queryKey: ['division', divisionId],
+    queryFn: async () => {
+      const { data } = await api.get(`/divisions/${divisionId}`);
+      return data.data;
+    },
+    enabled: !!divisionId,
+  });
+}
+
+export function useCreateDivision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/divisions', body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['divisions'] });
+      qc.invalidateQueries({ queryKey: ['divisionHierarchy'] });
+    },
+  });
+}
+
+export function useUpdateDivision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ divisionId, ...body }: { divisionId: string } & Record<string, unknown>) => {
+      const { data } = await api.patch(`/divisions/${divisionId}`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['divisions'] });
+      qc.invalidateQueries({ queryKey: ['divisionHierarchy'] });
+      qc.invalidateQueries({ queryKey: ['division'] });
+    },
+  });
+}
+
+export function useDeleteDivision() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (divisionId: string) => {
+      await api.delete(`/divisions/${divisionId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['divisions'] });
+      qc.invalidateQueries({ queryKey: ['divisionHierarchy'] });
+    },
+  });
+}
+
+// ─── Custom Roles ───────────────────────────────────────
+
+export function useAvailablePermissions() {
+  return useQuery({
+    queryKey: ['availablePermissions'],
+    queryFn: async () => {
+      const { data } = await api.get('/roles/permissions');
+      return data.data;
+    },
+  });
+}
+
+export function useCustomRoles(params?: { search?: string; page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['customRoles', params],
+    queryFn: async () => {
+      const { data } = await api.get('/roles', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useCustomRole(roleId: string) {
+  return useQuery({
+    queryKey: ['customRole', roleId],
+    queryFn: async () => {
+      const { data } = await api.get(`/roles/${roleId}`);
+      return data.data;
+    },
+    enabled: !!roleId,
+  });
+}
+
+export function useCreateCustomRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/roles', body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customRoles'] }),
+  });
+}
+
+export function useUpdateCustomRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ roleId, ...body }: { roleId: string } & Record<string, unknown>) => {
+      const { data } = await api.patch(`/roles/${roleId}`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customRoles'] });
+      qc.invalidateQueries({ queryKey: ['customRole'] });
+    },
+  });
+}
+
+export function useDeleteCustomRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (roleId: string) => {
+      await api.delete(`/roles/${roleId}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customRoles'] }),
+  });
+}
+
+// ─── External Users ─────────────────────────────────────
+
+export function useExternalUsers(params?: { search?: string; accessLevel?: string; page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['externalUsers', params],
+    queryFn: async () => {
+      const { data } = await api.get('/external-users', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useExternalUser(externalUserId: string) {
+  return useQuery({
+    queryKey: ['externalUser', externalUserId],
+    queryFn: async () => {
+      const { data } = await api.get(`/external-users/${externalUserId}`);
+      return data.data;
+    },
+    enabled: !!externalUserId,
+  });
+}
+
+export function useInviteExternalUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/external-users', body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['externalUsers'] }),
+  });
+}
+
+export function useUpdateExternalUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ externalUserId, ...body }: { externalUserId: string } & Record<string, unknown>) => {
+      const { data } = await api.patch(`/external-users/${externalUserId}`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['externalUsers'] });
+      qc.invalidateQueries({ queryKey: ['externalUser'] });
+    },
+  });
+}
+
+export function useRevokeExternalUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (externalUserId: string) => {
+      const { data } = await api.post(`/external-users/${externalUserId}/revoke`);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['externalUsers'] }),
+  });
+}
+
+// ─── Versioning ─────────────────────────────────────────
+
+export function useEntityHistory(entityType: string, entityId: string, params?: { page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['entityHistory', entityType, entityId, params],
+    queryFn: async () => {
+      const { data } = await api.get(`/versioning/${entityType}/${entityId}/history`, { params });
+      return data.data;
+    },
+    enabled: !!entityType && !!entityId,
+  });
+}
+
+export function useSnapshots(params?: { snapshotType?: string; page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['snapshots', params],
+    queryFn: async () => {
+      const { data } = await api.get('/versioning/snapshots', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useCreateSnapshot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/versioning/snapshots', body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['snapshots'] }),
+  });
+}
+
+// ─── Exports ────────────────────────────────────────────
+
+export function useExports(params?: { exportType?: string; status?: string; page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['exports', params],
+    queryFn: async () => {
+      const { data } = await api.get('/exports', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useExport(exportId: string) {
+  return useQuery({
+    queryKey: ['export', exportId],
+    queryFn: async () => {
+      const { data } = await api.get(`/exports/${exportId}`);
+      return data.data;
+    },
+    enabled: !!exportId,
+  });
+}
+
+export function useExportTasks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/exports/tasks', body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exports'] }),
+  });
+}
+
+export function useExportProjects() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/exports/projects', body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exports'] }),
+  });
+}
