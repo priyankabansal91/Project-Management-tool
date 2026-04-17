@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
-import { Plus, Play, CheckCircle2, Clock, Target, Calendar, ArrowRight, X, GripVertical } from 'lucide-react';
+import { Plus, Play, CheckCircle2, Clock, Target, Calendar, ArrowRight, X, GripVertical, MoreHorizontal } from 'lucide-react';
 import { cn, formatDate, priorityColor } from '@/lib/utils';
 
 interface Sprint {
@@ -67,10 +68,12 @@ const statusColors: Record<string, string> = {
 };
 
 export function SprintManagementPage() {
+  const navigate = useNavigate();
   const [sprints, setSprints] = useState(mockSprints);
   const [selectedSprint, setSelectedSprint] = useState(mockSprints[0]);
   const [showCreate, setShowCreate] = useState(false);
   const [newSprint, setNewSprint] = useState({ name: '', goal: '', start_date: '', end_date: '' });
+  const [taskMenuOpen, setTaskMenuOpen] = useState<string | null>(null);
 
   const activeSprint = sprints.find((s) => s.status === 'active');
   const totalPoints = selectedSprint.tasks.reduce((sum, t) => sum + (t.estimated_hours || 0), 0);
@@ -199,9 +202,9 @@ export function SprintManagementPage() {
           <CardContent>
             <div className="space-y-2">
               {selectedSprint.tasks.map((task) => (
-                <div key={task.id} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
+                <div key={task.id} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors group">
                   <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab shrink-0" />
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/tasks/${task.id}`)}>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono text-muted-foreground">{task.task_key}</span>
                       <span className="text-sm font-medium truncate">{task.title}</span>
@@ -211,6 +214,45 @@ export function SprintManagementPage() {
                   <Badge variant="outline" className="text-xs shrink-0">{task.status_name}</Badge>
                   {task.assignee && <Avatar name={task.assignee.name} size="sm" />}
                   <span className="text-xs text-muted-foreground shrink-0">{task.estimated_hours || 0}h</span>
+                  <div className="relative">
+                    <button
+                      onClick={() => setTaskMenuOpen(taskMenuOpen === task.id ? null : task.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-accent"
+                    >
+                      <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                    {taskMenuOpen === task.id && (
+                      <div className="absolute right-0 top-full mt-1 bg-card border rounded-lg shadow-lg z-10 min-w-[150px]">
+                        <button
+                          onClick={() => {
+                            navigate(`/tasks/${task.id}`);
+                            setTaskMenuOpen(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-accent first:rounded-t-lg"
+                        >
+                          View Details
+                        </button>
+                        <button
+                          onClick={() => {
+                            // TODO: Implement edit task
+                            setTaskMenuOpen(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-accent"
+                        >
+                          Edit Task
+                        </button>
+                        <button
+                          onClick={() => {
+                            // TODO: Implement remove from sprint
+                            setTaskMenuOpen(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-accent text-red-600 last:rounded-b-lg"
+                        >
+                          Remove from Sprint
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
 

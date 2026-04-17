@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
+import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
+import { useMyTasks, useCreateTask, useProjects, useWorkflows } from '@/api/hooks';
 
 interface CalendarTask {
   id: string;
@@ -14,18 +16,8 @@ interface CalendarTask {
   assignee: { name: string } | null;
   status_name: string;
   due_date: string;
-  project: { key: string; color: string };
+  project: { key: string; color: string; id: string };
 }
-
-const mockTasks: CalendarTask[] = [
-  { id: 't1', task_key: 'CPR-1', title: 'Design new navigation component', priority: 'high', assignee: { name: 'Carol Johnson' }, status_name: 'In Progress', due_date: '2026-02-15', project: { key: 'CPR', color: '#3B82F6' } },
-  { id: 't2', task_key: 'CPR-2', title: 'Implement authentication flow', priority: 'critical', assignee: { name: 'David Park' }, status_name: 'To Do', due_date: '2026-02-20', project: { key: 'CPR', color: '#3B82F6' } },
-  { id: 't4', task_key: 'CPR-4', title: 'Set up CI/CD pipeline', priority: 'high', assignee: { name: 'David Park' }, status_name: 'In Review', due_date: '2026-02-10', project: { key: 'CPR', color: '#3B82F6' } },
-  { id: 't5', task_key: 'CPR-5', title: 'Add Google OAuth provider', priority: 'high', assignee: { name: 'David Park' }, status_name: 'In Progress', due_date: '2026-02-18', project: { key: 'CPR', color: '#3B82F6' } },
-  { id: 't7', task_key: 'AGM-1', title: 'GraphQL schema design', priority: 'medium', assignee: { name: 'Carol Johnson' }, status_name: 'To Do', due_date: '2026-02-25', project: { key: 'AGM', color: '#8B5CF6' } },
-  { id: 't8', task_key: 'AGM-2', title: 'REST to GraphQL migration plan', priority: 'high', assignee: { name: 'Bob Martinez' }, status_name: 'In Progress', due_date: '2026-02-22', project: { key: 'AGM', color: '#8B5CF6' } },
-  { id: 't9', task_key: 'MAV2-1', title: 'Mobile app wireframes', priority: 'medium', assignee: { name: 'Carol Johnson' }, status_name: 'Backlog', due_date: '2026-03-05', project: { key: 'MAV2', color: '#F59E0B' } },
-];
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -59,22 +51,71 @@ function dateKey(d: Date) {
 
 export function CalendarViewPage() {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 1, 1)); // Feb 2026
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedDateForTask, setSelectedDateForTask] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
   const days = useMemo(() => getMonthDays(year, month), [year, month]);
 
+  const { data: tasksData } = useMyTasks();
+  const tasks = (tasksData?.items || []) as CalendarTask[];
+  
+  const { data: projectsData } = useProjects();
+  const projects = projectsData?.items || [];
+  
+  const { data: workflows = [] } = useWorkflows();
+
+  const createTaskMutation = useCreateTask(selectedProjectId || '');
+
   const tasksByDate = useMemo(() => {
     const map: Record<string, CalendarTask[]> = {};
-    mockTasks.forEach((t) => {
-      const key = t.due_date;
-      (map[key] = map[key] || []).push(t);
+    tasks.forEach((t) => {
+      if (t.due_date) {
+        const key = t.due_date;
+        (map[key] = map[key] || []).push(t);
+      }
     });
     return map;
-  }, []);
+  }, [tasks]);
 
   const today = dateKey(new Date());
   const monthLabel = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const handleAddTask = () => {
+    if (projects.length > 0) {
+      setSelectedProjectId(projects[0].id);
+      setModalOpen(true);
+    }
+  };
+
+  const handleDateClick = (date: Date) => {
+    if (projects.length > 0) {
+      setSelectedProjectId(projects[0].id);
+      setSelectedDateForTask(dateKey(date));
+      setModalOpen(true);
+    }
+  };
+
+  const handleCreateTask = async (data: TaskFormData) => {
+    if (!selectedProjectId) return;
+    try {
+      const taskData = {
+        ...data,
+        due_date: selectedDateForTask || data.due_date,
+      };
+      await createTaskMutation.mutateAsync(taskData);
+      setModalOpen(false);
+      setSelectedDateForTask(null);
+    } catch (error) {
+      console.error('Failed to create task:', error);
+    }
+  };
+
+  const selectedProject = projects.find((p) => p.id === selectedProjectId);
+  const projectWorkflow = workflows.find((w) => w.id === selectedProject?.workflow_config_id);
 
   return (
     <div className="space-y-6">
@@ -83,8 +124,22 @@ export function CalendarViewPage() {
           <h1 className="text-2xl font-bold">Calendar</h1>
           <p className="text-muted-foreground">View tasks by due date</p>
         </div>
-        <Button><Plus className="h-4 w-4" /> Add Task</Button>
+        <Button onClick={handleAddTask}>
+          <Plus className="h-4 w-4" /> Add Task
+        </Button>
       </div>
+
+      <TaskModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedDateForTask(null);
+        }}
+        onSave={handleCreateTask}
+        projectKey={selectedProject?.key}
+        statuses={projectWorkflow?.statuses || []}
+        saving={createTaskMutation.isPending}
+      />
 
       {/* Month Navigation */}
       <div className="flex items-center justify-between">
@@ -113,14 +168,16 @@ export function CalendarViewPage() {
           {days.map(({ date, isCurrentMonth }, i) => {
             const key = dateKey(date);
             const isToday = key === today;
-            const tasks = tasksByDate[key] || [];
+            const dayTasks = tasksByDate[key] || [];
             return (
               <div
                 key={i}
+                onClick={() => isCurrentMonth && handleDateClick(date)}
                 className={cn(
                   'min-h-[110px] border-b border-r p-1.5 transition-colors',
                   !isCurrentMonth && 'bg-secondary/20 opacity-40',
                   isToday && 'bg-primary/5',
+                  isCurrentMonth && 'cursor-pointer hover:bg-accent/30',
                   (i + 1) % 7 === 0 && 'border-r-0', // No right border on last column
                 )}
               >
@@ -133,7 +190,7 @@ export function CalendarViewPage() {
                 </div>
 
                 <div className="space-y-0.5">
-                  {tasks.slice(0, 3).map((task) => (
+                  {dayTasks.slice(0, 3).map((task) => (
                     <div
                       key={task.id}
                       className="flex items-center gap-1 rounded px-1 py-0.5 cursor-pointer hover:bg-accent transition-colors"
@@ -142,8 +199,8 @@ export function CalendarViewPage() {
                       <span className="text-[10px] truncate flex-1">{task.task_key} {task.title}</span>
                     </div>
                   ))}
-                  {tasks.length > 3 && (
-                    <p className="text-[10px] text-muted-foreground text-center">+{tasks.length - 3} more</p>
+                  {dayTasks.length > 3 && (
+                    <p className="text-[10px] text-muted-foreground text-center">+{dayTasks.length - 3} more</p>
                   )}
                 </div>
               </div>
@@ -156,9 +213,9 @@ export function CalendarViewPage() {
       <Card className="p-4">
         <h3 className="text-sm font-semibold mb-3">Tasks due in {monthLabel}</h3>
         <div className="space-y-2">
-          {mockTasks
-            .filter((t) => t.due_date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
-            .sort((a, b) => a.due_date.localeCompare(b.due_date))
+          {tasks
+            .filter((t) => t.due_date && t.due_date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`))
+            .sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''))
             .map((task) => (
               <div key={task.id} className="flex items-center gap-3 rounded-lg border p-2.5 hover:bg-accent/50">
                 <div className="h-2.5 w-2.5 rounded" style={{ backgroundColor: task.project.color }} />

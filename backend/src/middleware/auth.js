@@ -3,6 +3,17 @@ const config = require('../config');
 const prisma = require('../config/prisma');
 
 function authenticate(req, res, next) {
+  // Allow unauthenticated requests in development
+  if (config.nodeEnv === 'development') {
+    req.user = req.user || {
+      id: 'dev-user-id',
+      orgId: 'dev-org-id',
+      role: 'org_admin',
+      email: 'dev@example.com',
+    };
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({

@@ -7,13 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
 import { Plus, Search, LayoutGrid, List, Calendar } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
-
-const mockProjects = [
-  { id: '1', name: 'Customer Portal Redesign', key: 'CPR', description: 'Complete redesign of the customer-facing portal', status: 'active', color: '#3B82F6', due_date: '2026-06-30', task_count: 15, completed: 7, members: [{ name: 'Bob Martinez' }, { name: 'Carol Johnson' }, { name: 'David Park' }] },
-  { id: '2', name: 'API Gateway Migration', key: 'AGM', description: 'Migrate from legacy REST to GraphQL', status: 'active', color: '#8B5CF6', due_date: '2026-08-31', task_count: 12, completed: 3, members: [{ name: 'Bob Martinez' }, { name: 'Carol Johnson' }] },
-  { id: '3', name: 'Mobile App v2', key: 'MAV2', description: 'Complete rebuild of mobile application', status: 'active', color: '#F59E0B', due_date: '2026-12-31', task_count: 20, completed: 8, members: [{ name: 'David Park' }] },
-  { id: '4', name: 'Security Audit', key: 'SEC', description: 'Annual security audit and compliance review', status: 'on_hold', color: '#EF4444', due_date: '2026-03-31', task_count: 8, completed: 8, members: [{ name: 'Alice Chen' }] },
-];
+import { ProjectModal, type ProjectFormData } from '@/components/shared/ProjectModal';
+import { useProjects, useCreateProject } from '@/api/hooks';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
@@ -25,18 +20,45 @@ const statusColors: Record<string, string> = {
 export function ProjectListPage() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const filtered = mockProjects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  const { data: projectsData, isLoading } = useProjects();
+  const projects = projectsData?.items || [];
+  const createProjectMutation = useCreateProject();
+
+  const filtered = projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+
+  const handleCreateProject = async (data: ProjectFormData) => {
+    try {
+      await createProjectMutation.mutateAsync(data);
+      setModalOpen(false);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-96">Loading projects...</div>;
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Projects</h1>
-          <p className="text-muted-foreground">{mockProjects.length} projects total</p>
+          <p className="text-muted-foreground">{projects.length} projects total</p>
         </div>
-        <Button><Plus className="h-4 w-4" /> New Project</Button>
+        <Button onClick={() => setModalOpen(true)}>
+          <Plus className="h-4 w-4" /> New Project
+        </Button>
       </div>
+
+      <ProjectModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSave={handleCreateProject}
+        saving={createProjectMutation.isPending}
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-3">

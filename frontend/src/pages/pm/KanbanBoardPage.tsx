@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, type DragStartEvent, type DragEndEvent, type DragOverEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -161,6 +161,7 @@ function KanbanColumnComponent({ column, onAddTask, onTaskClick }: { column: Kan
 
 export function KanbanBoardPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
 
   // API hooks (fallback to mock data if API unavailable)
   const kanbanQuery = useKanbanTasks(projectId || '');
@@ -256,7 +257,7 @@ export function KanbanBoardPage() {
 
   const handleTaskClick = (task: Task) => {
     setEditingTask(task);
-    setShowModal(true);
+    navigate(`/tasks/${task.id}`);
   };
 
   const handleSaveTask = (formData: TaskFormData) => {

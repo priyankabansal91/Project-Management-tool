@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ const mockMyTasks: (Task & { project?: { id: string; name: string; key: string; 
 type TabFilter = 'all' | 'open' | 'overdue' | 'completed';
 
 export function MyTasksPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<TabFilter>('all');
   const [search, setSearch] = useState('');
 
@@ -88,7 +90,7 @@ export function MyTasksPage() {
               {filtered.map((task) => {
                 const isOverdue = task.due_date && new Date(task.due_date) < new Date() && !task.completed_at;
                 return (
-                  <tr key={task.id} className="border-b last:border-0 hover:bg-accent/50 cursor-pointer">
+                  <tr key={task.id} className="border-b last:border-0 hover:bg-accent/50 cursor-pointer" onClick={() => navigate(`/tasks/${task.id}`)}>
                     <td className="p-4">
                       <div className={cn('h-4 w-4 rounded border-2', task.completed_at ? 'bg-green-500 border-green-500' : 'border-muted-foreground/30')} />
                     </td>

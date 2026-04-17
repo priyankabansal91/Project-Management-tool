@@ -203,3 +203,49 @@ export function useWorkflows() {
     },
   });
 }
+
+export function useWorkflow(workflowId: string) {
+  return useQuery({
+    queryKey: ['workflow', workflowId],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<WorkflowConfig>>(`/workflows/${workflowId}`);
+      return data.data;
+    },
+    enabled: !!workflowId,
+  });
+}
+
+export function useCreateWorkflow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/workflows', body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflows'] }),
+  });
+}
+
+export function useUpdateWorkflow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ workflowId, ...body }: { workflowId: string } & Record<string, unknown>) => {
+      const { data } = await api.patch(`/workflows/${workflowId}`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workflows'] });
+      qc.invalidateQueries({ queryKey: ['workflow'] });
+    },
+  });
+}
+
+export function useDeleteWorkflow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (workflowId: string) => {
+      await api.delete(`/workflows/${workflowId}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflows'] }),
+  });
+}
