@@ -131,6 +131,8 @@ model User {
   timeLogs        TimeLog[]
   aiLogs          AiLog[]
   integrations    UserIntegration[]
+  approvalRequests Approval[]      @relation("ApprovalRequester")
+  approvalRecords ApprovalRecord[]
 
   @@map("users")
 }
@@ -278,6 +280,7 @@ model Task {
   statusId       String?      @map("status_id")
   statusName     String?      @map("status_name") @db.VarChar(100)
   priority       TaskPriority @default(medium)
+  type           String       @default("task") @db.VarChar(50)
   assigneeId     String?      @map("assignee_id") @db.Uuid
   reporterId     String       @map("reporter_id") @db.Uuid
   dueDate        DateTime?    @map("due_date") @db.Date
@@ -288,6 +291,8 @@ model Task {
   tags           String[]     @default([])
   customFields   Json         @default("{}") @map("custom_fields")
   attachments    Json         @default("[]")
+  formTemplateId String?      @map("form_template_id") @db.VarChar(100)
+  formSubmissionData Json?    @map("form_submission_data")
   isArchived     Boolean      @default(false) @map("is_archived")
   completedAt    DateTime?    @map("completed_at") @db.Timestamptz()
   createdBy      String       @map("created_by") @db.Uuid
@@ -455,6 +460,63 @@ model AiLog {
   user         User         @relation(fields: [userId], references: [id])
 
   @@map("ai_logs")
+}
+
+// ─── APPROVALS ──────────────────────────────────────────
+
+model Approval {
+  id               String   @id @default(uuid()) @db.Uuid
+  orgId            String   @map("org_id") @db.Uuid
+  workflowId       String   @map("workflow_id") @db.VarChar(100)
+  title            String   @db.VarChar(255)
+  description      String?  @db.Text
+  content          String?  @db.Text
+  status           String   @default("pending") @db.VarChar(50)
+  currentStep      Int      @default(1) @map("current_step")
+  requestedBy      String   @map("requested_by") @db.Uuid
+  relatedTaskId    String?  @map("related_task_id") @db.Uuid
+  relatedProjectId String?  @map("related_project_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  requestedByUser  User         @relation("ApprovalRequester", fields: [requestedBy], references: [id])
+  steps            ApprovalStep[]
+  approvals        ApprovalRecord[]
+
+  @@map("approvals")
+}
+
+model ApprovalStep {
+  id        String   @id @default(uuid()) @db.Uuid
+  approvalId String  @map("approval_id") @db.Uuid
+  stepId    String   @map("step_id") @db.VarChar(100)
+  stepName  String   @map("step_name") @db.VarChar(255)
+  stepOrder Int      @map("step_order")
+  role      String   @db.VarChar(100)
+  status    String   @default("pending") @db.VarChar(50)
+  parallel  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  approval Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+
+  @@map("approval_steps")
+}
+
+model ApprovalRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  approvalId String   @map("approval_id") @db.Uuid
+  stepId     String   @map("step_id") @db.Uuid
+  approvedBy String   @map("approved_by") @db.Uuid
+  action     String   @db.VarChar(50)
+  reason     String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  approval Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  approver User     @relation(fields: [approvedBy], references: [id])
+
+  @@map("approval_records")
 }
 
 // ─── USER INTEGRATIONS (OAuth tokens for external services) ──

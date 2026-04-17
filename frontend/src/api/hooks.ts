@@ -249,3 +249,128 @@ export function useDeleteWorkflow() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workflows'] }),
   });
 }
+
+// ─── Approvals ──────────────────────────────────────────
+
+export function usePendingApprovals(params?: { page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['pendingApprovals', params],
+    queryFn: async () => {
+      const { data } = await api.get('/approvals/pending', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useApprovals(params?: { status?: string; page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['approvals', params],
+    queryFn: async () => {
+      const { data } = await api.get('/approvals', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useApproval(approvalId: string) {
+  return useQuery({
+    queryKey: ['approval', approvalId],
+    queryFn: async () => {
+      const { data } = await api.get(`/approvals/${approvalId}`);
+      return data.data;
+    },
+    enabled: !!approvalId,
+  });
+}
+
+export function useCreateApproval() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/approvals', body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['approvals'] });
+      qc.invalidateQueries({ queryKey: ['pendingApprovals'] });
+    },
+  });
+}
+
+export function useApproveStep() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ approvalId, ...body }: { approvalId: string } & Record<string, unknown>) => {
+      const { data } = await api.post(`/approvals/${approvalId}/approve`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['approvals'] });
+      qc.invalidateQueries({ queryKey: ['pendingApprovals'] });
+      qc.invalidateQueries({ queryKey: ['approval'] });
+    },
+  });
+}
+
+export function useRejectStep() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ approvalId, ...body }: { approvalId: string } & Record<string, unknown>) => {
+      const { data } = await api.post(`/approvals/${approvalId}/reject`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['approvals'] });
+      qc.invalidateQueries({ queryKey: ['pendingApprovals'] });
+      qc.invalidateQueries({ queryKey: ['approval'] });
+    },
+  });
+}
+
+// ─── Forms ──────────────────────────────────────────────
+
+export function useFormTemplates() {
+  return useQuery({
+    queryKey: ['formTemplates'],
+    queryFn: async () => {
+      const { data } = await api.get('/forms/templates');
+      return data.data;
+    },
+  });
+}
+
+export function useFormTemplate(formId: string) {
+  return useQuery({
+    queryKey: ['formTemplate', formId],
+    queryFn: async () => {
+      const { data } = await api.get(`/forms/templates/${formId}`);
+      return data.data;
+    },
+    enabled: !!formId,
+  });
+}
+
+export function useSubmitForm() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ formId, ...body }: { formId: string } & Record<string, unknown>) => {
+      const { data } = await api.post(`/forms/submit/${formId}`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['formSubmissions'] });
+      qc.invalidateQueries({ queryKey: ['myTasks'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+export function useFormSubmissions(params?: { form_id?: string; status?: string; page?: number; page_size?: number }) {
+  return useQuery({
+    queryKey: ['formSubmissions', params],
+    queryFn: async () => {
+      const { data } = await api.get('/forms/submissions', { params });
+      return data.data;
+    },
+  });
+}
