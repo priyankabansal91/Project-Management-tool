@@ -62,6 +62,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string>('');
 
   useEffect(() => {
     if (project) {
@@ -88,6 +89,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
       });
     }
     setErrors({});
+    setSubmitError('');
   }, [project, open, workflows]);
 
   const validateForm = () => {
@@ -104,11 +106,16 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
     if (validateForm()) {
-      onSave({
-        ...form,
-        key: form.key.toUpperCase(),
-      });
+      try {
+        onSave({
+          ...form,
+          key: form.key.toUpperCase(),
+        });
+      } catch (error) {
+        setSubmitError(error instanceof Error ? error.message : 'Failed to save project');
+      }
     }
   };
 
@@ -125,6 +132,13 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Error Message */}
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              {submitError}
+            </div>
+          )}
+
           {/* Project Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Project Name *</label>

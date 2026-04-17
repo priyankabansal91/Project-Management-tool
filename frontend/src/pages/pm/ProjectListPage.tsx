@@ -8,7 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Plus, Search, LayoutGrid, List, Calendar } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { ProjectModal, type ProjectFormData } from '@/components/shared/ProjectModal';
-import { useProjects, useCreateProject } from '@/api/hooks';
+import { useProjects, useCreateProject, useWorkflows } from '@/api/hooks';
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
@@ -23,7 +23,9 @@ export function ProjectListPage() {
   const [modalOpen, setModalOpen] = useState(false);
 
   const { data: projectsData, isLoading } = useProjects();
+  const { data: workflowsData } = useWorkflows();
   const projects = projectsData?.items || [];
+  const workflows = workflowsData || [];
   const createProjectMutation = useCreateProject();
 
   const filtered = projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
@@ -58,6 +60,7 @@ export function ProjectListPage() {
         onClose={() => setModalOpen(false)}
         onSave={handleCreateProject}
         saving={createProjectMutation.isPending}
+        workflows={workflows}
       />
 
       {/* Filters */}

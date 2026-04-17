@@ -35,6 +35,7 @@ class ProjectService {
         due_date: p.dueDate,
         member_count: p.members.length,
         task_count: p._count.tasks,
+        completed: 0, // TODO: Calculate completed tasks
         members: p.members.map((m) => ({
           id: m.user.id,
           name: `${m.user.firstName} ${m.user.lastName}`,
