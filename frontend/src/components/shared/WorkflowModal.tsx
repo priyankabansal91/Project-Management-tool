@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { X, Plus, Trash2 } from 'lucide-react';
+import { WorkflowTemplateSelector, WORKFLOW_TEMPLATES } from './WorkflowTemplateSelector';
 import type { WorkflowStatus } from '@/types';
 
 interface WorkflowModalProps {
@@ -36,6 +37,8 @@ const DEFAULT_COLORS = [
 
 export function WorkflowModal({ open, onClose, onSave, workflow, saving = false }: WorkflowModalProps) {
   const isEdit = !!workflow;
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [showTemplates, setShowTemplates] = useState(!isEdit);
   const [form, setForm] = useState<WorkflowFormData>({
     name: '',
     description: '',
@@ -53,6 +56,7 @@ export function WorkflowModal({ open, onClose, onSave, workflow, saving = false 
         statuses: workflow.statuses || [],
         transitions: workflow.transitions || [],
       });
+      setShowTemplates(false);
     } else {
       setForm({
         name: '',
@@ -65,6 +69,7 @@ export function WorkflowModal({ open, onClose, onSave, workflow, saving = false 
         ],
         transitions: [],
       });
+      setShowTemplates(true);
     }
     setErrors({});
   }, [workflow, open]);
@@ -110,8 +115,55 @@ export function WorkflowModal({ open, onClose, onSave, workflow, saving = false 
     setForm({ ...form, statuses: form.statuses.filter((_, i) => i !== index) });
   };
 
+  const handleSelectTemplate = (template: any) => {
+    setSelectedTemplate(template.id);
+    setForm({
+      name: template.name,
+      description: template.description,
+      statuses: template.statuses,
+      transitions: template.transitions,
+    });
+  };
+
+  const handleUseTemplate = () => {
+    setShowTemplates(false);
+  };
+
   if (!open) return null;
 
+  // Template Selection View
+  if (showTemplates && !isEdit) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
+        <Card className="w-full max-w-2xl p-6 my-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold">Create New Workflow</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <WorkflowTemplateSelector selectedTemplate={selectedTemplate} onSelect={handleSelectTemplate} />
+
+          <div className="flex gap-3 pt-6 border-t mt-6">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleUseTemplate}
+              disabled={!selectedTemplate}
+              className="flex-1"
+            >
+              Use Template
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Workflow Editor View
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto">
       <Card className="w-full max-w-2xl p-6 my-8">
