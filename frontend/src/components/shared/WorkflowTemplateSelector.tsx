@@ -135,6 +135,35 @@ const WORKFLOW_TEMPLATES: Record<string, WorkflowTemplate> = {
       { from: 's6', to: [] },
     ],
   },
+  teamProject: {
+    id: 'teamProject',
+    name: 'Team Project Management',
+    description: 'Complete workflow for team collaboration with PM, team members, external users, task tracking, time logging, bug handling, and communication',
+    statuses: [
+      { id: 's1', name: 'Backlog', color: '#6B7280', is_initial: true, is_final: false, order: 1 },
+      { id: 's2', name: 'Assigned', color: '#3B82F6', is_initial: false, is_final: false, order: 2 },
+      { id: 's3', name: 'In Progress', color: '#F59E0B', is_initial: false, is_final: false, order: 3 },
+      { id: 's4', name: 'In Review', color: '#8B5CF6', is_initial: false, is_final: false, order: 4 },
+      { id: 's5', name: 'Bug Found', color: '#EF4444', is_initial: false, is_final: false, order: 5 },
+      { id: 's6', name: 'Blocked', color: '#EC4899', is_initial: false, is_final: false, order: 6 },
+      { id: 's7', name: 'Ready for QA', color: '#06B6D4', is_initial: false, is_final: false, order: 7 },
+      { id: 's8', name: 'QA Testing', color: '#14B8A6', is_initial: false, is_final: false, order: 8 },
+      { id: 's9', name: 'Approved', color: '#10B981', is_initial: false, is_final: false, order: 9 },
+      { id: 's10', name: 'Done', color: '#059669', is_initial: false, is_final: true, order: 10 },
+    ],
+    transitions: [
+      { from: 's1', to: ['s2'] },
+      { from: 's2', to: ['s3', 's6'] },
+      { from: 's3', to: ['s4', 's5', 's6'] },
+      { from: 's4', to: ['s3', 's5', 's7', 's6'] },
+      { from: 's5', to: ['s3', 's6'] },
+      { from: 's6', to: ['s2', 's3'] },
+      { from: 's7', to: ['s8', 's6'] },
+      { from: 's8', to: ['s5', 's9', 's6'] },
+      { from: 's9', to: ['s10', 's5'] },
+      { from: 's10', to: ['s5'] },
+    ],
+  },
 };
 
 interface WorkflowTemplateSelectorProps {
