@@ -30,8 +30,12 @@ const mockResults: SearchResult[] = [
 const typeIcons = { task: CheckSquare, project: FolderKanban, member: Users };
 const typeLabels = { task: 'Tasks', project: 'Projects', member: 'People' };
 
-export function GlobalSearch() {
-  const [open, setOpen] = useState(false);
+interface GlobalSearchProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,16 +46,16 @@ export function GlobalSearch() {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setOpen(true);
+        onOpenChange(true);
       }
       if (e.key === 'Escape') {
-        setOpen(false);
+        onOpenChange(false);
         setQuery('');
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, []);
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (open) {
@@ -74,7 +78,7 @@ export function GlobalSearch() {
 
   const handleSelect = (result: SearchResult) => {
     navigate(result.url);
-    setOpen(false);
+    onOpenChange(false);
     setQuery('');
   };
 
@@ -93,7 +97,7 @@ export function GlobalSearch() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onClick={() => { setOpen(false); setQuery(''); }}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onClick={() => { onOpenChange(false); setQuery(''); }}>
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50" />
 
@@ -188,17 +192,6 @@ export function GlobalSearch() {
 export function SearchTrigger() {
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setOpen(true);
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, []);
-
   return (
     <>
       <button
@@ -211,7 +204,7 @@ export function SearchTrigger() {
           <Command className="h-3 w-3" />K
         </kbd>
       </button>
-      {open && <GlobalSearch />}
+      {open && <GlobalSearch open={open} onOpenChange={setOpen} />}
     </>
   );
 }
