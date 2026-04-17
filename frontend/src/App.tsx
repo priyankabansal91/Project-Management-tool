@@ -25,6 +25,14 @@ import { TimeLoggingPage } from '@/pages/pm/TimeLoggingPage';
 import { CalendarViewPage } from '@/pages/pm/CalendarViewPage';
 import { AIFeaturesPage } from '@/components/shared/AIFeatures';
 import { OutlookIntegrationPage } from '@/pages/admin/integrations/OutlookIntegrationPage';
+import { AdminDashboard } from '@/pages/admin/AdminDashboard';
+import { DivisionsPage } from '@/pages/admin/DivisionsPage';
+import { CustomRolesPage } from '@/pages/admin/CustomRolesPage';
+import { ExternalUsersPage } from '@/pages/admin/ExternalUsersPage';
+import { VersioningPage } from '@/pages/admin/VersioningPage';
+import { ExportsPage } from '@/pages/admin/ExportsPage';
+import { ApprovalInboxPage } from '@/pages/admin/ApprovalInboxPage';
+import { FormsPage } from '@/pages/admin/FormsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -82,6 +90,14 @@ export default function App() {
         <Route path="/admin/issue-types" element={<IssueTypesPage />} />
         <Route path="/admin/templates" element={<TaskTemplatesPage />} />
         <Route path="/admin/audit-log" element={<AuditLogPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/divisions" element={<DivisionsPage />} />
+        <Route path="/admin/roles" element={<CustomRolesPage />} />
+        <Route path="/admin/external-users" element={<ExternalUsersPage />} />
+        <Route path="/admin/versioning" element={<VersioningPage />} />
+        <Route path="/admin/exports" element={<ExportsPage />} />
+        <Route path="/admin/approvals" element={<ApprovalInboxPage />} />
+        <Route path="/admin/forms" element={<FormsPage />} />
         <Route path="/reports/advanced" element={<ReportsAdvancedPage />} />
         <Route path="/settings" element={<OrgSettingsPage />} />
         <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />
