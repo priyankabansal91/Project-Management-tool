@@ -4,6 +4,7 @@ import {
   Workflow, FormInput, Shield, ListTodo, Bell, ChevronLeft, ChevronRight, Plug,
   Zap, Calendar, Clock, Target, Sparkles, Activity, Layers, ClipboardList, PieChart,
   Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
+  Crown, Map, ClipboardCheck, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -27,6 +28,10 @@ const navItems: NavItem[] = [
   { label: 'Time Tracking', path: '/time-tracking', icon: Clock, roles: ['org_admin', 'project_manager', 'member'] },
   { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['org_admin', 'project_manager'] },
   { label: 'Project Tracking', path: '/project-tracking', icon: Target, roles: ['org_admin', 'project_manager', 'viewer'] },
+  { label: 'Executive View', path: '/executive', icon: Crown, roles: ['org_admin', 'viewer'] },
+  { label: 'Roadmap', path: '/roadmap', icon: Map, roles: ['org_admin', 'project_manager', 'viewer'] },
+  { label: 'Status Reports', path: '/status-reports', icon: ClipboardCheck, roles: ['org_admin', 'project_manager'] },
+  { label: 'Risk Register', path: '/risk-register', icon: AlertTriangle, roles: ['org_admin', 'project_manager'] },
   { label: 'Advanced Reports', path: '/reports/advanced', icon: PieChart, roles: ['org_admin', 'project_manager'] },
   { label: 'AI Features', path: '/ai', icon: Sparkles, roles: ['org_admin', 'project_manager'] },
   { label: 'Workflows', path: '/admin/workflows', icon: Workflow, roles: ['org_admin'] },
