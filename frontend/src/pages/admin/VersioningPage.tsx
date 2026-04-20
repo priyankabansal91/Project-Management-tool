@@ -68,13 +68,13 @@ export function VersioningPage() {
         <Card className="p-4">
           <div className="text-sm text-muted-foreground mb-1">Full Backups</div>
           <div className="text-3xl font-bold">
-            {snapshots.filter((s) => s.snapshot_type === 'full').length}
+            {snapshots.filter((s: any) => s.snapshot_type === 'full').length}
           </div>
         </Card>
         <Card className="p-4">
           <div className="text-sm text-muted-foreground mb-1">Incremental</div>
           <div className="text-3xl font-bold">
-            {snapshots.filter((s) => s.snapshot_type === 'incremental').length}
+            {snapshots.filter((s: any) => s.snapshot_type === 'incremental').length}
           </div>
         </Card>
       </div>
@@ -126,7 +126,7 @@ export function VersioningPage() {
 
       {/* Snapshots List */}
       <div className="space-y-3">
-        {snapshots.map((snapshot) => (
+        {snapshots.map((snapshot: any) => (
           <Card key={snapshot.id} className="p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">

@@ -112,7 +112,7 @@ export function ApprovalInbox({ approvals, onApprove, onReject, loading = false 
                         <p className="text-sm text-muted-foreground mb-2">{approval.description}</p>
 
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Avatar name={approval.requester.name} size="xs" />
+                          <Avatar name={approval.requester.name} size="sm" />
                           <span>{approval.requester.name}</span>
                           <span>•</span>
                           <span>

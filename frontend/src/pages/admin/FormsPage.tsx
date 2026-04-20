@@ -20,7 +20,7 @@ export function FormsPage() {
   }
 
   const forms = templates || [];
-  const currentForm = forms.find((f) => f.id === selectedForm);
+  const currentForm = forms.find((f: any) => f.id === selectedForm);
 
   if (selectedForm && currentForm) {
     return (
@@ -57,7 +57,7 @@ export function FormsPage() {
 
       {/* Forms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {forms.map((form) => (
+        {forms.map((form: any) => (
           <Card
             key={form.id}
             className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
@@ -83,7 +83,7 @@ export function FormsPage() {
             <div className="mt-4 pt-4 border-t">
               <p className="text-xs font-medium text-muted-foreground mb-2">Fields:</p>
               <div className="space-y-1">
-                {form.fields.slice(0, 3).map((field) => (
+                {form.fields.slice(0, 3).map((field: any) => (
                   <div key={field.id} className="text-xs text-muted-foreground flex items-center gap-1">
                     <span className="w-1 h-1 bg-muted-foreground rounded-full"></span>
                     {field.name}

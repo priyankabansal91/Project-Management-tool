@@ -117,7 +117,7 @@ export function CustomRolesPage() {
             <div>
               <label className="text-sm font-medium mb-3 block">Permissions</label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto p-3 border rounded-md bg-white">
-                {permissions?.map((perm) => (
+                {permissions?.map((perm: any) => (
                   <label key={perm.id} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -153,7 +153,7 @@ export function CustomRolesPage() {
 
       {/* Roles List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {roles.map((role) => (
+        {roles.map((role: any) => (
           <Card key={role.id} className="p-6">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -203,7 +203,7 @@ export function CustomRolesPage() {
                 {role.permissions?.length || 0} permissions
               </p>
               <div className="flex flex-wrap gap-1">
-                {role.permissions?.slice(0, 5).map((perm) => (
+                {role.permissions?.slice(0, 5).map((perm: any) => (
                   <Badge key={perm} variant="secondary" className="text-xs">
                     {perm}
                   </Badge>

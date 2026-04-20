@@ -24,7 +24,7 @@ export function WorkflowsPage() {
 
   const handleCreateWorkflow = async (data: WorkflowFormData) => {
     try {
-      await createMutation.mutateAsync(data);
+      await createMutation.mutateAsync(data as unknown as Record<string, unknown>);
       setModalOpen(false);
       setEditingWorkflow(null);
     } catch (error) {
@@ -48,7 +48,7 @@ export function WorkflowsPage() {
     try {
       await deleteMutation.mutateAsync(workflowId);
       if (selectedWf?.id === workflowId) {
-        setSelectedWf(workflows[0] || null);
+        setSelectedWf(workflows[0] || undefined);
       }
     } catch (error) {
       console.error('Failed to delete workflow:', error);
@@ -88,7 +88,7 @@ export function WorkflowsPage() {
           setEditingWorkflow(null);
         }}
         onSave={editingWorkflow ? handleUpdateWorkflow : handleCreateWorkflow}
-        workflow={editingWorkflow}
+        workflow={editingWorkflow as any}
         saving={createMutation.isPending || updateMutation.isPending}
       />
 

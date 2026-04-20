@@ -52,8 +52,8 @@ export function ExternalUsersPage() {
   const users = usersData?.items || [];
   const stats = {
     total: usersData?.pagination?.total || 0,
-    active: users.filter((u) => u.is_active).length,
-    pending: users.filter((u) => !u.accepted_at).length,
+    active: users.filter((u: any) => u.is_active).length,
+    pending: users.filter((u: any) => !u.accepted_at).length,
   };
 
   return (
@@ -144,7 +144,7 @@ export function ExternalUsersPage() {
 
       {/* Users List */}
       <div className="space-y-3">
-        {users.map((user) => (
+        {users.map((user: any) => (
           <Card key={user.id} className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">

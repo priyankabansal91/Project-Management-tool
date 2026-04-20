@@ -32,6 +32,7 @@ export function ProjectListPage() {
 
   const handleCreateProject = async (data: ProjectFormData) => {
     try {
+      await createProjectMutation.mutateAsync(data as unknown as Record<string, unknown>);
       console.log('Creating project with data:', data);
       await createProjectMutation.mutateAsync(data);
       setModalOpen(false);
@@ -99,7 +100,7 @@ export function ProjectListPage() {
       {view === 'grid' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {filtered.map((p) => {
-            const pct = p.task_count > 0 ? Math.round((p.completed / p.task_count) * 100) : 0;
+            const pct = p.task_count > 0 ? Math.round(((p as any).completed / p.task_count) * 100) : 0;
             return (
               <Link key={p.id} to={`/projects/${p.id}/board`}>
                 <Card className="p-4 sm:p-5 hover:shadow-md transition-shadow cursor-pointer group h-full">
@@ -117,7 +118,7 @@ export function ProjectListPage() {
                   {/* Progress */}
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{p.completed}/{p.task_count} tasks</span>
+                      <span className="text-muted-foreground">{(p as any).completed}/{p.task_count} tasks</span>
                       <span className="font-medium">{pct}%</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
@@ -165,7 +166,7 @@ export function ProjectListPage() {
               </thead>
               <tbody>
                 {filtered.map((p) => {
-                  const pct = p.task_count > 0 ? Math.round((p.completed / p.task_count) * 100) : 0;
+                  const pct = p.task_count > 0 ? Math.round(((p as any).completed / p.task_count) * 100) : 0;
                   return (
                     <tr key={p.id} className="border-b last:border-0 hover:bg-accent/50 cursor-pointer transition-colors">
                       <td className="p-2 sm:p-4">

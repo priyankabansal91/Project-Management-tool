@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -5,6 +6,8 @@ import { MobileBottomNav } from './MobileNav';
 import { GlobalSearch } from '@/components/shared/GlobalSearch';
 
 export function AppShell() {
+  const [searchOpen, setSearchOpen] = useState(false);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       {/* Sidebar - hidden on mobile, fixed width on desktop */}
@@ -33,7 +36,7 @@ export function AppShell() {
       </nav>
 
       {/* Global search (Cmd+K) */}
-      <GlobalSearch />
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }
