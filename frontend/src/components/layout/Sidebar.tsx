@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
   { label: 'Team', path: '/team', icon: Users, roles: ['org_admin', 'project_manager'] },
   { label: 'Time Tracking', path: '/time-tracking', icon: Clock, roles: ['org_admin', 'project_manager', 'member'] },
   { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['org_admin', 'project_manager'] },
+  { label: 'Project Tracking', path: '/project-tracking', icon: Target, roles: ['org_admin', 'project_manager', 'viewer'] },
   { label: 'Advanced Reports', path: '/reports/advanced', icon: PieChart, roles: ['org_admin', 'project_manager'] },
   { label: 'AI Features', path: '/ai', icon: Sparkles, roles: ['org_admin', 'project_manager'] },
   { label: 'Workflows', path: '/admin/workflows', icon: Workflow, roles: ['org_admin'] },

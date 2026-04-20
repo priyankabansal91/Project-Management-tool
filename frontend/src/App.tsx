@@ -23,6 +23,7 @@ import { ReportsAdvancedPage } from '@/pages/pm/ReportsAdvancedPage';
 import { SprintManagementPage } from '@/pages/pm/SprintManagementPage';
 import { TimeLoggingPage } from '@/pages/pm/TimeLoggingPage';
 import { CalendarViewPage } from '@/pages/pm/CalendarViewPage';
+import { ProjectTrackingPage } from '@/pages/pm/ProjectTrackingPage';
 import { AIFeaturesPage } from '@/components/shared/AIFeatures';
 import { OutlookIntegrationPage } from '@/pages/admin/integrations/OutlookIntegrationPage';
 import { DivisionsPage } from '@/pages/admin/DivisionsPage';
@@ -76,6 +77,7 @@ export default function App() {
         {/* PM Views */}
         <Route path="/sprints" element={<SprintManagementPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/project-tracking" element={<ProjectTrackingPage />} />
         <Route path="/time-tracking" element={<TimeLoggingPage />} />
         <Route path="/calendar" element={<CalendarViewPage />} />
         <Route path="/team" element={<UserManagementPage />} />
