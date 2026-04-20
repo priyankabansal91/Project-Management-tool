@@ -1,6 +1,9 @@
-const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 const APPROVAL_WORKFLOWS = require('../utils/approvalWorkflows');
+
+// In-memory storage for development (until database is set up)
+const approvalsStore = new Map();
+const approvalRecordsStore = new Map();
 
 class ApprovalService {
   /**
@@ -16,35 +19,40 @@ class ApprovalService {
     }
 
     // Create approval request
-    const approval = await prisma.approval.create({
-      data: {
-        orgId,
-        workflowId: workflow_id,
-        title,
-        description,
-        content,
-        requestedBy: userId,
-        relatedTaskId: related_task_id,
-        relatedProjectId: related_project_id,
+    const approvalId = `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const approval = {
+      id: approvalId,
+      orgId,
+      workflowId: workflow_id,
+      title,
+      description,
+      content,
+      requestedBy: userId,
+      relatedTaskId: related_task_id,
+      relatedProjectId: related_project_id,
+      status: 'pending',
+      currentStep: 1,
+      steps: workflow.steps.map((step, index) => ({
+        id: `step_${approvalId}_${index}`,
+        stepId: step.id,
+        stepName: step.name,
+        stepOrder: step.order,
+        role: step.role,
         status: 'pending',
-        currentStep: 1,
-        steps: {
-          create: workflow.steps.map((step) => ({
-            stepId: step.id,
-            stepName: step.name,
-            stepOrder: step.order,
-            role: step.role,
-            status: 'pending',
-            parallel: step.parallel || false,
-          })),
-        },
+        parallel: step.parallel || false,
+      })),
+      requestedByUser: {
+        id: userId,
+        firstName: 'Dev',
+        lastName: 'User',
+        email: 'dev@example.com',
       },
-      include: {
-        steps: true,
-        requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-      },
-    });
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
+    approvalsStore.set(approvalId, approval);
     return this._formatApproval(approval);
   }
 
@@ -52,16 +60,16 @@ class ApprovalService {
    * Get approval by ID
    */
   async getApprovalById(orgId, approvalId) {
-    const approval = await prisma.approval.findFirst({
-      where: { id: approvalId, orgId },
-      include: {
-        steps: true,
-        approvals: { include: { approvedBy: { select: { id: true, firstName: true, lastName: true, email: true } } } },
-        requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-      },
-    });
+    const approval = approvalsStore.get(approvalId);
 
-    if (!approval) throw ApiError.notFound('Approval not found');
+    if (!approval || approval.orgId !== orgId) {
+      throw ApiError.notFound('Approval not found');
+    }
+
+    // Get approval records
+    const records = Array.from(approvalRecordsStore.values()).filter(r => r.approvalId === approvalId);
+    approval.approvals = records;
+
     return this._formatApproval(approval);
   }
 
@@ -69,38 +77,13 @@ class ApprovalService {
    * List pending approvals for a user
    */
   async listPendingApprovals(orgId, userId, { page = 1, page_size = 20 } = {}) {
-    // Get user's role
-    const member = await prisma.organizationMember.findFirst({
-      where: { userId, orgId },
-    });
+    // Get all approvals for this org that are pending
+    const approvals = Array.from(approvalsStore.values())
+      .filter(a => a.orgId === orgId && a.status === 'pending')
+      .sort((a, b) => b.createdAt - a.createdAt);
 
-    if (!member) throw ApiError.forbidden('User not a member of this organization');
-
-    // Find approvals where user's role matches a pending step
-    const where = {
-      orgId,
-      status: 'pending',
-      steps: {
-        some: {
-          status: 'pending',
-          role: member.role,
-        },
-      },
-    };
-
-    const [items, total] = await Promise.all([
-      prisma.approval.findMany({
-        where,
-        include: {
-          steps: true,
-          requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * page_size,
-        take: page_size,
-      }),
-      prisma.approval.count({ where }),
-    ]);
+    const total = approvals.length;
+    const items = approvals.slice((page - 1) * page_size, page * page_size);
 
     return {
       items: items.map((a) => this._formatApproval(a)),
@@ -112,25 +95,17 @@ class ApprovalService {
    * List all approvals for a user (created by or assigned to)
    */
   async listApprovals(orgId, userId, { status, page = 1, page_size = 20 } = {}) {
-    const where = {
-      orgId,
-      ...(status && { status }),
-    };
+    let approvals = Array.from(approvalsStore.values())
+      .filter(a => a.orgId === orgId);
 
-    const [items, total] = await Promise.all([
-      prisma.approval.findMany({
-        where,
-        include: {
-          steps: true,
-          approvals: { include: { approvedBy: { select: { id: true, firstName: true, lastName: true, email: true } } } },
-          requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * page_size,
-        take: page_size,
-      }),
-      prisma.approval.count({ where }),
-    ]);
+    if (status) {
+      approvals = approvals.filter(a => a.status === status);
+    }
+
+    approvals.sort((a, b) => b.createdAt - a.createdAt);
+
+    const total = approvals.length;
+    const items = approvals.slice((page - 1) * page_size, page * page_size);
 
     return {
       items: items.map((a) => this._formatApproval(a)),
@@ -144,54 +119,44 @@ class ApprovalService {
   async approveStep(orgId, userId, approvalId, data) {
     const { reason } = data;
 
-    const approval = await prisma.approval.findFirst({
-      where: { id: approvalId, orgId },
-      include: { steps: true },
-    });
+    const approval = approvalsStore.get(approvalId);
+    if (!approval || approval.orgId !== orgId) {
+      throw ApiError.notFound('Approval not found');
+    }
 
-    if (!approval) throw ApiError.notFound('Approval not found');
-    if (approval.status !== 'pending') throw ApiError.badRequest('Approval is not pending');
+    if (approval.status !== 'pending') {
+      throw ApiError.badRequest('Approval is not pending');
+    }
 
-    // Get user's role
-    const member = await prisma.organizationMember.findFirst({
-      where: { userId, orgId },
-    });
-
-    // Find the current pending step for this user's role
-    const currentStep = approval.steps.find((s) => s.status === 'pending' && s.role === member.role);
-    if (!currentStep) throw ApiError.forbidden('No pending step for your role');
+    // Find the first pending step
+    const currentStep = approval.steps.find((s) => s.status === 'pending');
+    if (!currentStep) {
+      throw ApiError.forbidden('No pending step found');
+    }
 
     // Update the step
-    await prisma.approvalStep.update({
-      where: { id: currentStep.id },
-      data: { status: 'approved' },
-    });
+    currentStep.status = 'approved';
 
     // Create approval record
-    await prisma.approvalRecord.create({
-      data: {
-        approvalId,
-        approvedBy: userId,
-        action: 'approved',
-        reason,
-        stepId: currentStep.id,
-      },
+    const recordId = `record_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    approvalRecordsStore.set(recordId, {
+      id: recordId,
+      approvalId,
+      approvedBy: userId,
+      action: 'approved',
+      reason,
+      stepId: currentStep.id,
+      createdAt: new Date(),
     });
 
     // Check if all steps are approved
-    const updatedApproval = await prisma.approval.findFirst({
-      where: { id: approvalId },
-      include: { steps: true },
-    });
-
-    const allApproved = updatedApproval.steps.every((s) => s.status === 'approved');
-
+    const allApproved = approval.steps.every((s) => s.status === 'approved');
     if (allApproved) {
-      await prisma.approval.update({
-        where: { id: approvalId },
-        data: { status: 'approved' },
-      });
+      approval.status = 'approved';
     }
+
+    approval.updatedAt = new Date();
+    approvalsStore.set(approvalId, approval);
 
     return this.getApprovalById(orgId, approvalId);
   }
@@ -202,45 +167,40 @@ class ApprovalService {
   async rejectStep(orgId, userId, approvalId, data) {
     const { reason } = data;
 
-    const approval = await prisma.approval.findFirst({
-      where: { id: approvalId, orgId },
-      include: { steps: true },
-    });
+    const approval = approvalsStore.get(approvalId);
+    if (!approval || approval.orgId !== orgId) {
+      throw ApiError.notFound('Approval not found');
+    }
 
-    if (!approval) throw ApiError.notFound('Approval not found');
-    if (approval.status !== 'pending') throw ApiError.badRequest('Approval is not pending');
+    if (approval.status !== 'pending') {
+      throw ApiError.badRequest('Approval is not pending');
+    }
 
-    // Get user's role
-    const member = await prisma.organizationMember.findFirst({
-      where: { userId, orgId },
-    });
-
-    // Find the current pending step for this user's role
-    const currentStep = approval.steps.find((s) => s.status === 'pending' && s.role === member.role);
-    if (!currentStep) throw ApiError.forbidden('No pending step for your role');
+    // Find the first pending step
+    const currentStep = approval.steps.find((s) => s.status === 'pending');
+    if (!currentStep) {
+      throw ApiError.forbidden('No pending step found');
+    }
 
     // Update the step
-    await prisma.approvalStep.update({
-      where: { id: currentStep.id },
-      data: { status: 'rejected' },
-    });
+    currentStep.status = 'rejected';
 
     // Create approval record
-    await prisma.approvalRecord.create({
-      data: {
-        approvalId,
-        approvedBy: userId,
-        action: 'rejected',
-        reason,
-        stepId: currentStep.id,
-      },
+    const recordId = `record_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    approvalRecordsStore.set(recordId, {
+      id: recordId,
+      approvalId,
+      approvedBy: userId,
+      action: 'rejected',
+      reason,
+      stepId: currentStep.id,
+      createdAt: new Date(),
     });
 
     // Update approval status
-    await prisma.approval.update({
-      where: { id: approvalId },
-      data: { status: 'rejected' },
-    });
+    approval.status = 'rejected';
+    approval.updatedAt = new Date();
+    approvalsStore.set(approvalId, approval);
 
     return this.getApprovalById(orgId, approvalId);
   }
@@ -275,7 +235,7 @@ class ApprovalService {
         reason: a.reason,
         approved_by: a.approvedBy,
         created_at: a.createdAt,
-      })),
+      })) || [],
       created_at: approval.createdAt,
       updated_at: approval.updatedAt,
     };

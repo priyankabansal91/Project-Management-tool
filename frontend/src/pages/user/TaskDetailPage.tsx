@@ -5,21 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Calendar, Clock, Tag, User, Send, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Tag, User, Send, MoreHorizontal, Loader } from 'lucide-react';
 import { cn, priorityColor, formatDate, timeAgo } from '@/lib/utils';
-
-const mockTask = {
-  id: 't1', task_key: 'CPR-1', title: 'Design new navigation component',
-  description: '## Overview\nCreate a responsive navigation component with mobile drawer and desktop mega-menu.\n\n## Acceptance Criteria\n- Mobile: hamburger drawer opens smoothly\n- Desktop: mega-menu with hover states\n- Keyboard navigation accessible\n- Unit tests pass',
-  status_name: 'In Progress', status_id: 's3', priority: 'high' as const,
-  assignee: { id: '3', name: 'Carol Johnson', avatar_url: null },
-  reporter: { id: '2', name: 'Bob Martinez' },
-  project: { id: '1', name: 'Customer Portal Redesign', key: 'CPR', color: '#3B82F6' },
-  due_date: '2026-02-15', start_date: '2026-02-01',
-  estimated_hours: 8, logged_hours: 3.5,
-  tags: ['frontend', 'design'],
-  created_at: '2026-01-15T10:00:00Z', updated_at: '2026-02-08T16:00:00Z',
-};
+import { useQuery } from '@tanstack/react-query';
+import api from '@/api/client';
 
 const mockComments = [
   {
@@ -41,18 +30,52 @@ export function TaskDetailPage() {
   const { taskId } = useParams();
   const [newComment, setNewComment] = useState('');
 
+  const { data: task, isLoading, error } = useQuery({
+    queryKey: ['task', taskId],
+    queryFn: async () => {
+      const { data } = await api.get(`/tasks/${taskId}`);
+      return data.data;
+    },
+    enabled: !!taskId,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (error || !task) {
+    return (
+      <div className="p-6">
+        <Card className="p-6 bg-red-50 border-red-200">
+          <p className="text-red-800">Error loading task: {error instanceof Error ? error.message : 'Task not found'}</p>
+          <Link to="/tasks" className="text-red-600 hover:text-red-800 mt-4 inline-block">← Back to Tasks</Link>
+        </Card>
+      </div>
+    );
+  }
+
+  const mockTask = task;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Link to="/projects" className="hover:text-foreground">Projects</Link>
         <span>/</span>
-        <Link to={`/projects/${mockTask.project.id}/board`} className="hover:text-foreground flex items-center gap-1">
-          <div className="h-2 w-2 rounded" style={{ backgroundColor: mockTask.project.color }} />
-          {mockTask.project.name}
-        </Link>
-        <span>/</span>
-        <span className="text-foreground font-medium">{mockTask.task_key}</span>
+        {task?.project && (
+          <>
+            <Link to={`/projects/${task.project.id}/board`} className="hover:text-foreground flex items-center gap-1">
+              <div className="h-2 w-2 rounded" style={{ backgroundColor: task.project.color || '#3B82F6' }} />
+              {task.project.name}
+            </Link>
+            <span>/</span>
+          </>
+        )}
+        <span className="text-foreground font-medium">{task?.task_key}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -61,23 +84,27 @@ export function TaskDetailPage() {
           {/* Title */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="text-xs font-mono">{mockTask.task_key}</Badge>
-              <Badge className={cn('text-xs', priorityColor(mockTask.priority))}>{mockTask.priority}</Badge>
+              <Badge variant="outline" className="text-xs font-mono">{task?.task_key}</Badge>
+              <Badge className={cn('text-xs', priorityColor(task?.priority || 'medium'))}>{task?.priority}</Badge>
             </div>
-            <h1 className="text-2xl font-bold">{mockTask.title}</h1>
+            <h1 className="text-2xl font-bold">{task?.title}</h1>
           </div>
 
           {/* Description */}
           <Card>
             <CardHeader><CardTitle className="text-base">Description</CardTitle></CardHeader>
             <CardContent>
-              <div className="prose prose-sm max-w-none text-muted-foreground">
-                {mockTask.description.split('\n').map((line, i) => {
-                  if (line.startsWith('## ')) return <h3 key={i} className="text-sm font-semibold text-foreground mt-4 mb-2">{line.replace('## ', '')}</h3>;
-                  if (line.startsWith('- ')) return <div key={i} className="flex items-start gap-2 ml-2"><span>•</span><span>{line.replace('- ', '')}</span></div>;
-                  return <p key={i}>{line}</p>;
-                })}
-              </div>
+              {task?.description ? (
+                <div className="prose prose-sm max-w-none text-muted-foreground">
+                  {task.description.split('\n').map((line, i) => {
+                    if (line.startsWith('## ')) return <h3 key={i} className="text-sm font-semibold text-foreground mt-4 mb-2">{line.replace('## ', '')}</h3>;
+                    if (line.startsWith('- ')) return <div key={i} className="flex items-start gap-2 ml-2"><span>•</span><span>{line.replace('- ', '')}</span></div>;
+                    return <p key={i}>{line}</p>;
+                  })}
+                </div>
+              ) : (
+                <p className="text-muted-foreground italic">No description provided</p>
+              )}
             </CardContent>
           </Card>
 
@@ -160,79 +187,91 @@ export function TaskDetailPage() {
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</label>
                 <div className="flex items-center gap-2 p-2 rounded-md bg-yellow-50 border border-yellow-200">
                   <div className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
-                  <span className="text-sm font-medium">{mockTask.status_name}</span>
+                  <span className="text-sm font-medium">{task?.status_name || 'Unknown'}</span>
                 </div>
               </div>
 
               {/* Priority */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Priority</label>
-                <Badge className={cn('text-xs', priorityColor(mockTask.priority))}>{mockTask.priority}</Badge>
+                <Badge className={cn('text-xs', priorityColor(task?.priority || 'medium'))}>{task?.priority || 'medium'}</Badge>
               </div>
 
               {/* Assignee */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assignee</label>
-                <div className="flex items-center gap-2">
-                  <Avatar name={mockTask.assignee.name} size="sm" />
-                  <span className="text-sm">{mockTask.assignee.name}</span>
+              {task?.assignee && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Assignee</label>
+                  <div className="flex items-center gap-2">
+                    <Avatar name={task.assignee.name} size="sm" />
+                    <span className="text-sm">{task.assignee.name}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Reporter */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reporter</label>
-                <div className="flex items-center gap-2">
-                  <Avatar name={mockTask.reporter.name} size="sm" />
-                  <span className="text-sm">{mockTask.reporter.name}</span>
+              {task?.reporter && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reporter</label>
+                  <div className="flex items-center gap-2">
+                    <Avatar name={task.reporter.name} size="sm" />
+                    <span className="text-sm">{task.reporter.name}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Due Date */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due Date</label>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{formatDate(mockTask.due_date)}</span>
+              {task?.due_date && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due Date</label>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>{formatDate(task.due_date)}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Start Date */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Start Date</label>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{formatDate(mockTask.start_date)}</span>
+              {task?.start_date && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Start Date</label>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>{formatDate(task.start_date)}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Time Tracking */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Tracking</label>
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{mockTask.logged_hours}h / {mockTask.estimated_hours}h</span>
+              {task?.estimated_hours && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Tracking</label>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>{task.logged_hours || 0}h / {task.estimated_hours}h</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${((task.logged_hours || 0) / task.estimated_hours) * 100}%` }} />
+                  </div>
+                  <Button variant="outline" size="sm" className="w-full mt-1"><Clock className="h-3 w-3" /> Log Time</Button>
                 </div>
-                <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${(mockTask.logged_hours / mockTask.estimated_hours) * 100}%` }} />
-                </div>
-                <Button variant="outline" size="sm" className="w-full mt-1"><Clock className="h-3 w-3" /> Log Time</Button>
-              </div>
+              )}
 
               {/* Tags */}
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tags</label>
-                <div className="flex flex-wrap gap-1">
-                  {mockTask.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                  ))}
+              {task?.tags && task.tags.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tags</label>
+                  <div className="flex flex-wrap gap-1">
+                    {task.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Timestamps */}
               <div className="pt-4 border-t space-y-2 text-xs text-muted-foreground">
-                <div className="flex justify-between"><span>Created</span><span>{formatDate(mockTask.created_at)}</span></div>
-                <div className="flex justify-between"><span>Updated</span><span>{formatDate(mockTask.updated_at)}</span></div>
+                {task?.created_at && <div className="flex justify-between"><span>Created</span><span>{formatDate(task.created_at)}</span></div>}
+                {task?.updated_at && <div className="flex justify-between"><span>Updated</span><span>{formatDate(task.updated_at)}</span></div>}
               </div>
             </CardContent>
           </Card>

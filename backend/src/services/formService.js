@@ -1,7 +1,10 @@
-const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 const FORM_TEMPLATES = require('../utils/formTemplates');
 const APPROVAL_WORKFLOWS = require('../utils/approvalWorkflows');
+
+// In-memory storage for development (until database is set up)
+const tasksStore = new Map();
+const approvalsStore = new Map();
 
 class FormService {
   /**
@@ -43,106 +46,60 @@ class FormService {
     // Validate form data
     this._validateFormData(form, data);
 
-    // Get or create the auto-assigned project
-    let projectId = form.autoAssign?.project;
-    if (projectId) {
-      let project = await prisma.project.findFirst({
-        where: { orgId, key: projectId, deletedAt: null },
-      });
-
-      if (!project) {
-        // Create project if it doesn't exist
-        project = await prisma.project.create({
-          data: {
-            orgId,
-            name: form.autoAssign.project.replace(/-/g, ' ').toUpperCase(),
-            key: projectId,
-            description: `Auto-created project for ${form.name} forms`,
-            visibility: 'private',
-            ownerId: userId,
-            createdBy: userId,
-          },
-        });
-      }
-      projectId = project.id;
-    }
-
-    // Get default workflow if not specified
-    let workflowConfigId = null;
-    if (projectId) {
-      const project = await prisma.project.findUnique({
-        where: { id: projectId },
-        select: { workflowConfigId: true },
-      });
-      workflowConfigId = project?.workflowConfigId;
-    }
-
-    if (!workflowConfigId) {
-      const defaultWf = await prisma.workflowConfig.findFirst({
-        where: { orgId, isDefault: true },
-      });
-      workflowConfigId = defaultWf?.id;
-    }
-
-    // Get initial status
-    let statusId = null;
-    if (workflowConfigId) {
-      const workflow = await prisma.workflowConfig.findUnique({
-        where: { id: workflowConfigId },
-        include: { statuses: { orderBy: { order: 'asc' } } },
-      });
-      statusId = workflow?.statuses[0]?.id;
-    }
-
     // Create task
-    const task = await prisma.task.create({
-      data: {
-        orgId,
-        projectId,
-        workflowConfigId,
-        statusId,
-        title: data.title || data[form.fields[0].id],
-        description: data.description || '',
-        priority: form.autoAssign?.priority || 'medium',
-        type: form.autoAssign?.taskType || 'task',
-        createdBy: userId,
-        assignedTo: userId,
-        formSubmissionData: data,
-        formTemplateId: formId,
-      },
-    });
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const task = {
+      id: taskId,
+      orgId,
+      title: data.title || data[form.fields[0]?.id] || 'Untitled Task',
+      description: data.description || '',
+      priority: form.autoAssign?.priority || 'medium',
+      type: form.autoAssign?.taskType || 'task',
+      createdBy: userId,
+      assignedTo: userId,
+      formSubmissionData: data,
+      formTemplateId: formId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    tasksStore.set(taskId, task);
 
     // Create approval if needed
     let approvalId = null;
     if (form.approvalWorkflow) {
-      const approval = await prisma.approval.create({
-        data: {
+      const workflow = APPROVAL_WORKFLOWS[form.approvalWorkflow];
+      if (workflow) {
+        const approval = {
+          id: `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           orgId,
           workflowId: form.approvalWorkflow,
           title: `Approval: ${task.title}`,
           description: `Form submission approval for ${form.name}`,
           content: JSON.stringify(data),
           requestedBy: userId,
-          relatedTaskId: task.id,
+          relatedTaskId: taskId,
           status: 'pending',
           currentStep: 1,
-          steps: {
-            create: APPROVAL_WORKFLOWS[form.approvalWorkflow].steps.map((step) => ({
-              stepId: step.id,
-              stepName: step.name,
-              stepOrder: step.order,
-              role: step.role,
-              status: 'pending',
-              parallel: step.parallel || false,
-            })),
-          },
-        },
-      });
-      approvalId = approval.id;
+          steps: workflow.steps.map((step, index) => ({
+            id: `step_${index}`,
+            stepId: step.id,
+            stepName: step.name,
+            stepOrder: step.order,
+            role: step.role,
+            status: 'pending',
+            parallel: step.parallel || false,
+          })),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        approvalsStore.set(approval.id, approval);
+        approvalId = approval.id;
+      }
     }
 
     return {
-      task_id: task.id,
+      task_id: taskId,
       approval_id: approvalId,
       form_id: formId,
       status: 'submitted',
@@ -154,34 +111,26 @@ class FormService {
    * Get form submissions for a user
    */
   async getFormSubmissions(orgId, userId, { form_id, status, page = 1, page_size = 20 } = {}) {
-    const where = {
-      orgId,
-      createdBy: userId,
-      ...(form_id && { formTemplateId: form_id }),
-    };
+    let items = Array.from(tasksStore.values())
+      .filter(t => t.orgId === orgId && t.createdBy === userId);
 
-    const [items, total] = await Promise.all([
-      prisma.task.findMany({
-        where,
-        include: {
-          project: { select: { id: true, name: true, key: true } },
-          status: { select: { id: true, name: true, color: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * page_size,
-        take: page_size,
-      }),
-      prisma.task.count({ where }),
-    ]);
+    if (form_id) {
+      items = items.filter(t => t.formTemplateId === form_id);
+    }
+
+    items.sort((a, b) => b.createdAt - a.createdAt);
+
+    const total = items.length;
+    const paginatedItems = items.slice((page - 1) * page_size, page * page_size);
 
     return {
-      items: items.map((t) => ({
+      items: paginatedItems.map((t) => ({
         id: t.id,
         title: t.title,
         description: t.description,
         form_id: t.formTemplateId,
-        project: t.project,
-        status: t.status,
+        project: null,
+        status: null,
         priority: t.priority,
         created_at: t.createdAt,
         updated_at: t.updatedAt,

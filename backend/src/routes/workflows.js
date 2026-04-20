@@ -1,18 +1,35 @@
 const { Router } = require('express');
-const prisma = require('../config/prisma');
 const { authenticate, authorize } = require('../middleware/auth');
 const ApiError = require('../utils/ApiError');
+const WORKFLOW_TEMPLATES = require('../utils/workflowTemplates');
 
 const router = Router();
+
+// In-memory storage for workflows
+const workflowsStore = new Map();
+
+// Initialize with default workflow templates
+Object.entries(WORKFLOW_TEMPLATES).forEach(([key, template]) => {
+  workflowsStore.set(template.id, {
+    id: template.id,
+    orgId: 'dev-org-id',
+    name: template.name,
+    description: template.description,
+    isDefault: key === 'simple_kanban',
+    statuses: template.statuses,
+    transitions: template.transitions || [],
+    createdBy: 'dev-user-id',
+    createdAt: new Date(),
+  });
+});
 
 router.use(authenticate);
 
 router.get('/', async (req, res, next) => {
   try {
-    const workflows = await prisma.workflowConfig.findMany({
-      where: { orgId: req.user.orgId },
-      orderBy: { createdAt: 'asc' },
-    });
+    const workflows = Array.from(workflowsStore.values())
+      .filter(w => w.orgId === req.user.orgId)
+      .sort((a, b) => a.createdAt - b.createdAt);
 
     res.json({
       success: true,
@@ -33,10 +50,10 @@ router.get('/', async (req, res, next) => {
 
 router.get('/:workflowId', async (req, res, next) => {
   try {
-    const workflow = await prisma.workflowConfig.findFirst({
-      where: { id: req.params.workflowId, orgId: req.user.orgId },
-    });
-    if (!workflow) throw ApiError.notFound('Workflow not found');
+    const workflow = workflowsStore.get(req.params.workflowId);
+    if (!workflow || workflow.orgId !== req.user.orgId) {
+      throw ApiError.notFound('Workflow not found');
+    }
 
     res.json({
       success: true,
@@ -58,16 +75,21 @@ router.get('/:workflowId', async (req, res, next) => {
 router.post('/', authorize('org_admin', 'project_manager'), async (req, res, next) => {
   try {
     const { name, description, statuses, transitions } = req.body;
-    const workflow = await prisma.workflowConfig.create({
-      data: {
-        orgId: req.user.orgId,
-        name,
-        description,
-        statuses: JSON.stringify(statuses),
-        transitions: JSON.stringify(transitions || []),
-        createdBy: req.user.id,
-      },
-    });
+    const workflowId = `wf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const workflow = {
+      id: workflowId,
+      orgId: req.user.orgId,
+      name,
+      description,
+      isDefault: false,
+      statuses: typeof statuses === 'string' ? statuses : JSON.stringify(statuses),
+      transitions: typeof transitions === 'string' ? transitions : JSON.stringify(transitions || []),
+      createdBy: req.user.id,
+      createdAt: new Date(),
+    };
+
+    workflowsStore.set(workflowId, workflow);
     res.status(201).json({ success: true, data: workflow });
   } catch (err) {
     next(err);
@@ -76,21 +98,21 @@ router.post('/', authorize('org_admin', 'project_manager'), async (req, res, nex
 
 router.patch('/:workflowId', authorize('org_admin', 'project_manager'), async (req, res, next) => {
   try {
-    const wf = await prisma.workflowConfig.findFirst({ where: { id: req.params.workflowId, orgId: req.user.orgId } });
-    if (!wf) throw ApiError.notFound('Workflow not found');
+    const wf = workflowsStore.get(req.params.workflowId);
+    if (!wf || wf.orgId !== req.user.orgId) {
+      throw ApiError.notFound('Workflow not found');
+    }
 
     const { name, description, statuses, transitions, is_default } = req.body;
-    const updated = await prisma.workflowConfig.update({
-      where: { id: req.params.workflowId },
-      data: {
-        ...(name && { name }),
-        ...(description !== undefined && { description }),
-        ...(statuses && { statuses: JSON.stringify(statuses) }),
-        ...(transitions && { transitions: JSON.stringify(transitions) }),
-        ...(is_default !== undefined && { isDefault: is_default }),
-      },
-    });
-    res.json({ success: true, data: updated });
+    
+    if (name) wf.name = name;
+    if (description !== undefined) wf.description = description;
+    if (statuses) wf.statuses = typeof statuses === 'string' ? statuses : JSON.stringify(statuses);
+    if (transitions) wf.transitions = typeof transitions === 'string' ? transitions : JSON.stringify(transitions);
+    if (is_default !== undefined) wf.isDefault = is_default;
+
+    workflowsStore.set(req.params.workflowId, wf);
+    res.json({ success: true, data: wf });
   } catch (err) {
     next(err);
   }
@@ -98,11 +120,15 @@ router.patch('/:workflowId', authorize('org_admin', 'project_manager'), async (r
 
 router.delete('/:workflowId', authorize('org_admin'), async (req, res, next) => {
   try {
-    const wf = await prisma.workflowConfig.findFirst({ where: { id: req.params.workflowId, orgId: req.user.orgId } });
-    if (!wf) throw ApiError.notFound('Workflow not found');
-    if (wf.isDefault) throw ApiError.badRequest('Cannot delete default workflow');
+    const wf = workflowsStore.get(req.params.workflowId);
+    if (!wf || wf.orgId !== req.user.orgId) {
+      throw ApiError.notFound('Workflow not found');
+    }
+    if (wf.isDefault) {
+      throw ApiError.badRequest('Cannot delete default workflow');
+    }
 
-    await prisma.workflowConfig.delete({ where: { id: req.params.workflowId } });
+    workflowsStore.delete(req.params.workflowId);
     res.status(204).end();
   } catch (err) {
     next(err);

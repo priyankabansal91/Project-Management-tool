@@ -1,28 +1,51 @@
-const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
+
+// In-memory storage for development (until database is set up)
+const projectsStore = new Map();
+
+// Create some default projects for development
+const defaultProjects = [
+  {
+    id: 'proj_default_1',
+    orgId: 'dev-org-id',
+    name: 'Sample Project',
+    key: 'SAMPLE',
+    description: 'A sample project to get started',
+    status: 'active',
+    visibility: 'private',
+    color: '#3B82F6',
+    ownerId: 'dev-user-id',
+    startDate: new Date(2026, 0, 1),
+    dueDate: new Date(2026, 11, 31),
+    createdBy: 'dev-user-id',
+    createdAt: new Date(2026, 0, 1),
+    updatedAt: new Date(2026, 0, 1),
+    deletedAt: null,
+    members: [
+      { id: 'dev-user-id', name: 'Dev User', avatar_url: null, role: 'project_manager' }
+    ],
+    taskCount: 0,
+  }
+];
+
+// Initialize with default projects
+defaultProjects.forEach(p => projectsStore.set(p.id, p));
 
 class ProjectService {
   async list(orgId, { status, search, page = 1, page_size = 20 }) {
-    const where = { orgId, deletedAt: null };
-    if (status) where.status = status;
-    if (search) where.name = { contains: search, mode: 'insensitive' };
+    let items = Array.from(projectsStore.values())
+      .filter(p => p.orgId === orgId && !p.deletedAt);
 
-    const [items, total] = await Promise.all([
-      prisma.project.findMany({
-        where,
-        include: {
-          members: { include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } } },
-          _count: { select: { tasks: { where: { deletedAt: null } } } },
-        },
-        orderBy: { updatedAt: 'desc' },
-        skip: (page - 1) * page_size,
-        take: page_size,
-      }),
-      prisma.project.count({ where }),
-    ]);
+    if (status) items = items.filter(p => p.status === status);
+    if (search) items = items.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+
+    items.sort((a, b) => b.updatedAt - a.updatedAt);
+
+    const total = items.length;
+    const paginatedItems = items.slice((page - 1) * page_size, page * page_size);
 
     return {
-      items: items.map((p) => ({
+      items: paginatedItems.map((p) => ({
         id: p.id,
         name: p.name,
         key: p.key,
@@ -33,15 +56,10 @@ class ProjectService {
         owner_id: p.ownerId,
         start_date: p.startDate,
         due_date: p.dueDate,
-        member_count: p.members.length,
-        task_count: p._count.tasks,
-        completed: 0, // TODO: Calculate completed tasks
-        members: p.members.map((m) => ({
-          id: m.user.id,
-          name: `${m.user.firstName} ${m.user.lastName}`,
-          avatar_url: m.user.avatarUrl,
-          role: m.role,
-        })),
+        member_count: p.members?.length || 0,
+        task_count: p.taskCount || 0,
+        completed: 0,
+        members: p.members || [],
         created_at: p.createdAt,
         updated_at: p.updatedAt,
       })),
@@ -50,80 +68,69 @@ class ProjectService {
   }
 
   async getById(orgId, projectId) {
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, orgId, deletedAt: null },
-      include: {
-        workflowConfig: true,
-        members: { include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true, email: true } } } },
-        _count: { select: { tasks: { where: { deletedAt: null } } } },
-      },
-    });
-
-    if (!project) throw ApiError.notFound('Project not found');
+    const project = projectsStore.get(projectId);
+    if (!project || project.orgId !== orgId || project.deletedAt) {
+      throw ApiError.notFound('Project not found');
+    }
     return project;
   }
 
   async create(orgId, userId, data) {
-    const orgProjects = await prisma.project.count({ where: { orgId, deletedAt: null } });
-    const org = await prisma.organization.findUnique({ where: { id: orgId } });
-    if (orgProjects >= org.maxProjects) {
-      throw ApiError.badRequest(`Project limit (${org.maxProjects}) reached for your plan`);
-    }
+    const projectId = `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const project = {
+      id: projectId,
+      orgId,
+      name: data.name,
+      description: data.description || '',
+      key: data.key || data.name.substring(0, 3).toUpperCase(),
+      visibility: data.visibility || 'private',
+      color: data.color || '#3B82F6',
+      ownerId: userId,
+      startDate: data.start_date ? new Date(data.start_date) : null,
+      dueDate: data.due_date ? new Date(data.due_date) : null,
+      createdBy: userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      status: 'active',
+      members: [
+        { id: userId, name: 'Dev User', avatar_url: null, role: 'project_manager' }
+      ],
+      taskCount: 0,
+    };
 
-    let workflowConfigId = data.workflow_config_id;
-    if (!workflowConfigId) {
-      const defaultWf = await prisma.workflowConfig.findFirst({ where: { orgId, isDefault: true } });
-      workflowConfigId = defaultWf?.id;
-    }
-
-    const project = await prisma.project.create({
-      data: {
-        orgId,
-        name: data.name,
-        description: data.description,
-        key: data.key,
-        visibility: data.visibility || 'private',
-        color: data.color || '#3B82F6',
-        workflowConfigId,
-        ownerId: userId,
-        startDate: data.start_date ? new Date(data.start_date) : null,
-        dueDate: data.due_date ? new Date(data.due_date) : null,
-        createdBy: userId,
-      },
-    });
-
-    await prisma.projectMember.create({
-      data: { projectId: project.id, userId, role: 'project_manager', addedBy: userId },
-    });
-
+    projectsStore.set(projectId, project);
     return project;
   }
 
   async update(orgId, projectId, data) {
-    const project = await prisma.project.findFirst({ where: { id: projectId, orgId, deletedAt: null } });
-    if (!project) throw ApiError.notFound('Project not found');
+    const project = projectsStore.get(projectId);
+    if (!project || project.orgId !== orgId || project.deletedAt) {
+      throw ApiError.notFound('Project not found');
+    }
 
-    return prisma.project.update({
-      where: { id: projectId },
-      data: {
-        ...(data.name && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
-        ...(data.status && { status: data.status }),
-        ...(data.visibility && { visibility: data.visibility }),
-        ...(data.color && { color: data.color }),
-        ...(data.due_date !== undefined && { dueDate: data.due_date ? new Date(data.due_date) : null }),
-      },
-    });
+    if (data.name) project.name = data.name;
+    if (data.description !== undefined) project.description = data.description;
+    if (data.status) project.status = data.status;
+    if (data.visibility) project.visibility = data.visibility;
+    if (data.color) project.color = data.color;
+    if (data.due_date !== undefined) project.dueDate = data.due_date ? new Date(data.due_date) : null;
+    project.updatedAt = new Date();
+
+    projectsStore.set(projectId, project);
+    return project;
   }
 
   async delete(orgId, projectId) {
-    const project = await prisma.project.findFirst({ where: { id: projectId, orgId, deletedAt: null } });
-    if (!project) throw ApiError.notFound('Project not found');
+    const project = projectsStore.get(projectId);
+    if (!project || project.orgId !== orgId || project.deletedAt) {
+      throw ApiError.notFound('Project not found');
+    }
 
-    return prisma.project.update({
-      where: { id: projectId },
-      data: { deletedAt: new Date() },
-    });
+    project.deletedAt = new Date();
+    projectsStore.set(projectId, project);
+    return { success: true };
   }
 }
 

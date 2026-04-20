@@ -105,6 +105,7 @@ export function CalendarViewPage() {
       const taskData = {
         ...data,
         due_date: selectedDateForTask || data.due_date,
+        estimated_hours: data.estimated_hours ? parseFloat(data.estimated_hours) : null,
       };
       await createTaskMutation.mutateAsync(taskData);
       setModalOpen(false);

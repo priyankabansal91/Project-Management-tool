@@ -13,12 +13,24 @@ interface AuthState {
   logout: () => void;
 }
 
+// Development mode: auto-login with dev user
+const isDevelopment = import.meta.env.DEV;
+const devUser: User = {
+  id: 'dev-user-id',
+  email: 'dev@example.com',
+  firstName: 'Dev',
+  lastName: 'User',
+  avatarUrl: null,
+};
+const devRole: OrgRole = 'org_admin';
+const devToken = 'dev-token';
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      accessToken: null,
-      user: null,
-      currentRole: null,
+      accessToken: isDevelopment ? devToken : null,
+      user: isDevelopment ? devUser : null,
+      currentRole: isDevelopment ? devRole : null,
 
       setAccessToken: (token) => set({ accessToken: token }),
       setUser: (user) => set({ user }),
