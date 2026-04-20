@@ -9,21 +9,31 @@ export function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar - hidden on mobile */}
-      <div className="hidden md:block">
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
+      {/* Sidebar - hidden on mobile, fixed width on desktop */}
+      <aside className="hidden md:flex md:w-64 lg:w-64 flex-shrink-0">
         <Sidebar />
-      </div>
+      </aside>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-auto p-4 md:p-6 pb-20 md:pb-6">
-          <Outlet />
+      {/* Main content area */}
+      <div className="flex flex-1 flex-col overflow-hidden w-full">
+        {/* Header */}
+        <header className="flex-shrink-0">
+          <Header />
+        </header>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-auto">
+          <div className="w-full h-full px-3 sm:px-4 md:px-6 py-4 md:py-6 pb-20 sm:pb-20 md:pb-6">
+            <Outlet />
+          </div>
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <MobileBottomNav />
+      {/* Mobile bottom nav - only on small screens */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40">
+        <MobileBottomNav />
+      </nav>
 
       {/* Global search (Cmd+K) */}
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />

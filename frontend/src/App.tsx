@@ -37,7 +37,6 @@ import { VersioningPage } from '@/pages/admin/VersioningPage';
 import { ExportsPage } from '@/pages/admin/ExportsPage';
 import { ApprovalInboxPage } from '@/pages/admin/ApprovalInboxPage';
 import { FormsPage } from '@/pages/admin/FormsPage';
-import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -100,6 +99,7 @@ export default function App() {
         <Route path="/admin/issue-types" element={<IssueTypesPage />} />
         <Route path="/admin/templates" element={<TaskTemplatesPage />} />
         <Route path="/admin/audit-log" element={<AuditLogPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/divisions" element={<DivisionsPage />} />
         <Route path="/admin/roles" element={<CustomRolesPage />} />
         <Route path="/admin/external-users" element={<ExternalUsersPage />} />

@@ -54,3 +54,88 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
+
+/* Responsive utilities */
+@layer components {
+  /* Safe area support for notched devices */
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-area-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+
+  /* Responsive text sizes */
+  .text-responsive {
+    @apply text-xs sm:text-sm md:text-base lg:text-lg;
+  }
+
+  /* Responsive padding */
+  .p-responsive {
+    @apply p-2 sm:p-3 md:p-4 lg:p-6;
+  }
+
+  .px-responsive {
+    @apply px-2 sm:px-3 md:px-4 lg:px-6;
+  }
+
+  .py-responsive {
+    @apply py-2 sm:py-3 md:py-4 lg:py-6;
+  }
+
+  /* Responsive gap */
+  .gap-responsive {
+    @apply gap-2 sm:gap-3 md:gap-4 lg:gap-6;
+  }
+
+  /* Responsive grid */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5;
+  }
+
+  /* Truncate with responsive behavior */
+  .truncate-responsive {
+    @apply truncate sm:line-clamp-2 md:line-clamp-3;
+  }
+
+  /* Flex responsive */
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  /* Container responsive */
+  .container-responsive {
+    @apply w-full px-2 sm:px-3 md:px-4 lg:px-6;
+  }
+}
+
+/* Mobile-first responsive breakpoints */
+@media (max-width: 640px) {
+  /* Extra small screens */
+  .hidden-xs {
+    display: none;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  /* Small screens */
+  .hidden-sm {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Medium screens */
+  .hidden-md {
+    display: none;
+  }
+}
+
+@media (min-width: 1025px) {
+  /* Large screens */
+  .hidden-lg {
+    display: none;
+  }
+}
+
