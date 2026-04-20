@@ -23,9 +23,13 @@ import { ReportsAdvancedPage } from '@/pages/pm/ReportsAdvancedPage';
 import { SprintManagementPage } from '@/pages/pm/SprintManagementPage';
 import { TimeLoggingPage } from '@/pages/pm/TimeLoggingPage';
 import { CalendarViewPage } from '@/pages/pm/CalendarViewPage';
+import { ProjectTrackingPage } from '@/pages/pm/ProjectTrackingPage';
 import { AIFeaturesPage } from '@/components/shared/AIFeatures';
 import { OutlookIntegrationPage } from '@/pages/admin/integrations/OutlookIntegrationPage';
-import { AdminDashboard } from '@/pages/admin/AdminDashboard';
+import { ExecutiveDashboardPage } from '@/pages/executive/ExecutiveDashboardPage';
+import { RoadmapPage } from '@/pages/executive/RoadmapPage';
+import { StatusReportsPage } from '@/pages/executive/StatusReportsPage';
+import { RiskRegisterPage } from '@/pages/executive/RiskRegisterPage';
 import { DivisionsPage } from '@/pages/admin/DivisionsPage';
 import { CustomRolesPage } from '@/pages/admin/CustomRolesPage';
 import { ExternalUsersPage } from '@/pages/admin/ExternalUsersPage';
@@ -76,6 +80,11 @@ export default function App() {
         {/* PM Views */}
         <Route path="/sprints" element={<SprintManagementPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/project-tracking" element={<ProjectTrackingPage />} />
+        <Route path="/executive" element={<ExecutiveDashboardPage />} />
+        <Route path="/roadmap" element={<RoadmapPage />} />
+        <Route path="/status-reports" element={<StatusReportsPage />} />
+        <Route path="/risk-register" element={<RiskRegisterPage />} />
         <Route path="/time-tracking" element={<TimeLoggingPage />} />
         <Route path="/calendar" element={<CalendarViewPage />} />
         <Route path="/team" element={<UserManagementPage />} />
@@ -98,6 +107,7 @@ export default function App() {
         <Route path="/admin/exports" element={<ExportsPage />} />
         <Route path="/admin/approvals" element={<ApprovalInboxPage />} />
         <Route path="/admin/forms" element={<FormsPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/reports/advanced" element={<ReportsAdvancedPage />} />
         <Route path="/settings" element={<OrgSettingsPage />} />
         <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />

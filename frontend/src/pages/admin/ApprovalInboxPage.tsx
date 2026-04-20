@@ -62,7 +62,7 @@ export function ApprovalInboxPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {approvals.map((approval) => (
+          {approvals.map((approval: any) => (
             <Card key={approval.id} className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -78,7 +78,7 @@ export function ApprovalInboxPage() {
               <div className="mb-4 space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Approval Steps:</p>
                 <div className="flex flex-wrap gap-2">
-                  {approval.steps.map((step) => (
+                  {approval.steps.map((step: any) => (
                     <Badge
                       key={step.id}
                       variant={step.status === 'approved' ? 'default' : 'outline'}
@@ -104,7 +104,12 @@ export function ApprovalInboxPage() {
                     description: approval.description,
                     status: approval.status,
                     steps: approval.steps,
-                    requestedBy: approval.requested_by,
+                    requester: approval.requested_by || { name: 'Unknown', avatar_url: null },
+                    type: 'other' as const,
+                    currentStep: 1,
+                    totalSteps: approval.steps?.length || 1,
+                    priority: 'medium' as const,
+                    createdAt: new Date().toISOString(),
                   },
                 ]}
                 onApprove={(approvalId, reason) => {
