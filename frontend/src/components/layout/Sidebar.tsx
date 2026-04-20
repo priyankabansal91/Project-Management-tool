@@ -3,6 +3,7 @@ import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, Settings, BarChart3,
   Workflow, FormInput, Shield, ListTodo, Bell, ChevronLeft, ChevronRight, Plug,
   Zap, Calendar, Clock, Target, Sparkles, Activity, Layers, ClipboardList, PieChart,
+  Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -32,6 +33,14 @@ const navItems: NavItem[] = [
   { label: 'Task Templates', path: '/admin/templates', icon: ClipboardList, roles: ['org_admin', 'project_manager'] },
   { label: 'Custom Fields', path: '/admin/custom-fields', icon: FormInput, roles: ['org_admin'] },
   { label: 'User Management', path: '/admin/users', icon: Shield, roles: ['org_admin'] },
+  { label: 'Divisions', path: '/admin/divisions', icon: Building2, roles: ['org_admin'] },
+  { label: 'Custom Roles', path: '/admin/roles', icon: KeyRound, roles: ['org_admin'] },
+  { label: 'External Users', path: '/admin/external-users', icon: UserPlus, roles: ['org_admin'] },
+  { label: 'Approvals', path: '/admin/approvals', icon: CheckCircle, roles: ['org_admin', 'project_manager'] },
+  { label: 'Forms', path: '/admin/forms', icon: FileText, roles: ['org_admin', 'project_manager'] },
+  { label: 'Versioning', path: '/admin/versioning', icon: History, roles: ['org_admin'] },
+  { label: 'Exports', path: '/admin/exports', icon: Download, roles: ['org_admin', 'project_manager'] },
+  { label: 'Admin Dashboard', path: '/admin/dashboard', icon: Gauge, roles: ['org_admin'] },
   { label: 'Audit Log', path: '/admin/audit-log', icon: Activity, roles: ['org_admin'] },
   { label: 'Integrations', path: '/settings/integrations', icon: Plug, roles: ['org_admin', 'project_manager', 'member'] },
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['org_admin'] },

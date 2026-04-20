@@ -41,8 +41,8 @@ export function ExportsPage() {
   const exports = exportsData?.items || [];
   const stats = {
     total: exportsData?.pagination?.total || 0,
-    completed: exports.filter((e) => e.status === 'completed').length,
-    processing: exports.filter((e) => e.status === 'processing').length,
+    completed: exports.filter((e: any) => e.status === 'completed').length,
+    processing: exports.filter((e: any) => e.status === 'processing').length,
   };
 
   const getFormatIcon = (format: string) => {
@@ -139,7 +139,7 @@ export function ExportsPage() {
       {/* Exports List */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Recent Exports</h2>
-        {exports.map((exp) => (
+        {exports.map((exp: any) => (
           <Card key={exp.id} className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">

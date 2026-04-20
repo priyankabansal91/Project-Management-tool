@@ -115,7 +115,7 @@ export function CalendarViewPage() {
   };
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
-  const projectWorkflow = workflows.find((w) => w.id === selectedProject?.workflow_config_id);
+  const projectWorkflow = workflows.find((w) => w.id === (selectedProject as any)?.workflow_config_id);
 
   return (
     <div className="space-y-6">
