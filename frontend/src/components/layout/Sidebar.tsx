@@ -4,8 +4,8 @@ import {
   Workflow, FormInput, Shield, ListTodo, Bell, ChevronLeft, ChevronRight, Plug,
   Zap, Calendar, Clock, Target, Sparkles, Activity, Layers, ClipboardList, PieChart,
   Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
-  Crown, Map, ClipboardCheck, AlertTriangle,
-  GitBranch, Lock, UserPlus, History, Download, CheckCircle, FileText, LayoutGrid,
+  Crown, Map, ClipboardCheck, AlertTriangle, TrendingUp, DollarSign, Users2,
+  GitBranch, Lock, LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -29,12 +29,17 @@ const navItems: NavItem[] = [
   { label: 'Time Tracking', path: '/time-tracking', icon: Clock, roles: ['org_admin', 'project_manager', 'member'] },
   { label: 'Reports', path: '/reports', icon: BarChart3, roles: ['org_admin', 'project_manager'] },
   { label: 'Project Tracking', path: '/project-tracking', icon: Target, roles: ['org_admin', 'project_manager', 'viewer'] },
+  { label: 'Advanced Reports', path: '/reports/advanced', icon: PieChart, roles: ['org_admin', 'project_manager'] },
+  { label: 'AI Features', path: '/ai', icon: Sparkles, roles: ['org_admin', 'project_manager'] },
+  
+  // Executive section
+  { label: 'OKR & Goals', path: '/executive/okrs', icon: Target, roles: ['org_admin', 'project_manager'] },
+  { label: 'Financial Dashboard', path: '/executive/financial', icon: DollarSign, roles: ['org_admin', 'project_manager'] },
+  { label: 'Resource Dashboard', path: '/executive/resources', icon: Users2, roles: ['org_admin', 'project_manager'] },
   { label: 'Executive View', path: '/executive', icon: Crown, roles: ['org_admin', 'viewer'] },
   { label: 'Roadmap', path: '/roadmap', icon: Map, roles: ['org_admin', 'project_manager', 'viewer'] },
   { label: 'Status Reports', path: '/status-reports', icon: ClipboardCheck, roles: ['org_admin', 'project_manager'] },
   { label: 'Risk Register', path: '/risk-register', icon: AlertTriangle, roles: ['org_admin', 'project_manager'] },
-  { label: 'Advanced Reports', path: '/reports/advanced', icon: PieChart, roles: ['org_admin', 'project_manager'] },
-  { label: 'AI Features', path: '/ai', icon: Sparkles, roles: ['org_admin', 'project_manager'] },
   
   // Admin section
   { label: 'Admin Dashboard', path: '/admin/dashboard', icon: LayoutGrid, roles: ['org_admin'] },
@@ -50,14 +55,6 @@ const navItems: NavItem[] = [
   { label: 'Forms', path: '/admin/forms', icon: FileText, roles: ['org_admin', 'project_manager'] },
   { label: 'Versioning', path: '/admin/versioning', icon: History, roles: ['org_admin'] },
   { label: 'Exports', path: '/admin/exports', icon: Download, roles: ['org_admin', 'project_manager'] },
-  { label: 'Admin Dashboard', path: '/admin/dashboard', icon: Gauge, roles: ['org_admin'] },
-  { label: 'Divisions', path: '/admin/divisions', icon: GitBranch, roles: ['org_admin'] },
-  { label: 'Custom Roles', path: '/admin/roles', icon: Lock, roles: ['org_admin'] },
-  { label: 'External Users', path: '/admin/external-users', icon: UserPlus, roles: ['org_admin'] },
-  { label: 'Approvals', path: '/admin/approvals', icon: CheckCircle, roles: ['org_admin'] },
-  { label: 'Forms', path: '/admin/forms', icon: FileText, roles: ['org_admin'] },
-  { label: 'Versioning', path: '/admin/versioning', icon: History, roles: ['org_admin'] },
-  { label: 'Exports', path: '/admin/exports', icon: Download, roles: ['org_admin'] },
   { label: 'Audit Log', path: '/admin/audit-log', icon: Activity, roles: ['org_admin'] },
   { label: 'Integrations', path: '/settings/integrations', icon: Plug, roles: ['org_admin', 'project_manager', 'member'] },
   { label: 'Settings', path: '/settings', icon: Settings, roles: ['org_admin'] },

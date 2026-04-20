@@ -26,6 +26,9 @@ const externalUsersRoutes = require('./routes/externalUsers');
 const versioningRoutes = require('./routes/versioning');
 const exportsRoutes = require('./routes/exports');
 const outlookRoutes = require('./routes/integrations/outlook');
+const okrsRoutes = require('./routes/okrs');
+const financialRoutes = require('./routes/financial');
+const resourcesRoutes = require('./routes/resources');
 
 const app = express();
 
@@ -71,6 +74,9 @@ app.use('/v1/external-users', externalUsersRoutes);
 app.use('/v1/versioning', versioningRoutes);
 app.use('/v1/exports', exportsRoutes);
 app.use('/v1/integrations/outlook', outlookRoutes);
+app.use('/v1/okrs', okrsRoutes);
+app.use('/v1/financial', financialRoutes);
+app.use('/v1/resources', resourcesRoutes);
 
 // ─── 404 ────────────────────────────────────────────────
 
