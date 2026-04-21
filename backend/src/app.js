@@ -29,6 +29,10 @@ const outlookRoutes = require('./routes/integrations/outlook');
 const okrsRoutes = require('./routes/okrs');
 const financialRoutes = require('./routes/financial');
 const resourcesRoutes = require('./routes/resources');
+const aiRoutes = require('./routes/ai');
+const divisionConfigRoutes = require('./routes/divisionConfig');
+const executiveRoutes = require('./routes/executive');
+const timeLogsRoutes = require('./routes/timeLogs');
 
 const app = express();
 
@@ -77,6 +81,10 @@ app.use('/v1/integrations/outlook', outlookRoutes);
 app.use('/v1/okrs', okrsRoutes);
 app.use('/v1/financial', financialRoutes);
 app.use('/v1/resources', resourcesRoutes);
+app.use('/v1/ai', aiRoutes);
+app.use('/v1/division-config', divisionConfigRoutes);
+app.use('/v1/executive', executiveRoutes);
+app.use('/v1/time-logs', timeLogsRoutes);
 
 // ─── 404 ────────────────────────────────────────────────
 

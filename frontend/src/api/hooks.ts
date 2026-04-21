@@ -518,6 +518,48 @@ export function useDeleteCustomRole() {
   });
 }
 
+export function useSystemRoleMatrix() {
+  return useQuery({
+    queryKey: ['systemRoleMatrix'],
+    queryFn: async () => {
+      const { data } = await api.get('/roles/system-matrix');
+      return data.data;
+    },
+  });
+}
+
+export function useUpdateSystemRolePermissions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ role, permissions }: { role: string; permissions: string[] }) => {
+      const { data } = await api.patch('/roles/system-matrix', { role, permissions });
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['systemRoleMatrix'] }),
+  });
+}
+
+export function useOrgMembers() {
+  return useQuery({
+    queryKey: ['orgMembers'],
+    queryFn: async () => {
+      const { data } = await api.get('/roles/members');
+      return data.data as any[];
+    },
+  });
+}
+
+export function useUpdateMemberRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const { data } = await api.patch(`/roles/members/${userId}`, { role });
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['orgMembers'] }),
+  });
+}
+
 // ─── External Users ─────────────────────────────────────
 
 export function useExternalUsers(params?: { search?: string; accessLevel?: string; page?: number; page_size?: number }) {
@@ -655,3 +697,311 @@ export function useExportProjects() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['exports'] }),
   });
 }
+
+// ─── Division Config ─────────────────────────────────────
+
+export function useMyDivisions() {
+  return useQuery({
+    queryKey: ['myDivisions'],
+    queryFn: async () => {
+      const { data } = await api.get('/division-config/my');
+      return data.data as { divisionId: string; divisionName: string; role: string; color: string; description: string }[];
+    },
+  });
+}
+
+export function useAllDivisionConfigs() {
+  return useQuery({
+    queryKey: ['allDivisionConfigs'],
+    queryFn: async () => {
+      const { data } = await api.get('/division-config');
+      return data.data as any[];
+    },
+  });
+}
+
+export function useDivisionConfig(divisionId: string | null) {
+  return useQuery({
+    queryKey: ['divisionConfig', divisionId],
+    queryFn: async () => {
+      const { data } = await api.get(`/division-config/${divisionId}`);
+      return data.data;
+    },
+    enabled: !!divisionId,
+  });
+}
+
+export function useUpdateDivisionConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ divisionId, config }: { divisionId: string; config: any }) => {
+      const { data } = await api.patch(`/division-config/${divisionId}`, config);
+      return data.data;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['divisionConfig', vars.divisionId] });
+      qc.invalidateQueries({ queryKey: ['allDivisionConfigs'] });
+    },
+  });
+}
+
+export function useDivisionMembers(divisionId: string | null) {
+  return useQuery({
+    queryKey: ['divisionMembers', divisionId],
+    queryFn: async () => {
+      const { data } = await api.get(`/division-config/${divisionId}/members`);
+      return data.data as any[];
+    },
+    enabled: !!divisionId,
+  });
+}
+
+export function useAddDivisionMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ divisionId, userId, role }: { divisionId: string; userId: string; role: string }) => {
+      const { data } = await api.post(`/division-config/${divisionId}/members`, { userId, role });
+      return data.data;
+    },
+    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['divisionMembers', vars.divisionId] }),
+  });
+}
+
+export function useRemoveDivisionMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ divisionId, userId }: { divisionId: string; userId: string }) => {
+      await api.delete(`/division-config/${divisionId}/members/${userId}`);
+    },
+    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['divisionMembers', vars.divisionId] }),
+  });
+}
+
+// ─── Executive Rollup ────────────────────────────────────
+
+export function useExecutiveRollup() {
+  return useQuery({
+    queryKey: ['executiveRollup'],
+    queryFn: async () => {
+      const { data } = await api.get('/executive/rollup');
+      return data.data as {
+        scorecards: any[];
+        orgSummary: { divisionsCount: number; totalProjects: number; activeProjects: number; totalMembers: number; totalBudget: number; totalTasks: number; completedTasks: number; overdueTasks: number; greenDivisions: number; amberDivisions: number; redDivisions: number; completionPct: number };
+        velocityComparison: any[];
+        budgetComparison: any[];
+        alerts: { divisionId: string; division: string; severity: string; message: string }[];
+      };
+    },
+  });
+}
+
+export function useExecutiveScorecards() {
+  return useQuery({
+    queryKey: ['executiveScorecards'],
+    queryFn: async () => {
+      const { data } = await api.get('/executive/scorecards');
+      return data.data as any[];
+    },
+  });
+}
+
+// ─── OKRs ────────────────────────────────────────────────
+
+export function useOKRs(params?: { level?: string; quarter?: string; year?: string }) {
+  return useQuery({
+    queryKey: ['okrs', params],
+    queryFn: async () => {
+      const { data } = await api.get('/okrs', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useUpdateOKR() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { id: string } & Record<string, unknown>) => {
+      const { data } = await api.patch(`/okrs/${id}`, body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['okrs'] }),
+  });
+}
+
+// ─── Resources ───────────────────────────────────────────
+
+export function useResources(params?: { type?: string; department?: string; status?: string }) {
+  return useQuery({
+    queryKey: ['resources', params],
+    queryFn: async () => {
+      const { data } = await api.get('/resources', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useResourceCapacityHeatmap() {
+  return useQuery({
+    queryKey: ['resourceCapacity'],
+    queryFn: async () => {
+      const { data } = await api.get('/resources/capacity/heatmap');
+      return data.data;
+    },
+  });
+}
+
+export function useResourceDashboard() {
+  return useQuery({
+    queryKey: ['resourceDashboard'],
+    queryFn: async () => {
+      const { data } = await api.get('/resources/dashboard');
+      return data.data;
+    },
+  });
+}
+
+export function useAllHandoffStatuses() {
+  return useQuery({
+    queryKey: ['handoffStatuses'],
+    queryFn: async () => {
+      const { data } = await api.get('/division-config/handoff/all');
+      return data.data as { divisionId: string; name: string; checks: Record<string, boolean>; readyScore: number; totalChecks: number; isReady: boolean; workflowTemplate: string | null }[];
+    },
+  });
+}
+
+export function useDivisionHandoffStatus(divisionId: string | null) {
+  return useQuery({
+    queryKey: ['handoffStatus', divisionId],
+    queryFn: async () => {
+      const { data } = await api.get(`/division-config/${divisionId}/handoff-status`);
+      return data.data;
+    },
+    enabled: !!divisionId,
+  });
+}
+
+// ─── Time Logs ───────────────────────────────────────────
+
+export function useMyTimeLogs(params?: { weekStart?: string; projectId?: string }) {
+  return useQuery({
+    queryKey: ['myTimeLogs', params],
+    queryFn: async () => {
+      const { data } = await api.get('/time-logs/my', { params });
+      return data.data as any[];
+    },
+  });
+}
+
+export function useWeeklySummary(weekStart?: string) {
+  return useQuery({
+    queryKey: ['weeklySummary', weekStart],
+    queryFn: async () => {
+      const { data } = await api.get('/time-logs/summary/weekly', { params: weekStart ? { weekStart } : {} });
+      return data.data as {
+        weekStart: string; weekEnd: string; totalHours: number; targetHours: number;
+        byDay: Record<string, number>;
+        byProject: { projectKey: string; projectName: string; hours: number; days: number }[];
+        timesheetStatus: string | null;
+      };
+    },
+  });
+}
+
+export function useOrgTimeSummary() {
+  return useQuery({
+    queryKey: ['orgTimeSummary'],
+    queryFn: async () => {
+      const { data } = await api.get('/time-logs/summary/org');
+      return data.data as any;
+    },
+  });
+}
+
+export function useTimesheets(params?: { status?: string }) {
+  return useQuery({
+    queryKey: ['timesheets', params],
+    queryFn: async () => {
+      const { data } = await api.get('/time-logs/timesheets', { params });
+      return data.data as any[];
+    },
+  });
+}
+
+export function useLogTime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { projectId?: string; taskId?: string; hours: number; description?: string; loggedDate?: string }) => {
+      const { data } = await api.post('/time-logs', body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['myTimeLogs'] });
+      qc.invalidateQueries({ queryKey: ['weeklySummary'] });
+    },
+  });
+}
+
+export function useUpdateTimeLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { id: string } & Record<string, unknown>) => {
+      const { data } = await api.patch(`/time-logs/${id}`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['myTimeLogs'] });
+      qc.invalidateQueries({ queryKey: ['weeklySummary'] });
+    },
+  });
+}
+
+export function useDeleteTimeLog() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/time-logs/${id}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['myTimeLogs'] });
+      qc.invalidateQueries({ queryKey: ['weeklySummary'] });
+    },
+  });
+}
+
+export function useSubmitTimesheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { weekStart: string; note?: string }) => {
+      const { data } = await api.post('/time-logs/timesheets/submit', body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['timesheets'] });
+      qc.invalidateQueries({ queryKey: ['weeklySummary'] });
+    },
+  });
+}
+
+export function useApproveTimesheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ timesheetId, note }: { timesheetId: string; note?: string }) => {
+      const { data } = await api.patch(`/time-logs/timesheets/${timesheetId}/approve`, { note });
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['timesheets'] }),
+  });
+}
+
+export function useRejectTimesheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ timesheetId, note }: { timesheetId: string; note: string }) => {
+      const { data } = await api.patch(`/time-logs/timesheets/${timesheetId}/reject`, { note });
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['timesheets'] }),
+  });
+}
+

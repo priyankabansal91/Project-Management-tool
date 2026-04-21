@@ -30,6 +30,9 @@ import { ExecutiveDashboardPage } from '@/pages/executive/ExecutiveDashboardPage
 import { RoadmapPage } from '@/pages/executive/RoadmapPage';
 import { StatusReportsPage } from '@/pages/executive/StatusReportsPage';
 import { RiskRegisterPage } from '@/pages/executive/RiskRegisterPage';
+import { OKRDashboardPage } from '@/pages/executive/OKRDashboardPage';
+import { ResourceDashboardPage } from '@/pages/executive/ResourceDashboardPage';
+import { FinancialDashboardPage } from '@/pages/executive/FinancialDashboardPage';
 import { DivisionsPage } from '@/pages/admin/DivisionsPage';
 import { CustomRolesPage } from '@/pages/admin/CustomRolesPage';
 import { ExternalUsersPage } from '@/pages/admin/ExternalUsersPage';
@@ -37,6 +40,9 @@ import { VersioningPage } from '@/pages/admin/VersioningPage';
 import { ExportsPage } from '@/pages/admin/ExportsPage';
 import { ApprovalInboxPage } from '@/pages/admin/ApprovalInboxPage';
 import { FormsPage } from '@/pages/admin/FormsPage';
+import { AdminDashboard } from '@/pages/admin/AdminDashboard';
+import { DivisionConfigPage } from '@/pages/admin/DivisionConfigPage';
+import { AdminHandoffPage } from '@/pages/admin/AdminHandoffPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -85,6 +91,9 @@ export default function App() {
         <Route path="/roadmap" element={<RoadmapPage />} />
         <Route path="/status-reports" element={<StatusReportsPage />} />
         <Route path="/risk-register" element={<RiskRegisterPage />} />
+        <Route path="/executive/okrs" element={<OKRDashboardPage />} />
+        <Route path="/executive/resources" element={<ResourceDashboardPage />} />
+        <Route path="/executive/financial" element={<FinancialDashboardPage />} />
         <Route path="/time-tracking" element={<TimeLoggingPage />} />
         <Route path="/calendar" element={<CalendarViewPage />} />
         <Route path="/team" element={<UserManagementPage />} />
@@ -101,6 +110,8 @@ export default function App() {
         <Route path="/admin/audit-log" element={<AuditLogPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/divisions" element={<DivisionsPage />} />
+        <Route path="/admin/division-config" element={<DivisionConfigPage />} />
+        <Route path="/admin/handoff" element={<AdminHandoffPage />} />
         <Route path="/admin/roles" element={<CustomRolesPage />} />
         <Route path="/admin/external-users" element={<ExternalUsersPage />} />
         <Route path="/admin/versioning" element={<VersioningPage />} />
