@@ -2,15 +2,27 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const prisma = require('../config/prisma');
 
+// Dev-only persona map — uses generic placeholder emails, never real employee addresses
+const DEV_USERS = {
+  'dev-org_admin-id':       { id: 'dev-org_admin-id',       orgId: 'dev-org-id', role: 'org_admin',       email: 'admin@example.local' },
+  'dev-division_admin-id':  { id: 'dev-division_admin-id',  orgId: 'dev-org-id', role: 'division_admin',  email: 'div-admin@example.local' },
+  'dev-project_manager-id': { id: 'dev-project_manager-id', orgId: 'dev-org-id', role: 'project_manager', email: 'pm@example.local' },
+  'dev-member-id':          { id: 'dev-member-id',          orgId: 'dev-org-id', role: 'member',          email: 'member@example.local' },
+  'dev-viewer-id':          { id: 'dev-viewer-id',          orgId: 'dev-org-id', role: 'viewer',          email: 'viewer@example.local' },
+  'dev-executive-id':       { id: 'dev-executive-id',       orgId: 'dev-org-id', role: 'executive',       email: 'executive@example.local' },
+};
+
+// Allowed dev user ID values — only exact keys from above are accepted
+const ALLOWED_DEV_IDS = new Set(Object.keys(DEV_USERS));
+const defaultDev = DEV_USERS['dev-org_admin-id'];
+
 function authenticate(req, res, next) {
-  // Allow unauthenticated requests in development
+  // Development-only bypass: only active when NODE_ENV is explicitly 'development'
+  // This block must NEVER run in production — config validation enforces this
   if (config.nodeEnv === 'development') {
-    req.user = req.user || {
-      id: 'dev-user-id',
-      orgId: 'dev-org-id',
-      role: 'org_admin',
-      email: 'dev@example.com',
-    };
+    const devUserId = req.headers['x-dev-user-id'];
+    // Strictly whitelist — only predefined IDs allowed, no free-form values
+    req.user = (devUserId && ALLOWED_DEV_IDS.has(devUserId)) ? DEV_USERS[devUserId] : defaultDev;
     return next();
   }
 
@@ -24,7 +36,16 @@ function authenticate(req, res, next) {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, config.jwt.secret);
+    const decoded = jwt.verify(token, config.jwt.secret, { algorithms: ['HS256'] });
+
+    // Validate required claims are present and are strings
+    if (!decoded.sub || !decoded.org_id || !decoded.role || typeof decoded.sub !== 'string') {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'INVALID_TOKEN', message: 'Token contains invalid claims' },
+      });
+    }
+
     req.user = {
       id: decoded.sub,
       orgId: decoded.org_id,
@@ -64,12 +85,9 @@ async function setTenantContext(req, res, next) {
   if (!req.user || !req.user.orgId) return next();
 
   try {
-    await prisma.$executeRawUnsafe(
-      `SET LOCAL app.current_org_id = '${req.user.orgId}'`
-    );
-    await prisma.$executeRawUnsafe(
-      `SET LOCAL app.current_user_id = '${req.user.id}'`
-    );
+    // Use parameterised $executeRaw (tagged template) to prevent SQL injection
+    await prisma.$executeRaw`SET LOCAL app.current_org_id = ${req.user.orgId}`;
+    await prisma.$executeRaw`SET LOCAL app.current_user_id = ${req.user.id}`;
   } catch (err) {
     // RLS context is defense-in-depth; app-level filtering is primary
   }

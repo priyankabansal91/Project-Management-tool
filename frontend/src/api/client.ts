@@ -7,11 +7,13 @@ const api = axios.create({
   withCredentials: true,
 });
 
+const IS_DEV = (import.meta as any).env?.DEV === true;
+
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  const { accessToken, user } = useAuthStore.getState();
+  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
+  // Only send dev persona header in local development — never in production builds
+  if (IS_DEV && user?.id) config.headers['x-dev-user-id'] = user.id;
   return config;
 });
 

@@ -18,7 +18,7 @@ router.get('/rollup', async (req, res) => {
     const data = await executiveService.getRollup(orgId);
     res.json({ success: true, data });
   } catch (err) {
-    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   }
 });
 
@@ -35,7 +35,7 @@ router.get('/scorecards', async (req, res) => {
     const scorecards = await executiveService.getDivisionScorecards(orgId);
     res.json({ success: true, data: scorecards });
   } catch (err) {
-    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   }
 });
 

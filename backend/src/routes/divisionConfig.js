@@ -50,9 +50,24 @@ router.get('/:divisionId/handoff-status', authorize('org_admin'), (req, res) => 
 /**
  * GET /v1/division-config/:divisionId
  * Get config for a specific division.
+ * Access: org_admin/executive see all; others must be a member of that division.
  */
 router.get('/:divisionId', (req, res) => {
-  const config = divisionConfigService.getDivisionConfig(req.params.divisionId);
+  const { role, id: userId } = req.user;
+  const { divisionId } = req.params;
+
+  if (role !== 'org_admin' && role !== 'executive') {
+    const userDivisions = divisionConfigService.getUserDivisions(userId);
+    const isMember = userDivisions.some((d) => d.divisionId === divisionId);
+    if (!isMember) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Access denied to this division' },
+      });
+    }
+  }
+
+  const config = divisionConfigService.getDivisionConfig(divisionId);
   if (!config) {
     return res.status(404).json({
       success: false,
@@ -103,10 +118,24 @@ router.patch('/:divisionId', (req, res) => {
 
 /**
  * GET /v1/division-config/:divisionId/members
- * List division members.
+ * List division members — only accessible to division members, admins, or executives.
  */
 router.get('/:divisionId/members', (req, res) => {
-  const members = divisionConfigService.getDivisionMembers(req.params.divisionId);
+  const { role, id: userId } = req.user;
+  const { divisionId } = req.params;
+
+  if (role !== 'org_admin' && role !== 'executive') {
+    const userDivisions = divisionConfigService.getUserDivisions(userId);
+    const isMember = userDivisions.some((d) => d.divisionId === divisionId);
+    if (!isMember) {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Access denied to this division' },
+      });
+    }
+  }
+
+  const members = divisionConfigService.getDivisionMembers(divisionId);
   res.json({ success: true, data: members });
 });
 

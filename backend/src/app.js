@@ -38,15 +38,54 @@ const app = express();
 
 // ─── GLOBAL MIDDLEWARE ──────────────────────────────────
 
-app.use(helmet());
+app.use(helmet({
+  // Prevent MIME-type sniffing
+  noSniff: true,
+  // Deny framing (clickjacking protection)
+  frameguard: { action: 'deny' },
+  // HSTS — only enable in production
+  hsts: config.nodeEnv === 'production'
+    ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+    : false,
+  // Restrict referrer info
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  // Basic CSP — tighten per-deployment as needed
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+    },
+  },
+}));
 app.use(compression());
-app.use(cors({ origin: config.frontendUrl, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+
+// CORS — validate origin against explicit whitelist
+const ALLOWED_ORIGINS = new Set(
+  [config.frontendUrl, process.env.FRONTEND_URL_ALT].filter(Boolean)
+);
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow same-origin (no Origin header) and whitelisted origins
+    if (!origin || ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+    cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-User-Id'],
+}));
+
+app.use(express.json({ limit: '2mb' }));   // tightened from 10mb
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
-// Rate limiting
+// Global rate limit — 100 req/min per IP
 app.use(rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -54,6 +93,15 @@ app.use(rateLimit({
   legacyHeaders: false,
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests' } },
 }));
+
+// Stricter rate limit on authentication endpoints — 10 req/15 min per IP
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many authentication attempts, please try again later' } },
+});
 
 // ─── HEALTH CHECK ───────────────────────────────────────
 
@@ -63,7 +111,7 @@ app.get('/health', (req, res) => {
 
 // ─── API ROUTES ─────────────────────────────────────────
 
-app.use('/v1/auth', authRoutes);
+app.use('/v1/auth', authLimiter, authRoutes);
 app.use('/v1/projects', projectRoutes);
 app.use('/v1/tasks', taskRoutes);
 app.use('/v1/comments', commentRoutes);
