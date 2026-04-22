@@ -33,6 +33,8 @@ const aiRoutes = require('./routes/ai');
 const divisionConfigRoutes = require('./routes/divisionConfig');
 const executiveRoutes = require('./routes/executive');
 const timeLogsRoutes = require('./routes/timeLogs');
+const notificationsRoutes = require('./routes/notifications');
+const searchRoutes = require('./routes/search');
 
 const app = express();
 
@@ -133,6 +135,8 @@ app.use('/v1/ai', aiRoutes);
 app.use('/v1/division-config', divisionConfigRoutes);
 app.use('/v1/executive', executiveRoutes);
 app.use('/v1/time-logs', timeLogsRoutes);
+app.use('/v1/notifications', notificationsRoutes);
+app.use('/v1/search', searchRoutes);
 
 // ─── 404 ────────────────────────────────────────────────
 

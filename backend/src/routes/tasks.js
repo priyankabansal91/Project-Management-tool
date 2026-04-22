@@ -48,6 +48,40 @@ router.post('/project/:projectId', async (req, res, next) => {
   }
 });
 
+// PATCH /bulk — bulk update/delete tasks (must be before /:taskId)
+router.patch('/bulk', async (req, res, next) => {
+  try {
+    const { z } = require('zod');
+    const schema = z.object({
+      taskIds:   z.array(z.string()).min(1).max(100),
+      operation: z.enum(['status', 'priority', 'assignee', 'delete']),
+      value:     z.string().optional(),
+    });
+    const body = schema.parse(req.body);
+    const { taskIds, operation, value } = body;
+
+    if (operation === 'delete') {
+      const results = await Promise.allSettled(
+        taskIds.map(id => taskService.delete(req.user.orgId, id, req.user.id))
+      );
+      return res.json({ success: true, data: { deleted: results.filter(r => r.status === 'fulfilled').length } });
+    }
+
+    const updateData = {};
+    if (operation === 'status')   updateData.status_id = value;
+    if (operation === 'priority') updateData.priority = value;
+    if (operation === 'assignee') updateData.assignee_id = value;
+
+    const results = await Promise.allSettled(
+      taskIds.map(id => taskService.update(req.user.orgId, id, req.user.id, updateData))
+    );
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    return res.json({ success: true, data: { updated: succeeded, failed: taskIds.length - succeeded } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Update task
 router.patch('/:taskId', async (req, res, next) => {
   try {

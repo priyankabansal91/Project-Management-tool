@@ -1005,3 +1005,78 @@ export function useRejectTimesheet() {
   });
 }
 
+// ─── Notifications ───────────────────────────────────────
+
+export function useNotifications(params?: { unread_only?: boolean; page?: number }) {
+  return useQuery({
+    queryKey: ['notifications', params],
+    queryFn: async () => {
+      const { data } = await api.get('/notifications', { params });
+      return data.data as { items: any[]; total: number; unreadCount: number };
+    },
+    refetchInterval: 30000, // poll every 30s
+  });
+}
+
+export function useMarkNotificationRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.patch(`/notifications/${id}/read`);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.patch('/notifications/read-all');
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+export function useDeleteNotification() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/notifications/${id}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
+}
+
+// ─── Search ──────────────────────────────────────────────
+
+export function useSearch(q: string, types = 'tasks,projects') {
+  return useQuery({
+    queryKey: ['search', q, types],
+    queryFn: async () => {
+      const { data } = await api.get('/search', { params: { q, types, page_size: 20 } });
+      return data.data as { results: any[]; total: number; took: number };
+    },
+    enabled: q.length >= 2,
+    staleTime: 10000,
+  });
+}
+
+// ─── Bulk Task Actions ────────────────────────────────────
+
+export function useBulkTaskAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { taskIds: string[]; operation: 'status' | 'priority' | 'assignee' | 'delete'; value?: string }) => {
+      const { data } = await api.patch('/tasks/bulk', body);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['kanban'] });
+      qc.invalidateQueries({ queryKey: ['myTasks'] });
+    },
+  });
+}
+
