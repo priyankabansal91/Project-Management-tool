@@ -72,10 +72,13 @@ app.use(compression());
 const ALLOWED_ORIGINS = new Set(
   [config.frontendUrl, process.env.FRONTEND_URL_ALT].filter(Boolean)
 );
+const IS_DEV = config.nodeEnv !== 'production';
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow same-origin (no Origin header) and whitelisted origins
-    if (!origin || ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+    if (!origin) return cb(null, true); // same-origin / curl
+    if (ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+    // In development allow any localhost port (Vite picks 5173, 5174, etc.)
+    if (IS_DEV && /^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
