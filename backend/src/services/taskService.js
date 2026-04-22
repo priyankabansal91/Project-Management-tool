@@ -1,4 +1,5 @@
 const ApiError = require('../utils/ApiError');
+const projectService = require('./projectService');
 
 // In-memory storage for development (until database is set up)
 const tasksStore = new Map();
@@ -111,6 +112,7 @@ class TaskService {
     };
 
     tasksStore.set(taskId, task);
+    projectService.incrementTaskCount(orgId, projectId);
     return { ...task, task_key: `PRJ-${seqNumber}` };
   }
 
@@ -146,14 +148,17 @@ class TaskService {
     }
 
     const isFinal = status_name?.toLowerCase() === 'done' || status_name?.toLowerCase() === 'accepted';
+    const wasCompleted = !!task.completedAt;
 
     task.statusId = status_id;
     task.statusName = status_name;
     task.position = position;
-    if (isFinal) {
+    if (isFinal && !wasCompleted) {
       task.completedAt = new Date();
-    } else {
+      projectService.updateCompletedCount(task.orgId, task.projectId, 1);
+    } else if (!isFinal && wasCompleted) {
       task.completedAt = null;
+      projectService.updateCompletedCount(task.orgId, task.projectId, -1);
     }
     task.updatedAt = new Date();
 
@@ -169,6 +174,10 @@ class TaskService {
 
     task.deletedAt = new Date();
     tasksStore.set(taskId, task);
+    projectService.decrementTaskCount(orgId, task.projectId);
+    if (task.completedAt) {
+      projectService.updateCompletedCount(orgId, task.projectId, -1);
+    }
     return { success: true };
   }
 
