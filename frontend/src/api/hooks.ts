@@ -23,6 +23,7 @@ export function useProjects(params?: { status?: string; search?: string; page?: 
       const { data } = await api.get<ApiResponse<{ items: Project[]; pagination: Pagination }>>('/projects', { params });
       return data.data;
     },
+    staleTime: 0,
   });
 }
 
@@ -44,7 +45,7 @@ export function useCreateProject() {
       const { data } = await api.post('/projects', body);
       return data.data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => qc.refetchQueries({ queryKey: ['projects'] }),
   });
 }
 
@@ -55,7 +56,7 @@ export function useDeleteProject() {
       const { data } = await api.delete(`/projects/${projectId}`);
       return data.data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => qc.refetchQueries({ queryKey: ['projects'] }),
   });
 }
 
@@ -116,7 +117,7 @@ export function useCreateTask(projectId: string) {
       qc.invalidateQueries({ queryKey: ['kanban', projectId] });
       qc.invalidateQueries({ queryKey: ['myTasks'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
-      qc.invalidateQueries({ queryKey: ['projects'] });
+      qc.refetchQueries({ queryKey: ['projects'] });
     },
   });
 }
