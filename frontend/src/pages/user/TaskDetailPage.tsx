@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Calendar, Clock, Tag, User, Send, MoreHorizontal, Loader } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Send, Loader } from 'lucide-react';
 import { cn, priorityColor, formatDate, timeAgo } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/api/client';
+import { useComments, useCreateComment } from '@/api/hooks';
 
 const mockComments = [
   {
@@ -29,6 +30,17 @@ const mockActivityLog = [
 export function TaskDetailPage() {
   const { taskId } = useParams();
   const [newComment, setNewComment] = useState('');
+
+  const commentsQuery = useComments(taskId || '');
+  const createComment = useCreateComment(taskId || '');
+
+  const comments = commentsQuery.data?.items ?? mockComments;
+
+  const handleSubmitComment = () => {
+    const body = newComment.trim();
+    if (!body) return;
+    createComment.mutate({ body }, { onSuccess: () => setNewComment('') });
+  };
 
   const { data: task, isLoading, error } = useQuery({
     queryKey: ['task', taskId],
@@ -110,9 +122,9 @@ export function TaskDetailPage() {
 
           {/* Comments */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Comments ({mockComments.length})</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Comments ({comments.length})</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              {mockComments.map((comment) => (
+              {comments.map((comment) => (
                 <div key={comment.id} className="space-y-4">
                   <div className="flex gap-3">
                     <Avatar name={comment.author.name} size="md" />
@@ -149,10 +161,15 @@ export function TaskDetailPage() {
                     placeholder="Add a comment..."
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); } }}
                     className="flex-1"
                   />
-                  <Button size="icon" disabled={!newComment.trim()}>
-                    <Send className="h-4 w-4" />
+                  <Button
+                    size="icon"
+                    disabled={!newComment.trim() || createComment.isPending}
+                    onClick={handleSubmitComment}
+                  >
+                    {createComment.isPending ? <Loader className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
