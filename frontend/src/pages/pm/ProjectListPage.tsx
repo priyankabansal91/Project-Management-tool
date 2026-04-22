@@ -33,12 +33,9 @@ export function ProjectListPage() {
   const handleCreateProject = async (data: ProjectFormData) => {
     try {
       await createProjectMutation.mutateAsync(data as unknown as Record<string, unknown>);
-      console.log('Creating project with data:', data);
-      await createProjectMutation.mutateAsync(data);
       setModalOpen(false);
     } catch (error) {
       console.error('Failed to create project:', error);
-      // Error will be shown in the modal
     }
   };
 

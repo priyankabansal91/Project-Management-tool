@@ -105,6 +105,7 @@ export function useCreateTask(projectId: string) {
       qc.invalidateQueries({ queryKey: ['kanban', projectId] });
       qc.invalidateQueries({ queryKey: ['myTasks'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 }
