@@ -43,6 +43,8 @@ import { FormsPage } from '@/pages/admin/FormsPage';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
 import { DivisionConfigPage } from '@/pages/admin/DivisionConfigPage';
 import { AdminHandoffPage } from '@/pages/admin/AdminHandoffPage';
+import { PortfolioDashboardPage } from '@/pages/executive/PortfolioDashboardPage';
+import { CapacityPlanningPage } from '@/pages/pm/CapacityPlanningPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -97,6 +99,8 @@ export default function App() {
         <Route path="/time-tracking" element={<TimeLoggingPage />} />
         <Route path="/calendar" element={<CalendarViewPage />} />
         <Route path="/team" element={<UserManagementPage />} />
+        <Route path="/portfolio" element={<PortfolioDashboardPage />} />
+        <Route path="/capacity" element={<CapacityPlanningPage />} />
 
         {/* AI */}
         <Route path="/ai" element={<AIFeaturesPage />} />

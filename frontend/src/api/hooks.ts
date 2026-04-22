@@ -1080,3 +1080,13 @@ export function useBulkTaskAction() {
   });
 }
 
+// ── Portfolio ─────────────────────────────────────────────
+export const usePortfolioSummary = () =>
+  useQuery({ queryKey: ['portfolio'], queryFn: () => api.get('/portfolio').then(r => r.data.data), staleTime: 60_000 });
+
+export const usePortfolioCapacity = (weeks = 4) =>
+  useQuery({ queryKey: ['portfolio-capacity', weeks], queryFn: () => api.get(`/portfolio/capacity?weeks=${weeks}`).then(r => r.data.data), staleTime: 60_000 });
+
+export const usePortfolioDependencies = () =>
+  useQuery({ queryKey: ['portfolio-dependencies'], queryFn: () => api.get('/portfolio/dependencies').then(r => r.data.data), staleTime: 120_000 });
+

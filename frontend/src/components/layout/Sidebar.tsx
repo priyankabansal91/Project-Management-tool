@@ -5,7 +5,7 @@ import {
   Calendar, Clock, Target, Sparkles, Activity, Layers, ClipboardList, PieChart,
   Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
   Crown, Map, ClipboardCheck, AlertTriangle, DollarSign, Users2,
-  LayoutGrid, Lock,
+  LayoutGrid, Lock, Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
   { label: 'Time Tracking',     path: '/time-tracking',       icon: Clock,           roles: ['org_admin','division_admin','project_manager','member'], section: 'pm' },
   { label: 'Reports',           path: '/reports',             icon: BarChart3,       roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
   { label: 'Advanced Reports',  path: '/reports/advanced',    icon: PieChart,        roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
+  { label: 'Capacity Planning', path: '/capacity',            icon: Users2,          roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
   { label: 'Project Tracking',  path: '/project-tracking',    icon: Gauge,           roles: ['org_admin','division_admin','project_manager','executive','viewer'], section: 'pm' },
   { label: 'AI Features',       path: '/ai',                  icon: Sparkles,        roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
 
@@ -44,6 +45,7 @@ const navItems: NavItem[] = [
   { label: 'Roadmap',           path: '/roadmap',             icon: Map,             roles: ['org_admin','division_admin','project_manager','executive','viewer'], section: 'executive' },
   { label: 'Status Reports',    path: '/status-reports',      icon: ClipboardCheck,  roles: ['org_admin','division_admin','project_manager','executive'], section: 'executive' },
   { label: 'Risk Register',     path: '/risk-register',       icon: AlertTriangle,   roles: ['org_admin','division_admin','project_manager','executive'], section: 'executive' },
+  { label: 'Portfolio',         path: '/portfolio',           icon: Briefcase,       roles: ['org_admin','executive'], section: 'executive' },
 
   // Admin — org_admin + division_admin (scoped)
   { label: 'Admin Dashboard',   path: '/admin/dashboard',     icon: LayoutGrid,      roles: ['org_admin'], section: 'admin' },
