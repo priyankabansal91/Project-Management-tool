@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, Settings, BarChart3,
-  Workflow, FormInput, Shield, ListTodo, Bell, ChevronLeft, ChevronRight, Plug,
-  Zap, Calendar, Clock, Target, Sparkles, Activity, Layers, ClipboardList, PieChart,
-  Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
-  Crown, Map, ClipboardCheck, AlertTriangle, TrendingUp, DollarSign, Users2,
-  GitBranch, Lock, LayoutGrid,
+  Workflow, FormInput, Shield, ChevronLeft, ChevronRight, Plug,
+  Calendar, Clock, Target, Sparkles, Activity, Layers, ClipboardList, PieChart,
+  Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText,
+  Crown, Map, ClipboardCheck, AlertTriangle, DollarSign, Users2,
+  LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
