@@ -144,7 +144,8 @@ export function MyTasksPage() {
 
   // Real data from API, fall back to mock if empty
   const { data: apiData } = useMyTasks();
-  const rawTasks = (apiData && (apiData as any[]).length > 0 ? apiData : mockMyTasks) as (Task & { project?: { id: string; name: string; key: string; color: string } })[];
+  const apiItems = (apiData as any)?.items;
+  const rawTasks = (apiItems && apiItems.length > 0 ? apiItems : mockMyTasks) as (Task & { project?: { id: string; name: string; key: string; color: string } })[];
 
   const bulkAction = useBulkTaskAction();
 

@@ -43,6 +43,55 @@ const AVAILABLE_PERMISSIONS = {
   'admin:view_audit': 'View audit logs',
 };
 
+const PERMISSION_CATEGORIES = [
+  { key: 'project', label: 'Projects', permissions: ['project:create','project:read','project:update','project:delete','project:manage_members'] },
+  { key: 'task', label: 'Tasks', permissions: ['task:create','task:read','task:update','task:delete','task:assign','task:comment'] },
+  { key: 'workflow', label: 'Workflows', permissions: ['workflow:create','workflow:read','workflow:update','workflow:delete'] },
+  { key: 'approval', label: 'Approvals', permissions: ['approval:create','approval:approve','approval:reject'] },
+  { key: 'division', label: 'Divisions', permissions: ['division:create','division:read','division:update','division:delete','division:manage_members'] },
+  { key: 'admin', label: 'Administration', permissions: ['admin:manage_roles','admin:manage_users','admin:manage_settings','admin:view_audit'] },
+];
+
+const SYSTEM_ROLE_PERMISSIONS = {
+  org_admin: Object.keys(AVAILABLE_PERMISSIONS),
+  division_admin: [
+    'project:create','project:read','project:update','project:delete','project:manage_members',
+    'task:create','task:read','task:update','task:delete','task:assign','task:comment',
+    'workflow:create','workflow:read','workflow:update',
+    'approval:create','approval:approve','approval:reject',
+    'division:read','division:update','division:manage_members',
+    'admin:view_audit',
+  ],
+  project_manager: [
+    'project:create','project:read','project:update','project:manage_members',
+    'task:create','task:read','task:update','task:delete','task:assign','task:comment',
+    'workflow:create','workflow:read','workflow:update',
+    'approval:create','approval:approve','approval:reject',
+    'division:read',
+    'admin:view_audit',
+  ],
+  member: [
+    'project:read',
+    'task:create','task:read','task:update','task:comment',
+    'workflow:read',
+    'approval:create',
+    'division:read',
+  ],
+  viewer: [
+    'project:read',
+    'task:read',
+    'workflow:read',
+    'division:read',
+  ],
+  executive: [
+    'project:read',
+    'task:read',
+    'workflow:read',
+    'division:read',
+    'admin:view_audit',
+  ],
+};
+
 class CustomRoleService {
   /**
    * Create a custom role
@@ -248,6 +297,72 @@ class CustomRoleService {
       id: key,
       name: description,
     }));
+  }
+
+  /**
+   * Get system role permissions matrix
+   */
+  getSystemRoleMatrix() {
+    return {
+      roles: ['org_admin', 'division_admin', 'project_manager', 'member', 'viewer', 'executive'],
+      permissions: SYSTEM_ROLE_PERMISSIONS,
+      categories: PERMISSION_CATEGORIES,
+    };
+  }
+
+  /**
+   * Update system role permissions (in-memory for this session)
+   */
+  updateSystemRolePermissions(role, permissions) {
+    if (!SYSTEM_ROLE_PERMISSIONS[role]) {
+      throw ApiError.badRequest(`Invalid system role: ${role}`);
+    }
+    this._validatePermissions(permissions);
+    SYSTEM_ROLE_PERMISSIONS[role] = permissions;
+    return this.getSystemRoleMatrix();
+  }
+
+  /**
+   * List org members with their system roles
+   */
+  async listMembersWithRoles(orgId) {
+    try {
+      const members = await prisma.orgMember.findMany({
+        where: { orgId },
+        include: { user: { select: { id: true, firstName: true, lastName: true, email: true, status: true } } },
+        orderBy: { createdAt: 'asc' },
+      });
+      return members.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        role: m.role,
+        email: m.user.email,
+        firstName: m.user.firstName,
+        lastName: m.user.lastName,
+        status: m.user.status,
+        joinedAt: m.createdAt,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Update a member's system role
+   */
+  async updateMemberRole(orgId, userId, role) {
+    const validRoles = ['org_admin', 'division_admin', 'project_manager', 'member', 'viewer', 'executive'];
+    if (!validRoles.includes(role)) throw ApiError.badRequest(`Invalid role: ${role}`);
+    try {
+      const member = await prisma.orgMember.update({
+        where: { orgId_userId: { orgId, userId } },
+        data: { role },
+        include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+      });
+      return { userId: member.userId, role: member.role, email: member.user.email };
+    } catch {
+      return { userId, role };
+    }
   }
 
   /**

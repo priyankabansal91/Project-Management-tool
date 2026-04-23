@@ -25,7 +25,8 @@ const defaultProjects = [
     members: [
       { id: 'dev-org_admin-id', name: 'Priya Sharma', avatar_url: null, role: 'project_manager' }
     ],
-    taskCount: 0,
+    taskCount: 4,
+    completedCount: 1,
   },
   {
     id: 'proj_sales_1',
@@ -92,7 +93,8 @@ const defaultProjects = [
       { id: 'dev-project_manager-id', name: 'Anjali Singh', avatar_url: null, role: 'project_manager' },
       { id: 'dev-member-id', name: 'Ravi Kumar', avatar_url: null, role: 'member' }
     ],
-    taskCount: 0,
+    taskCount: 2,
+    completedCount: 0,
   },
 ];
 

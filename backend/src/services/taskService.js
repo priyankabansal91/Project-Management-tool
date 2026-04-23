@@ -1,9 +1,104 @@
 const ApiError = require('../utils/ApiError');
 const projectService = require('./projectService');
 
+const DEV_USER_NAMES = {
+  'dev-org_admin-id':       'Priya Sharma',
+  'dev-division_admin-id':  'Vikram Mehta',
+  'dev-project_manager-id': 'Anjali Singh',
+  'dev-member-id':          'Ravi Kumar',
+  'dev-executive-id':       'Sunita Reddy',
+  'dev-viewer-id':          'Arjun Patel',
+};
+
+function resolveUser(id) {
+  if (!id) return null;
+  return { id, name: DEV_USER_NAMES[id] || 'Team Member', avatar_url: null };
+}
+
 // In-memory storage for development (until database is set up)
 const tasksStore = new Map();
 let taskSequenceCounter = {};
+
+// Seed tasks so My Tasks / Kanban aren't empty on first load
+const seedTasks = [
+  {
+    id: 't1', orgId: 'dev-org-id', projectId: 'proj_default_1',
+    projectName: 'Sample Project', projectKey: 'SAMPLE', projectColor: '#3B82F6',
+    seqNumber: 1, title: 'Design new navigation component',
+    description: 'Redesign the top navigation bar with improved UX and mobile support.',
+    statusId: 'in-progress', statusName: 'In Progress', priority: 'high',
+    assigneeId: 'dev-member-id', reporterId: 'dev-project_manager-id',
+    dueDate: new Date('2026-05-10'), startDate: null, estimatedHours: 8,
+    tags: ['frontend', 'design'], customFields: {}, parentTaskId: null,
+    position: 10, isArchived: false, deletedAt: null, completedAt: null,
+    createdBy: 'dev-project_manager-id', createdAt: new Date('2026-04-01'), updatedAt: new Date('2026-04-10'),
+  },
+  {
+    id: 't2', orgId: 'dev-org-id', projectId: 'proj_default_1',
+    projectName: 'Sample Project', projectKey: 'SAMPLE', projectColor: '#3B82F6',
+    seqNumber: 2, title: 'Implement authentication flow',
+    description: 'Set up JWT-based auth with refresh token rotation.',
+    statusId: 'todo', statusName: 'To Do', priority: 'critical',
+    assigneeId: 'dev-project_manager-id', reporterId: 'dev-org_admin-id',
+    dueDate: new Date('2026-05-15'), startDate: null, estimatedHours: 16,
+    tags: ['backend', 'security'], customFields: {}, parentTaskId: null,
+    position: 20, isArchived: false, deletedAt: null, completedAt: null,
+    createdBy: 'dev-org_admin-id', createdAt: new Date('2026-04-01'), updatedAt: new Date('2026-04-01'),
+  },
+  {
+    id: 't3', orgId: 'dev-org-id', projectId: 'proj_default_1',
+    projectName: 'Sample Project', projectKey: 'SAMPLE', projectColor: '#3B82F6',
+    seqNumber: 3, title: 'Customer dashboard wireframes',
+    description: 'Create detailed wireframes for the analytics dashboard.',
+    statusId: 'done', statusName: 'Done', priority: 'medium',
+    assigneeId: 'dev-member-id', reporterId: 'dev-project_manager-id',
+    dueDate: new Date('2026-04-01'), startDate: null, estimatedHours: 4,
+    tags: ['design'], customFields: {}, parentTaskId: null,
+    position: 30, isArchived: false, deletedAt: null, completedAt: new Date('2026-03-30'),
+    createdBy: 'dev-project_manager-id', createdAt: new Date('2026-03-15'), updatedAt: new Date('2026-03-30'),
+  },
+  {
+    id: 't4', orgId: 'dev-org-id', projectId: 'proj_default_1',
+    projectName: 'Sample Project', projectKey: 'SAMPLE', projectColor: '#3B82F6',
+    seqNumber: 4, title: 'Set up CI/CD pipeline',
+    description: 'Configure GitHub Actions for automated testing and deployment.',
+    statusId: 'in-review', statusName: 'In Review', priority: 'high',
+    assigneeId: 'dev-project_manager-id', reporterId: 'dev-org_admin-id',
+    dueDate: new Date('2026-05-05'), startDate: null, estimatedHours: 6,
+    tags: ['devops'], customFields: {}, parentTaskId: null,
+    position: 40, isArchived: false, deletedAt: null, completedAt: null,
+    createdBy: 'dev-org_admin-id', createdAt: new Date('2026-04-05'), updatedAt: new Date('2026-04-15'),
+  },
+  {
+    id: 't5', orgId: 'dev-org-id', projectId: 'proj_eng_2',
+    projectName: 'API Platform v3', projectKey: 'APIV3', projectColor: '#8B5CF6',
+    seqNumber: 1, title: 'Define OpenAPI 3.1 specification',
+    description: 'Draft the full OpenAPI spec for all v3 endpoints.',
+    statusId: 'in-progress', statusName: 'In Progress', priority: 'high',
+    assigneeId: 'dev-member-id', reporterId: 'dev-project_manager-id',
+    dueDate: new Date('2026-05-20'), startDate: null, estimatedHours: 12,
+    tags: ['api', 'documentation'], customFields: {}, parentTaskId: null,
+    position: 10, isArchived: false, deletedAt: null, completedAt: null,
+    createdBy: 'dev-project_manager-id', createdAt: new Date('2026-04-10'), updatedAt: new Date('2026-04-10'),
+  },
+  {
+    id: 't6', orgId: 'dev-org-id', projectId: 'proj_eng_2',
+    projectName: 'API Platform v3', projectKey: 'APIV3', projectColor: '#8B5CF6',
+    seqNumber: 2, title: 'Implement rate limiting middleware',
+    description: 'Add configurable rate limiting per API key and endpoint.',
+    statusId: 'todo', statusName: 'To Do', priority: 'medium',
+    assigneeId: 'dev-member-id', reporterId: 'dev-project_manager-id',
+    dueDate: new Date('2026-06-01'), startDate: null, estimatedHours: 8,
+    tags: ['backend', 'security'], customFields: {}, parentTaskId: null,
+    position: 20, isArchived: false, deletedAt: null, completedAt: null,
+    createdBy: 'dev-project_manager-id', createdAt: new Date('2026-04-10'), updatedAt: new Date('2026-04-10'),
+  },
+];
+
+seedTasks.forEach((t) => tasksStore.set(t.id, t));
+// Sync sequence counters
+taskSequenceCounter['dev-org-id-proj_default_1'] = 4;
+taskSequenceCounter['dev-org-id-proj_eng_2'] = 2;
 
 class TaskService {
   async listByProject(orgId, projectId, { status_id, assignee_id, priority, search, view, page = 1, page_size = 50 }) {
@@ -181,6 +276,12 @@ class TaskService {
     return { success: true };
   }
 
+  listAllForProject(orgId, projectId) {
+    return Array.from(tasksStore.values())
+      .filter(t => t.orgId === orgId && t.projectId === projectId && !t.deletedAt && !t.isArchived)
+      .map(t => this.formatTask(t));
+  }
+
   formatTask(t) {
     return {
       id: t.id,
@@ -191,8 +292,8 @@ class TaskService {
       status_id: t.statusId,
       status_name: t.statusName,
       priority: t.priority,
-      assignee: t.assigneeId ? { id: t.assigneeId, name: 'Team Member', avatar_url: null } : null,
-      reporter: { id: t.reporterId, name: 'Reporter' },
+      assignee: resolveUser(t.assigneeId),
+      reporter: resolveUser(t.reporterId) || { id: t.reporterId, name: 'Reporter' },
       due_date: t.dueDate,
       start_date: t.startDate,
       estimated_hours: t.estimatedHours ? Number(t.estimatedHours) : null,

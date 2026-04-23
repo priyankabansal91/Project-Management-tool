@@ -120,16 +120,12 @@ export function CalendarViewPage() {
   const handleCreateTask = async (data: TaskFormData) => {
     if (!selectedProjectId) return;
     try {
-<<<<<<< HEAD
       const taskData = {
         ...data,
         due_date: selectedDateForTask || data.due_date,
         estimated_hours: data.estimated_hours ? parseFloat(data.estimated_hours) : null,
       };
       await createTaskMutation.mutateAsync(taskData);
-=======
-      await createTaskMutation.mutateAsync({ ...data, due_date: selectedDateForTask || data.due_date });
->>>>>>> e3e7e907d4030013aece0a0efbb4fd4a0a148f80
       setModalOpen(false);
       setSelectedDateForTask(null);
     } catch (error) {

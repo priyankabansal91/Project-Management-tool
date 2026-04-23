@@ -98,6 +98,7 @@ model Organization {
   customRoles     CustomRole[]
   externalUsers   ExternalUser[]
   exports         Export[]
+  Approval        Approval[]
 
   @@map("organizations")
 }
@@ -105,29 +106,29 @@ model Organization {
 // ─── DIVISIONS ──────────────────────────────────────────
 
 model Division {
-  id            String   @id @default(uuid())
-  orgId         String   @map("org_id")
-  parentId      String?  @map("parent_id")
-  name          String
-  description   String?
-  code          String
-  icon          String?
-  color         String?
-  settings      Json     @default("{}")
-  budget        Decimal?
-  headCount     Int?     @map("head_count")
-  managerId     String?  @map("manager_id")
-  isActive      Boolean  @default(true) @map("is_active")
-  displayOrder  Int      @default(0) @map("display_order")
-  createdBy     String   @map("created_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  deletedAt     DateTime? @map("deleted_at")
+  id           String    @id @default(uuid())
+  orgId        String    @map("org_id")
+  parentId     String?   @map("parent_id")
+  name         String
+  description  String?
+  code         String
+  icon         String?
+  color        String?
+  settings     Json      @default("{}")
+  budget       Decimal?
+  headCount    Int?      @map("head_count")
+  managerId    String?   @map("manager_id")
+  isActive     Boolean   @default(true) @map("is_active")
+  displayOrder Int       @default(0) @map("display_order")
+  createdBy    String    @map("created_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
 
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  parent       Division?     @relation("DivisionHierarchy", fields: [parentId], references: [id])
-  children     Division[]    @relation("DivisionHierarchy")
-  manager      User?         @relation(fields: [managerId], references: [id])
+  organization Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parent       Division?        @relation("DivisionHierarchy", fields: [parentId], references: [id])
+  children     Division[]       @relation("DivisionHierarchy")
+  manager      User?            @relation(fields: [managerId], references: [id])
   members      DivisionMember[]
   projects     Project[]
 
@@ -136,12 +137,12 @@ model Division {
 }
 
 model DivisionMember {
-  id        String   @id @default(uuid())
-  divisionId String  @map("division_id")
-  userId    String   @map("user_id")
-  role      String
-  addedBy   String?  @map("added_by")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  divisionId String   @map("division_id")
+  userId     String   @map("user_id")
+  role       String
+  addedBy    String?  @map("added_by")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   division Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -171,23 +172,23 @@ model User {
   updatedAt        DateTime   @updatedAt @map("updated_at")
   deletedAt        DateTime?  @map("deleted_at")
 
-  orgMembers      OrgMember[]
-  refreshTokens   RefreshToken[]
-  projectMembers  ProjectMember[]
-  assignedTasks   Task[]          @relation("TaskAssignee")
-  reportedTasks   Task[]          @relation("TaskReporter")
-  createdTasks    Task[]          @relation("TaskCreator")
-  comments        Comment[]
-  activityLogs    ActivityLog[]
-  notifications   Notification[]
-  timeLogs        TimeLog[]
-  aiLogs          AiLog[]
-  integrations    UserIntegration[]
-  approvalRequests Approval[]      @relation("ApprovalRequester")
-  approvalRecords ApprovalRecord[]
-  divisionMembers DivisionMember[]
+  orgMembers        OrgMember[]
+  refreshTokens     RefreshToken[]
+  projectMembers    ProjectMember[]
+  assignedTasks     Task[]             @relation("TaskAssignee")
+  reportedTasks     Task[]             @relation("TaskReporter")
+  createdTasks      Task[]             @relation("TaskCreator")
+  comments          Comment[]
+  activityLogs      ActivityLog[]
+  notifications     Notification[]
+  timeLogs          TimeLog[]
+  aiLogs            AiLog[]
+  integrations      UserIntegration[]
+  approvalRequests  Approval[]         @relation("ApprovalRequester")
+  approvalRecords   ApprovalRecord[]
+  divisionMembers   DivisionMember[]
   customRoleMembers CustomRoleMember[]
-  managedDivisions Division[]
+  managedDivisions  Division[]
 
   @@map("users")
 }
@@ -263,7 +264,7 @@ model CustomRole {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   members      CustomRoleMember[]
 
   @@unique([orgId, name])
@@ -289,24 +290,24 @@ model CustomRoleMember {
 // ─── EXTERNAL USERS ────────────────────────────────────
 
 model ExternalUser {
-  id            String    @id @default(uuid())
-  orgId         String    @map("org_id")
-  email         String
-  firstName     String    @map("first_name")
-  lastName      String    @map("last_name")
-  avatarUrl     String?   @map("avatar_url")
-  accessLevel   String    @default("viewer")
-  permissions   Json      @default("[]")
-  expiresAt     DateTime? @map("expires_at")
-  invitedBy     String    @map("invited_by")
-  invitedAt     DateTime  @default(now()) @map("invited_at")
-  acceptedAt    DateTime? @map("accepted_at")
-  lastAccessAt  DateTime? @map("last_access_at")
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid())
+  orgId        String    @map("org_id")
+  email        String
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  avatarUrl    String?   @map("avatar_url")
+  accessLevel  String    @default("viewer")
+  permissions  Json      @default("[]")
+  expiresAt    DateTime? @map("expires_at")
+  invitedBy    String    @map("invited_by")
+  invitedAt    DateTime  @default(now()) @map("invited_at")
+  acceptedAt   DateTime? @map("accepted_at")
+  lastAccessAt DateTime? @map("last_access_at")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
   guestAccess  GuestAccess[]
 
   @@unique([orgId, email])
@@ -314,13 +315,13 @@ model ExternalUser {
 }
 
 model GuestAccess {
-  id             String   @id @default(uuid())
-  externalUserId String   @map("external_user_id")
-  resourceType   String   @map("resource_type")
-  resourceId     String   @map("resource_id")
+  id             String    @id @default(uuid())
+  externalUserId String    @map("external_user_id")
+  resourceType   String    @map("resource_type")
+  resourceId     String    @map("resource_id")
   accessLevel    String
-  grantedBy      String   @map("granted_by")
-  grantedAt      DateTime @default(now()) @map("granted_at")
+  grantedBy      String    @map("granted_by")
+  grantedAt      DateTime  @default(now()) @map("granted_at")
   expiresAt      DateTime? @map("expires_at")
 
   externalUser ExternalUser @relation(fields: [externalUserId], references: [id], onDelete: Cascade)
@@ -405,35 +406,35 @@ model ProjectMember {
 // ─── TASKS ──────────────────────────────────────────────
 
 model Task {
-  id             String       @id @default(uuid())
-  orgId          String       @map("org_id")
-  projectId      String       @map("project_id")
-  parentTaskId   String?      @map("parent_task_id")
-  seqNumber      Int          @map("seq_number")
-  title          String
-  description    String?
-  statusId       String?      @map("status_id")
-  statusName     String?      @map("status_name")
-  priority       TaskPriority @default(medium)
-  type           String       @default("task")
-  assigneeId     String?      @map("assignee_id")
-  reporterId     String       @map("reporter_id")
-  dueDate        DateTime?    @map("due_date")
-  startDate      DateTime?    @map("start_date")
-  estimatedHours Decimal?     @map("estimated_hours")
-  loggedHours    Decimal      @default(0) @map("logged_hours")
-  position       Decimal      @default(0)
-  tags           String[]     @default([])
-  customFields   Json         @default("{}") @map("custom_fields")
-  attachments    Json         @default("[]")
-  formTemplateId String?      @map("form_template_id")
-  formSubmissionData Json?    @map("form_submission_data")
-  isArchived     Boolean      @default(false) @map("is_archived")
-  completedAt    DateTime?    @map("completed_at")
-  createdBy      String       @map("created_by")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  deletedAt      DateTime?    @map("deleted_at")
+  id                 String       @id @default(uuid())
+  orgId              String       @map("org_id")
+  projectId          String       @map("project_id")
+  parentTaskId       String?      @map("parent_task_id")
+  seqNumber          Int          @map("seq_number")
+  title              String
+  description        String?
+  statusId           String?      @map("status_id")
+  statusName         String?      @map("status_name")
+  priority           TaskPriority @default(medium)
+  type               String       @default("task")
+  assigneeId         String?      @map("assignee_id")
+  reporterId         String       @map("reporter_id")
+  dueDate            DateTime?    @map("due_date")
+  startDate          DateTime?    @map("start_date")
+  estimatedHours     Decimal?     @map("estimated_hours")
+  loggedHours        Decimal      @default(0) @map("logged_hours")
+  position           Decimal      @default(0)
+  tags               String[]     @default([])
+  customFields       Json         @default("{}") @map("custom_fields")
+  attachments        Json         @default("[]")
+  formTemplateId     String?      @map("form_template_id")
+  formSubmissionData Json?        @map("form_submission_data")
+  isArchived         Boolean      @default(false) @map("is_archived")
+  completedAt        DateTime?    @map("completed_at")
+  createdBy          String       @map("created_by")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  deletedAt          DateTime?    @map("deleted_at")
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -522,17 +523,17 @@ model Notification {
 // ─── SPRINTS ────────────────────────────────────────────
 
 model Sprint {
-  id        String   @id @default(uuid())
-  orgId     String   @map("org_id")
-  projectId String   @map("project_id")
+  id        String    @id @default(uuid())
+  orgId     String    @map("org_id")
+  projectId String    @map("project_id")
   name      String
   goal      String?
-  status    String   @default("planned")
+  status    String    @default("planned")
   startDate DateTime? @map("start_date")
   endDate   DateTime? @map("end_date")
-  createdBy String   @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String    @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -600,30 +601,30 @@ model AiLog {
 // ─── POINT-IN-TIME HISTORY & VERSIONING ────────────────
 
 model EntityVersion {
-  id          String   @id @default(uuid())
-  orgId       String   @map("org_id")
-  entityType  String   @map("entity_type")
-  entityId    String   @map("entity_id")
-  version     Int
-  data        Json
-  changes     Json?
-  changedBy   String   @map("changed_by")
-  changeReason String? @map("change_reason")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  orgId        String   @map("org_id")
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id")
+  version      Int
+  data         Json
+  changes      Json?
+  changedBy    String   @map("changed_by")
+  changeReason String?  @map("change_reason")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   @@unique([entityId, entityType, version])
   @@map("entity_versions")
 }
 
 model Snapshot {
-  id          String   @id @default(uuid())
-  orgId       String   @map("org_id")
-  name        String
-  description String?
-  snapshotType String @map("snapshot_type")
-  data        Json
-  createdBy   String  @map("created_by")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid())
+  orgId        String   @map("org_id")
+  name         String
+  description  String?
+  snapshotType String   @map("snapshot_type")
+  data         Json
+  createdBy    String   @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   @@map("snapshots")
 }
@@ -631,24 +632,24 @@ model Snapshot {
 // ─── EXPORT FRAMEWORK ──────────────────────────────────
 
 model Export {
-  id            String    @id @default(uuid())
-  orgId         String    @map("org_id")
-  name          String
-  description   String?
-  exportType    String    @map("export_type")
-  format        String
-  filters       Json      @default("{}")
-  columns       Json      @default("[]")
-  status        String    @default("pending")
-  fileUrl       String?   @map("file_url")
-  fileSize      Int?      @map("file_size")
-  recordCount   Int?      @map("record_count")
-  errorMessage  String?   @map("error_message")
-  requestedBy   String    @map("requested_by")
-  completedAt   DateTime? @map("completed_at")
-  expiresAt     DateTime? @map("expires_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid())
+  orgId        String    @map("org_id")
+  name         String
+  description  String?
+  exportType   String    @map("export_type")
+  format       String
+  filters      Json      @default("{}")
+  columns      Json      @default("[]")
+  status       String    @default("pending")
+  fileUrl      String?   @map("file_url")
+  fileSize     Int?      @map("file_size")
+  recordCount  Int?      @map("record_count")
+  errorMessage String?   @map("error_message")
+  requestedBy  String    @map("requested_by")
+  completedAt  DateTime? @map("completed_at")
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
@@ -670,25 +671,25 @@ model Approval {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  requestedByUser  User         @relation("ApprovalRequester", fields: [requestedBy], references: [id])
-  steps            ApprovalStep[]
-  approvals        ApprovalRecord[]
+  organization    Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  requestedByUser User             @relation("ApprovalRequester", fields: [requestedBy], references: [id])
+  steps           ApprovalStep[]
+  approvals       ApprovalRecord[]
 
   @@map("approvals")
 }
 
 model ApprovalStep {
-  id        String   @id @default(uuid())
-  approvalId String  @map("approval_id")
-  stepId    String   @map("step_id")
-  stepName  String   @map("step_name")
-  stepOrder Int      @map("step_order")
-  role      String
-  status    String   @default("pending")
-  parallel  Boolean  @default(false)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(uuid())
+  approvalId String   @map("approval_id")
+  stepId     String   @map("step_id")
+  stepName   String   @map("step_name")
+  stepOrder  Int      @map("step_order")
+  role       String
+  status     String   @default("pending")
+  parallel   Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   approval Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
 
