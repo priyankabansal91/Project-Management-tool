@@ -1,12 +1,11 @@
 import { useState } from 'react';
+import api from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Avatar } from '@/components/ui/avatar';
 import {
-  Sparkles, Wand2, FileText, BarChart3, UserCheck, Clock, MessageSquareText,
-  Lightbulb, ChevronRight, Loader2, Check, Copy, Plus, X, Brain,
+  Sparkles, Wand2, FileText, BarChart3, UserCheck,
+  Lightbulb, ChevronRight, Loader2, Check, Copy, Plus, Brain,
 } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 
@@ -25,20 +24,23 @@ export function AITaskGenerator({ projectId, onAddTasks }: { projectId?: string;
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<GeneratedTask[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [error, setError] = useState('');
 
-  const mockGenerate = () => {
+  const generate = async () => {
+    if (!prompt.trim()) return;
     setLoading(true);
-    setTimeout(() => {
-      setTasks([
-        { title: 'Design WebSocket server architecture', description: 'Define connection pooling, authentication handshake, and message schema for real-time notifications.', priority: 'high', estimated_hours: 4, tags: ['backend', 'architecture'] },
-        { title: 'Implement WebSocket server with Socket.io', description: 'Set up Socket.io server with namespaces for projects and rooms for task updates.', priority: 'high', estimated_hours: 8, tags: ['backend', 'websocket'] },
-        { title: 'Build notification event dispatcher', description: 'Create event handlers that emit WebSocket events on task create/update/comment/assign.', priority: 'medium', estimated_hours: 6, tags: ['backend'] },
-        { title: 'Add real-time UI updates in React', description: 'Integrate Socket.io client, update Kanban board and task list in real-time when events received.', priority: 'medium', estimated_hours: 6, tags: ['frontend', 'websocket'] },
-        { title: 'Implement connection recovery and offline handling', description: 'Handle disconnect/reconnect gracefully, queue missed events, show connection status indicator.', priority: 'low', estimated_hours: 4, tags: ['frontend', 'reliability'] },
-      ]);
-      setSelected(new Set([0, 1, 2, 3, 4]));
+    setError('');
+    setTasks([]);
+    try {
+      const { data } = await api.post('/ai/generate-tasks', { prompt });
+      const generated: GeneratedTask[] = data.data.tasks;
+      setTasks(generated);
+      setSelected(new Set(generated.map((_, i) => i)));
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to generate tasks. Check your API key.');
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   const toggleSelect = (idx: number) => {
@@ -70,17 +72,19 @@ export function AITaskGenerator({ projectId, onAddTasks }: { projectId?: string;
           />
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {['Notification system', 'User onboarding', 'Payment integration', 'Search feature'].map((ex) => (
               <button key={ex} onClick={() => setPrompt(ex)} className="rounded-full border px-2.5 py-1 text-[10px] text-muted-foreground hover:bg-accent transition-colors">
                 {ex}
               </button>
             ))}
           </div>
-          <Button onClick={mockGenerate} disabled={!prompt.trim() || loading}>
+          <Button onClick={generate} disabled={!prompt.trim() || loading}>
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Sparkles className="h-4 w-4" /> Generate Tasks</>}
           </Button>
         </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         {tasks.length > 0 && (
           <div className="space-y-3 pt-2 border-t">
@@ -118,17 +122,26 @@ export function AITaskGenerator({ projectId, onAddTasks }: { projectId?: string;
 
 // ─── AI Task Summary ────────────────────────────────────
 
-export function AITaskSummary({ taskId }: { taskId?: string }) {
+export function AITaskSummary({ task }: { task?: { title: string; description?: string; status?: string; priority?: string; comments?: any[]; timeLogged?: number; estimatedHours?: number } }) {
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState('');
+  const [error, setError] = useState('');
 
-  const generate = () => {
+  const generate = async () => {
+    if (!task) return;
     setLoading(true);
-    setTimeout(() => {
-      setSummary('The navigation component task is in progress. Carol is working on responsive layout and has fixed Safari animation issues reported by Bob. The Playwright cross-browser test suite now covers Safari. The task is estimated at 8 hours with 3.5 hours logged (44% complete). Ready for review once Carol finishes the mega-menu hover states. Expected completion: Feb 15.');
+    setError('');
+    try {
+      const { data } = await api.post('/ai/summarize-task', { task });
+      setSummary(data.data.summary);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to generate summary.');
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
+
+  const copy = () => navigator.clipboard.writeText(summary);
 
   return (
     <div className="space-y-2">
@@ -136,15 +149,16 @@ export function AITaskSummary({ taskId }: { taskId?: string }) {
         <h4 className="text-sm font-medium flex items-center gap-1.5">
           <Brain className="h-4 w-4 text-purple-500" /> AI Summary
         </h4>
-        <Button variant="outline" size="sm" onClick={generate} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={generate} disabled={loading || !task}>
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
           {loading ? 'Generating...' : summary ? 'Refresh' : 'Generate'}
         </Button>
       </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
       {summary && (
         <div className="rounded-lg border border-purple-200 bg-purple-50/50 dark:bg-purple-950/20 p-3">
           <p className="text-sm text-purple-900 dark:text-purple-100 leading-relaxed">{summary}</p>
-          <button className="flex items-center gap-1 mt-2 text-xs text-purple-600 hover:text-purple-800">
+          <button onClick={copy} className="flex items-center gap-1 mt-2 text-xs text-purple-600 hover:text-purple-800">
             <Copy className="h-3 w-3" /> Copy
           </button>
         </div>
@@ -155,20 +169,33 @@ export function AITaskSummary({ taskId }: { taskId?: string }) {
 
 // ─── AI Smart Assignee Suggestion ───────────────────────
 
-export function AISmartAssign({ onSelect }: { onSelect?: (userId: string) => void }) {
+interface Member {
+  id: string;
+  name: string;
+  role?: string;
+  openTaskCount?: number;
+  skills?: string[];
+}
+
+export function AISmartAssign({ taskDescription, members, onSelect }: { taskDescription?: string; members?: Member[]; onSelect?: (userId: string) => void }) {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<{ id: string; name: string; reason: string; score: number }[]>([]);
+  const [error, setError] = useState('');
 
-  const suggest = () => {
+  const suggest = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setSuggestions([
-        { id: '3', name: 'Carol Johnson', reason: 'Has frontend expertise, completed similar nav tasks, lowest workload (4 open tasks)', score: 92 },
-        { id: '4', name: 'David Park', reason: 'Strong React skills, but currently at capacity (6 open tasks)', score: 68 },
-        { id: '2', name: 'Bob Martinez', reason: 'PM role, could review but not ideal for implementation', score: 35 },
-      ]);
+    setError('');
+    try {
+      const { data } = await api.post('/ai/suggest-assignee', {
+        taskDescription: taskDescription || 'General development task',
+        members: members || [],
+      });
+      setSuggestions(data.data.suggestions);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to get suggestions.');
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   return (
@@ -176,6 +203,7 @@ export function AISmartAssign({ onSelect }: { onSelect?: (userId: string) => voi
       <Button variant="outline" size="sm" onClick={suggest} disabled={loading} className="w-full">
         {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analyzing...</> : <><UserCheck className="h-3.5 w-3.5" /> AI Suggest Assignee</>}
       </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
       {suggestions.length > 0 && (
         <div className="space-y-1.5">
           {suggestions.map((s) => (
@@ -184,7 +212,9 @@ export function AISmartAssign({ onSelect }: { onSelect?: (userId: string) => voi
               onClick={() => onSelect?.(s.id)}
               className="flex w-full items-center gap-2.5 rounded-lg border p-2.5 text-left hover:bg-accent/50 transition-colors"
             >
-              <Avatar name={s.name} size="sm" />
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold">
+                {s.name.charAt(0)}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{s.name}</span>
@@ -203,25 +233,40 @@ export function AISmartAssign({ onSelect }: { onSelect?: (userId: string) => voi
 
 // ─── AI Report Generator ────────────────────────────────
 
-export function AIReportGenerator() {
+export function AIReportGenerator({ projectData }: { projectData?: { projectName?: string; tasks?: any[]; sprint?: any; team?: any[] } }) {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState('');
   const [reportType, setReportType] = useState<'weekly' | 'executive' | 'technical'>('weekly');
+  const [error, setError] = useState('');
 
-  const generate = () => {
+  const generate = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const reports: Record<string, string> = {
-        weekly: `**Weekly Status Report — Customer Portal Redesign (CPR)**\nPeriod: Feb 10 - Feb 16, 2026\n\n**Completed:**\n- Customer dashboard wireframes (CPR-3) — Done\n- CI/CD pipeline moved to In Review (CPR-4)\n\n**In Progress:**\n- Navigation component 44% complete (CPR-1) — Safari issues resolved\n- Google OAuth integration started (CPR-5)\n\n**Blocked:**\n- Authentication flow (CPR-2) waiting for security review\n\n**Risks:**\n- Auth flow is on the critical path; delay may impact Feb 20 deadline\n\n**Next Week:**\n- Complete navigation component\n- Begin authentication implementation\n- Sprint 3 ends Feb 24`,
-
-        executive: `**Executive Summary — Q1 Progress**\n\nThe Customer Portal Redesign is 47% complete (7/15 tasks done). Sprint velocity has improved 8% over the last 3 sprints. The team is on track for the June 30 deadline with one risk: the authentication module needs a security review before Feb 20. Budget utilization is at 81% (86h of 106h estimated). No blockers requiring executive action.`,
-
-        technical: `**Technical Status — Sprint 3**\n\nArchitecture decisions:\n- Adopted JWT refresh token rotation (RFC 6749)\n- Navigation uses @dnd-kit for accessible drag-and-drop\n- Google OAuth via Passport.js strategy\n\nTech debt:\n- Need to add Playwright E2E tests (currently only unit tests)\n- CSS bundle size growing — consider CSS code splitting\n- PgBouncer connection pool at 60% capacity\n\nPerformance:\n- API p95 latency: 120ms\n- Frontend LCP: 1.8s (target: <2.5s)\n- DB query count: avg 3.2 per API call`,
-      };
-      setReport(reports[reportType]);
+    setError('');
+    setReport('');
+    try {
+      const { data } = await api.post('/ai/generate-report', {
+        type: reportType,
+        projectData: projectData || {},
+      });
+      setReport(data.data.report);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to generate report.');
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
+
+  const copy = () => navigator.clipboard.writeText(report);
+
+  const renderMarkdown = (text: string) =>
+    text.split('\n').map((line, i) => {
+      if (line.startsWith('### ')) return <h5 key={i} className="font-semibold text-sm mt-3 mb-1">{line.replace('### ', '')}</h5>;
+      if (line.startsWith('## ')) return <h4 key={i} className="font-bold text-sm mt-3 mb-1">{line.replace('## ', '')}</h4>;
+      if (line.startsWith('**') && line.endsWith('**')) return <h4 key={i} className="font-semibold text-sm mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
+      if (line.startsWith('- ')) return <div key={i} className="flex items-start gap-1.5 ml-2 text-sm"><span>•</span><span>{line.replace('- ', '').replace(/\*\*(.*?)\*\*/g, '$1')}</span></div>;
+      if (!line.trim()) return <br key={i} />;
+      return <p key={i} className="text-sm">{line.replace(/\*\*(.*?)\*\*/g, '$1')}</p>;
+    });
 
   return (
     <Card>
@@ -237,7 +282,7 @@ export function AIReportGenerator() {
       <CardContent className="space-y-4">
         <div className="flex gap-2">
           {(['weekly', 'executive', 'technical'] as const).map((type) => (
-            <button key={type} onClick={() => { setReportType(type); setReport(''); }}
+            <button key={type} onClick={() => { setReportType(type); setReport(''); setError(''); }}
               className={cn('rounded-md border px-3 py-1.5 text-sm capitalize', reportType === type ? 'border-primary bg-primary/5 text-primary font-medium' : 'hover:bg-accent')}
             >{type}</button>
           ))}
@@ -247,24 +292,62 @@ export function AIReportGenerator() {
           {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating {reportType} report...</> : <><FileText className="h-4 w-4" /> Generate {reportType} Report</>}
         </Button>
 
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
         {report && (
           <div className="rounded-lg border bg-secondary/30 p-4">
             <div className="prose prose-sm max-w-none dark:prose-invert">
-              {report.split('\n').map((line, i) => {
-                if (line.startsWith('**') && line.endsWith('**')) return <h4 key={i} className="font-semibold text-sm mt-3 mb-1">{line.replace(/\*\*/g, '')}</h4>;
-                if (line.startsWith('- ')) return <div key={i} className="flex items-start gap-1.5 ml-2 text-sm"><span>•</span><span>{line.replace('- ', '')}</span></div>;
-                if (!line.trim()) return <br key={i} />;
-                return <p key={i} className="text-sm">{line.replace(/\*\*/g, '')}</p>;
-              })}
+              {renderMarkdown(report)}
             </div>
             <div className="flex gap-2 mt-3 pt-3 border-t">
-              <Button variant="outline" size="sm"><Copy className="h-3.5 w-3.5" /> Copy</Button>
-              <Button variant="outline" size="sm"><FileText className="h-3.5 w-3.5" /> Export PDF</Button>
+              <Button variant="outline" size="sm" onClick={copy}><Copy className="h-3.5 w-3.5" /> Copy</Button>
             </div>
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── AI Task Review ─────────────────────────────────────
+
+export function AITaskReview({ task }: { task?: { title: string; description?: string; acceptanceCriteria?: string[]; comments?: any[] } }) {
+  const [loading, setLoading] = useState(false);
+  const [review, setReview] = useState('');
+  const [error, setError] = useState('');
+
+  const runReview = async () => {
+    if (!task) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/ai/review-task', { task });
+      setReview(data.data.review);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to review task.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-medium flex items-center gap-1.5">
+          <Lightbulb className="h-4 w-4 text-yellow-500" /> AI Task Review
+        </h4>
+        <Button variant="outline" size="sm" onClick={runReview} disabled={loading || !task}>
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          {loading ? 'Reviewing...' : 'Review Task'}
+        </Button>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {review && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50/50 dark:bg-yellow-950/20 p-3 text-sm whitespace-pre-wrap leading-relaxed">
+          {review}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -280,7 +363,6 @@ export function AIFeaturesPage() {
         <p className="text-muted-foreground">Powered by Claude — generate tasks, summaries, reports, and smart suggestions</p>
       </div>
 
-      {/* Feature cards overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { icon: Wand2, label: 'Task Generation', desc: 'Feature → task breakdown', color: 'purple' },

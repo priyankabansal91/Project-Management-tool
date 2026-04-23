@@ -20,6 +20,64 @@ router.get('/permissions', async (req, res, next) => {
 });
 
 /**
+ * Get system role permissions matrix
+ * GET /v1/roles/system-matrix
+ */
+router.get('/system-matrix', async (req, res, next) => {
+  try {
+    const matrix = customRoleService.getSystemRoleMatrix();
+    res.json({ success: true, data: matrix });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Update system role permissions (org_admin only)
+ * PATCH /v1/roles/system-matrix
+ */
+router.patch('/system-matrix', authorize('org_admin'), async (req, res, next) => {
+  try {
+    const { role, permissions } = req.body;
+    if (!role || !permissions) {
+      return res.status(400).json({ success: false, error: 'role and permissions are required' });
+    }
+    const matrix = customRoleService.updateSystemRolePermissions(role, permissions);
+    res.json({ success: true, data: matrix });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * List org members with their roles
+ * GET /v1/roles/members
+ */
+router.get('/members', async (req, res, next) => {
+  try {
+    const members = await customRoleService.listMembersWithRoles(req.user.orgId);
+    res.json({ success: true, data: members });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Update a member's system role
+ * PATCH /v1/roles/members/:userId
+ */
+router.patch('/members/:userId', authorize('org_admin'), async (req, res, next) => {
+  try {
+    const { role } = req.body;
+    if (!role) return res.status(400).json({ success: false, error: 'role is required' });
+    const member = await customRoleService.updateMemberRole(req.user.orgId, req.params.userId, role);
+    res.json({ success: true, data: member });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * Create custom role
  * POST /v1/roles
  */

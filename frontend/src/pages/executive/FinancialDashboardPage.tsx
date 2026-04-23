@@ -14,7 +14,7 @@ interface Budget {
   burnRate: number;
 }
 
-export default function FinancialDashboardPage() {
+export function FinancialDashboardPage() {
   const [budgets] = useState<Budget[]>([
     {
       id: 'budget_1',

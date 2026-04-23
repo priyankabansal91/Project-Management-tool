@@ -30,8 +30,8 @@ router.get('/project/:projectId', async (req, res, next) => {
 // Get single task
 router.get('/:taskId', async (req, res, next) => {
   try {
-    const task = await taskService.getById(req.user.orgId, req.params.taskId);
-    res.json({ success: true, data: task });
+    const raw = await taskService.getById(req.user.orgId, req.params.taskId);
+    res.json({ success: true, data: taskService.formatTask(raw) });
   } catch (err) {
     next(err);
   }

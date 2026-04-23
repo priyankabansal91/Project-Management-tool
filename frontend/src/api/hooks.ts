@@ -202,6 +202,60 @@ export function useMembers(params?: { role?: string; search?: string }) {
       const { data } = await api.get<ApiResponse<{ items: OrgMemberItem[]; pagination: Pagination }>>('/members', { params });
       return data.data;
     },
+    staleTime: 0,
+  });
+}
+
+export function usePendingInvites() {
+  return useQuery({
+    queryKey: ['pendingInvites'],
+    queryFn: async () => {
+      const { data } = await api.get('/members/invites');
+      return data.data as { id: string; email: string; role: string; invited_by: string; expires_at: string; created_at: string }[];
+    },
+    staleTime: 0,
+  });
+}
+
+export function useCancelInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (inviteId: string) => {
+      await api.delete(`/members/invites/${inviteId}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pendingInvites'] }),
+  });
+}
+
+export function useInviteMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { email: string; role: string }) => {
+      const { data } = await api.post('/members/invite', body);
+      return data.data as { id: string; email: string; role: string; expires_at: string; invite_link: string };
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['members'] }),
+  });
+}
+
+export function useUpdateMemberStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
+      const { data } = await api.patch(`/members/${userId}/status`, { status });
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['members'] }),
+  });
+}
+
+export function useRemoveMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.delete(`/members/${userId}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['members'] }),
   });
 }
 
@@ -1102,4 +1156,106 @@ export const usePortfolioCapacity = (weeks = 4) =>
 
 export const usePortfolioDependencies = () =>
   useQuery({ queryKey: ['portfolio-dependencies'], queryFn: () => api.get('/portfolio/dependencies').then(r => r.data.data), staleTime: 120_000 });
+
+// ─── Sprints ─────────────────────────────────────────────
+
+export function useSprints(projectId: string) {
+  return useQuery({
+    queryKey: ['sprints', projectId],
+    queryFn: async () => {
+      const { data } = await api.get('/sprints', { params: { project_id: projectId } });
+      return data.data as Sprint[];
+    },
+    enabled: !!projectId,
+    staleTime: 0,
+  });
+}
+
+export function useSprintBacklog(projectId: string) {
+  return useQuery({
+    queryKey: ['sprintBacklog', projectId],
+    queryFn: async () => {
+      const { data } = await api.get('/sprints/backlog', { params: { project_id: projectId } });
+      return data.data as Task[];
+    },
+    enabled: !!projectId,
+    staleTime: 0,
+  });
+}
+
+export function useCreateSprint(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { name: string; goal?: string; start_date?: string; end_date?: string }) => {
+      const { data } = await api.post('/sprints', body, { params: { project_id: projectId } });
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sprints', projectId] }),
+  });
+}
+
+export function useUpdateSprint(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sprintId, ...body }: { sprintId: string; name?: string; goal?: string; start_date?: string; end_date?: string; status?: string }) => {
+      const { data } = await api.patch(`/sprints/${sprintId}`, body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sprints', projectId] }),
+  });
+}
+
+export function useDeleteSprint(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (sprintId: string) => {
+      await api.delete(`/sprints/${sprintId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sprints', projectId] });
+      qc.invalidateQueries({ queryKey: ['sprintBacklog', projectId] });
+    },
+  });
+}
+
+export function useAddTaskToSprint(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sprintId, taskId }: { sprintId: string; taskId: string }) => {
+      const { data } = await api.post(`/sprints/${sprintId}/tasks`, { task_id: taskId });
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sprints', projectId] });
+      qc.invalidateQueries({ queryKey: ['sprintBacklog', projectId] });
+    },
+  });
+}
+
+export function useRemoveTaskFromSprint(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sprintId, taskId }: { sprintId: string; taskId: string }) => {
+      const { data } = await api.delete(`/sprints/${sprintId}/tasks/${taskId}`);
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sprints', projectId] });
+      qc.invalidateQueries({ queryKey: ['sprintBacklog', projectId] });
+    },
+  });
+}
+
+interface Sprint {
+  id: string;
+  project_id: string;
+  name: string;
+  goal: string;
+  status: 'planned' | 'active' | 'completed';
+  start_date: string | null;
+  end_date: string | null;
+  tasks: Task[];
+  task_count: number;
+  completed_tasks: number;
+}
 
