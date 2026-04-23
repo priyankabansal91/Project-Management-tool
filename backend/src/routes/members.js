@@ -9,9 +9,14 @@ router.use(authenticate);
 
 router.get('/', async (req, res, next) => {
   try {
-    const { role, search, page = 1, page_size = 20 } = req.query;
+    const VALID_ROLES = new Set(['org_admin', 'division_admin', 'project_manager', 'member', 'viewer', 'executive']);
+    const rawRole     = req.query.role;
+    const rawPage     = Math.max(1, parseInt(req.query.page, 10) || 1);
+    // Cap page_size at 100 to prevent unbounded queries
+    const rawPageSize = Math.min(Math.max(1, parseInt(req.query.page_size, 10) || 20), 100);
+
     const where = { orgId: req.user.orgId };
-    if (role) where.role = role;
+    if (rawRole && VALID_ROLES.has(rawRole)) where.role = rawRole;
 
     const members = await prisma.orgMember.findMany({
       where,
@@ -20,8 +25,8 @@ router.get('/', async (req, res, next) => {
           select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true },
         },
       },
-      skip: (Number(page) - 1) * Number(page_size),
-      take: Number(page_size),
+      skip: (rawPage - 1) * rawPageSize,
+      take: rawPageSize,
     });
 
     const total = await prisma.orgMember.count({ where });
@@ -41,7 +46,7 @@ router.get('/', async (req, res, next) => {
           joined_at: m.joinedAt,
           last_login_at: m.user.lastLoginAt,
         })),
-        pagination: { page: Number(page), page_size: Number(page_size), total, total_pages: Math.ceil(total / Number(page_size)) },
+        pagination: { page: rawPage, page_size: rawPageSize, total, total_pages: Math.ceil(total / rawPageSize) },
       },
     });
   } catch (err) {

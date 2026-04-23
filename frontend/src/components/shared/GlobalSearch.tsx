@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, FolderKanban, CheckSquare, Users, Hash, ArrowRight, Command } from 'lucide-react';
+import { Search, X, FolderKanban, CheckSquare, Users, ArrowRight, Command, Loader2 } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useSearch } from '@/api/hooks';
 
 interface SearchResult {
   id: string;
@@ -37,9 +38,18 @@ interface GlobalSearchProps {
 
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  // Debounce: update debouncedQuery 300ms after query changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   // Keyboard shortcut: Cmd+K
   useEffect(() => {
@@ -64,12 +74,30 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     setSelectedIdx(0);
   }, [open]);
 
-  const filtered = query.length > 0
-    ? mockResults.filter((r) => r.title.toLowerCase().includes(query.toLowerCase()) || r.subtitle.toLowerCase().includes(query.toLowerCase()))
-    : mockResults.slice(0, 6); // Show recent when empty
+  // API search (enabled when debouncedQuery >= 2 chars)
+  const { data: searchData, isLoading: isSearchLoading } = useSearch(debouncedQuery);
+
+  // Determine results to show
+  let results: SearchResult[] = [];
+  if (debouncedQuery.length >= 2) {
+    const apiResults = (searchData?.results ?? []) as SearchResult[];
+    // Fall back to filtered mock results if API returns empty (dev mode)
+    if (apiResults.length > 0) {
+      results = apiResults;
+    } else if (!isSearchLoading) {
+      results = mockResults.filter(
+        (r) =>
+          r.title.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+          r.subtitle.toLowerCase().includes(debouncedQuery.toLowerCase())
+      );
+    }
+  } else {
+    // Show recent items when query is short
+    results = mockResults.slice(0, 6);
+  }
 
   // Group results by type
-  const grouped = filtered.reduce<Record<string, SearchResult[]>>((acc, r) => {
+  const grouped = results.reduce<Record<string, SearchResult[]>>((acc, r) => {
     (acc[r.type] = acc[r.type] || []).push(r);
     return acc;
   }, {});
@@ -96,16 +124,28 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   if (!open) return null;
 
+  const showLoading = debouncedQuery.length >= 2 && isSearchLoading;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]" onClick={() => { onOpenChange(false); setQuery(''); }}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+      onClick={() => { onOpenChange(false); setQuery(''); }}
+    >
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/50" />
 
       {/* Search Panel */}
-      <div className="relative w-full max-w-xl mx-4 rounded-xl border bg-card shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="relative w-full max-w-xl mx-4 rounded-xl border bg-card shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b">
-          <Search className="h-5 w-5 text-muted-foreground shrink-0" />
+          {showLoading ? (
+            <Loader2 className="h-5 w-5 text-muted-foreground shrink-0 animate-spin" />
+          ) : (
+            <Search className="h-5 w-5 text-muted-foreground shrink-0" />
+          )}
           <input
             ref={inputRef}
             value={query}
@@ -121,7 +161,13 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
         {/* Results */}
         <div className="max-h-[400px] overflow-y-auto p-2">
-          {Object.entries(grouped).map(([type, results]) => {
+          {query.length > 0 && query.length < 2 && (
+            <div className="py-6 text-center text-muted-foreground">
+              <p className="text-sm">Type at least 2 characters to search...</p>
+            </div>
+          )}
+
+          {(query.length === 0 || debouncedQuery.length >= 2) && Object.entries(grouped).map(([type, groupResults]) => {
             const Icon = typeIcons[type as keyof typeof typeIcons];
             return (
               <div key={type} className="mb-2">
@@ -129,7 +175,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                   <Icon className="h-3 w-3" />
                   {typeLabels[type as keyof typeof typeLabels]}
                 </div>
-                {results.map((result) => {
+                {groupResults.map((result) => {
                   const globalIdx = flatResults.indexOf(result);
                   const ResultIcon = typeIcons[result.type];
                   return (
@@ -143,7 +189,10 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       )}
                     >
                       {result.type === 'project' && result.meta?.color ? (
-                        <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: result.meta.color + '20' }}>
+                        <div
+                          className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: result.meta.color + '20' }}
+                        >
                           <FolderKanban className="h-4 w-4" style={{ color: result.meta.color }} />
                         </div>
                       ) : (
@@ -156,7 +205,9 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                         <p className="text-xs text-muted-foreground truncate">{result.subtitle}</p>
                       </div>
                       {result.meta?.priority && (
-                        <Badge className={cn('text-[10px] shrink-0', priorityColor(result.meta.priority))}>{result.meta.priority}</Badge>
+                        <Badge className={cn('text-[10px] shrink-0', priorityColor(result.meta.priority))}>
+                          {result.meta.priority}
+                        </Badge>
                       )}
                       {globalIdx === selectedIdx && <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />}
                     </button>
@@ -166,10 +217,10 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
             );
           })}
 
-          {filtered.length === 0 && query && (
+          {debouncedQuery.length >= 2 && !isSearchLoading && flatResults.length === 0 && (
             <div className="py-8 text-center text-muted-foreground">
               <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No results for "{query}"</p>
+              <p className="text-sm">No results for "{debouncedQuery}"</p>
             </div>
           )}
         </div>

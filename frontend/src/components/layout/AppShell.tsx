@@ -4,9 +4,19 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { MobileBottomNav } from './MobileNav';
 import { GlobalSearch } from '@/components/shared/GlobalSearch';
+import { KeyboardShortcutsPanel } from '@/components/shared/KeyboardShortcutsPanel';
+import { useGlobalShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 export function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+
+  useGlobalShortcuts({
+    onHelp: () => setShowShortcuts(true),
+    onNewTask: () => setShowTaskModal(true),
+    onSearch: () => setSearchOpen(true),
+  });
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
@@ -37,6 +47,9 @@ export function AppShell() {
 
       {/* Global search (Cmd+K) */}
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
+      {/* Keyboard shortcuts panel */}
+      <KeyboardShortcutsPanel open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
 }

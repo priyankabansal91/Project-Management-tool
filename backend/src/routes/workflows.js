@@ -8,14 +8,15 @@ const router = Router();
 // In-memory storage for workflows
 const workflowsStore = new Map();
 
-// Initialize with default workflow templates
+// Initialize with default workflow templates — key-based IDs since templates don't carry their own
 Object.entries(WORKFLOW_TEMPLATES).forEach(([key, template]) => {
-  workflowsStore.set(template.id, {
-    id: template.id,
+  const wfId = `wf_${key}`;
+  workflowsStore.set(wfId, {
+    id: wfId,
     orgId: 'dev-org-id',
     name: template.name,
     description: template.description,
-    isDefault: key === 'simple_kanban',
+    isDefault: key === 'kanban',
     statuses: template.statuses,
     transitions: template.transitions || [],
     createdBy: 'dev-user-id',

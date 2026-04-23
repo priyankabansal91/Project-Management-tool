@@ -1,14 +1,66 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
-import { Plus, Search, LayoutGrid, List, Calendar } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Calendar, MoreHorizontal, Trash2, ExternalLink } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { ProjectModal, type ProjectFormData } from '@/components/shared/ProjectModal';
-import { useProjects, useCreateProject, useWorkflows } from '@/api/hooks';
+import { useProjects, useCreateProject, useDeleteProject, useWorkflows } from '@/api/hooks';
+import type { Project } from '@/types';
+
+function ProjectActionMenu({ project, onDelete }: { project: Project; onDelete: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    function handle(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setConfirmDelete(false); } }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        className="p-1 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}
+      >
+        <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-7 z-50 w-44 rounded-md border bg-popover shadow-lg py-1">
+          <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
+            onClick={(e) => { e.preventDefault(); navigate(`/projects/${project.id}/board`); setOpen(false); }}
+          >
+            <ExternalLink className="h-4 w-4 text-muted-foreground" /> Open Board
+          </button>
+          <div className="my-1 border-t" />
+          {!confirmDelete ? (
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-accent"
+              onClick={(e) => { e.preventDefault(); setConfirmDelete(true); }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete Project
+            </button>
+          ) : (
+            <div className="px-3 py-2 space-y-1">
+              <p className="text-xs text-destructive font-medium">Delete "{project.name}"?</p>
+              <div className="flex gap-1">
+                <button className="flex-1 rounded bg-destructive text-destructive-foreground text-xs py-1" onClick={(e) => { e.preventDefault(); onDelete(project.id); setOpen(false); }}>Delete</button>
+                <button className="flex-1 rounded border text-xs py-1" onClick={(e) => { e.preventDefault(); setConfirmDelete(false); }}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const statusColors: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
@@ -27,18 +79,20 @@ export function ProjectListPage() {
   const projects = projectsData?.items || [];
   const workflows = workflowsData || [];
   const createProjectMutation = useCreateProject();
+  const deleteProjectMutation = useDeleteProject();
+
+  const handleDeleteProject = (projectId: string) => {
+    deleteProjectMutation.mutate(projectId);
+  };
 
   const filtered = projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
 
   const handleCreateProject = async (data: ProjectFormData) => {
     try {
       await createProjectMutation.mutateAsync(data as unknown as Record<string, unknown>);
-      console.log('Creating project with data:', data);
-      await createProjectMutation.mutateAsync(data);
       setModalOpen(false);
     } catch (error) {
       console.error('Failed to create project:', error);
-      // Error will be shown in the modal
     }
   };
 
@@ -109,7 +163,10 @@ export function ProjectListPage() {
                       <div className="h-4 w-4 rounded flex-shrink-0" style={{ backgroundColor: p.color }} />
                       <Badge variant="outline" className="text-xs truncate">{p.key}</Badge>
                     </div>
-                    <Badge className={cn('text-xs flex-shrink-0', statusColors[p.status])}>{p.status}</Badge>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Badge className={cn('text-xs', statusColors[p.status])}>{p.status}</Badge>
+                      <ProjectActionMenu project={p} onDelete={handleDeleteProject} />
+                    </div>
                   </div>
 
                   <h3 className="font-semibold group-hover:text-primary transition-colors mb-1 line-clamp-2 text-sm sm:text-base">{p.name}</h3>
@@ -162,6 +219,7 @@ export function ProjectListPage() {
                   <th className="p-2 sm:p-4 font-medium hidden md:table-cell">Progress</th>
                   <th className="p-2 sm:p-4 font-medium hidden lg:table-cell">Members</th>
                   <th className="p-2 sm:p-4 font-medium hidden xl:table-cell">Due Date</th>
+                  <th className="p-2 sm:p-4 font-medium w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -193,6 +251,9 @@ export function ProjectListPage() {
                         </div>
                       </td>
                       <td className="p-2 sm:p-4 text-muted-foreground hidden xl:table-cell text-xs sm:text-sm">{formatDate(p.due_date)}</td>
+                      <td className="p-2 sm:p-4">
+                        <ProjectActionMenu project={p} onDelete={handleDeleteProject} />
+                      </td>
                     </tr>
                   );
                 })}

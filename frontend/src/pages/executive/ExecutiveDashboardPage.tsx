@@ -9,228 +9,327 @@ import {
 import {
   TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle2, Clock, DollarSign,
   Users, FolderKanban, Target, Zap, Calendar, ArrowUpRight, ArrowDownRight,
-  Building2, Download, RefreshCw, ChevronRight, BarChart3, Shield, Eye,
+  Building2, Download, RefreshCw, BarChart3, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useExecutiveRollup } from '@/api/hooks';
+import { useQueryClient } from '@tanstack/react-query';
+
+// ─── Types & helpers ─────────────────────────────────────
 
 type RAG = 'green' | 'amber' | 'red';
 
-const ragStyle: Record<RAG, { bg: string; text: string; dot: string }> = {
-  green: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
-  amber: { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-300', dot: 'bg-amber-500' },
-  red: { bg: 'bg-red-50 dark:bg-red-950/30', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
+const ragStyle: Record<RAG, { bg: string; text: string; dot: string; border: string }> = {
+  green: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', border: 'border-l-emerald-400' },
+  amber: { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500',   border: 'border-l-amber-400'   },
+  red:   { bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-500',     border: 'border-l-red-400'     },
 };
 
-// Portfolio projects
-const portfolioProjects = [
-  { id: 'p1', name: 'Customer Portal Redesign', key: 'CPR', division: 'Product Engineering', pm: 'Emily Zhang', health: 'green' as RAG, pct: 56, budget: 280, spent: 165, overdue: 3, team: 14 },
-  { id: 'p2', name: 'API Gateway Migration', key: 'AGM', division: 'Platform Engineering', pm: 'David Park', health: 'red' as RAG, pct: 33, budget: 180, spent: 112, overdue: 8, team: 8 },
-  { id: 'p3', name: 'Mobile App v2', key: 'MAV2', division: 'Product Engineering', pm: 'James Wright', health: 'amber' as RAG, pct: 41, budget: 350, spent: 148, overdue: 5, team: 12 },
-  { id: 'p4', name: 'HR Onboarding Platform', key: 'HROP', division: 'Human Resources', pm: 'Kate Adams', health: 'green' as RAG, pct: 27, budget: 120, spent: 32, overdue: 0, team: 6 },
-  { id: 'p5', name: 'Data Analytics Dashboard', key: 'DAD', division: 'Data Engineering', pm: 'Marco Silva', health: 'green' as RAG, pct: 55, budget: 200, spent: 118, overdue: 2, team: 10 },
-  { id: 'p6', name: 'SOC 2 Compliance', key: 'SOC2', division: 'Legal & Compliance', pm: 'George Hayes', health: 'green' as RAG, pct: 71, budget: 90, spent: 45, overdue: 0, team: 4 },
-  { id: 'p7', name: 'CRM Integration', key: 'CRM', division: 'Sales & Marketing', pm: 'Lisa Chang', health: 'amber' as RAG, pct: 38, budget: 160, spent: 85, overdue: 4, team: 7 },
-  { id: 'p8', name: 'Cloud Migration Phase 2', key: 'CMP2', division: 'IT Operations', pm: 'Bob Martinez', health: 'green' as RAG, pct: 62, budget: 450, spent: 280, overdue: 1, team: 16 },
+// ─── Static fallback data ─────────────────────────────────
+
+const MILESTONES = [
+  { project: 'APIV3', name: 'Auth Service Complete', date: 'Apr 30', health: 'green' as RAG, owner: 'Anjali Singh' },
+  { project: 'SALES', name: 'Q2 Campaign Launch', date: 'May 10', health: 'amber' as RAG, owner: 'Org Admin' },
+  { project: 'HR26',  name: 'Review Cycle Open', date: 'May 1',  health: 'green' as RAG, owner: 'Priya Sharma' },
+  { project: 'APIV3', name: 'Beta Deployment', date: 'Jun 15', health: 'green' as RAG, owner: 'Anjali Singh' },
 ];
 
-// Weekly velocity trend (12 weeks)
-const velocityTrend = Array.from({ length: 12 }, (_, i) => ({
-  week: `W${i + 1}`,
-  throughput: 35 + Math.round(Math.sin(i / 3) * 8 + Math.random() * 5),
-  target: 40,
-}));
-
-// Budget by division
-const divisionBudget = [
-  { division: 'Product Eng', allocated: 630, spent: 313, color: '#3B82F6' },
-  { division: 'Platform Eng', allocated: 180, spent: 112, color: '#8B5CF6' },
-  { division: 'Data Eng', allocated: 200, spent: 118, color: '#EF4444' },
-  { division: 'IT Ops', allocated: 450, spent: 280, color: '#F59E0B' },
-  { division: 'HR', allocated: 120, spent: 32, color: '#10B981' },
-  { division: 'Legal', allocated: 90, spent: 45, color: '#6366F1' },
-  { division: 'Sales & Mkt', allocated: 160, spent: 85, color: '#EC4899' },
+const UTILIZATION_STATIC = [
+  { name: 'Billable', value: 62, color: '#10B981' },
+  { name: 'Internal', value: 24, color: '#3B82F6' },
+  { name: 'Bench',    value: 10, color: '#F59E0B' },
+  { name: 'Leave',    value: 4,  color: '#94A3B8' },
 ];
 
-// Headcount utilization
-const utilization = [
-  { name: 'Billable', value: 68, color: '#10B981' },
-  { name: 'Internal', value: 22, color: '#3B82F6' },
-  { name: 'Bench', value: 7, color: '#F59E0B' },
-  { name: 'Leave', value: 3, color: '#94A3B8' },
-];
+// ─── Division Health Scorecard ────────────────────────────
 
-// Key milestones this month
-const milestones = [
-  { project: 'CPR', name: 'Beta Release', date: 'Apr 30', health: 'green' as RAG, owner: 'Emily Zhang' },
-  { project: 'AGM', name: 'Payment Endpoint Migration', date: 'Apr 15', health: 'red' as RAG, owner: 'David Park' },
-  { project: 'MAV2', name: 'Offline Mode Complete', date: 'Apr 30', health: 'amber' as RAG, owner: 'James Wright' },
-  { project: 'DAD', name: 'Real-time Streaming', date: 'May 15', health: 'green' as RAG, owner: 'Marco Silva' },
-  { project: 'CMP2', name: 'Staging Env Cutover', date: 'Apr 25', health: 'green' as RAG, owner: 'Bob Martinez' },
-];
-
-// Top risks
-const topRisks = [
-  { project: 'AGM', risk: 'Key developer on leave — 8 overdue tasks blocking downstream', severity: 'critical', owner: 'David Park' },
-  { project: 'MAV2', risk: 'Offline sync module behind — 5 tasks overdue in sprint', severity: 'high', owner: 'James Wright' },
-  { project: 'CRM', risk: 'Salesforce API rate limits hitting during peak hours', severity: 'high', owner: 'Lisa Chang' },
-  { project: 'DAD', risk: 'Budget tight — 59% spent at 55% completion', severity: 'medium', owner: 'Marco Silva' },
-];
-
-export function ExecutiveDashboardPage() {
-  const [period, setPeriod] = useState<'week' | 'month' | 'quarter'>('month');
-
-  const totalBudget = divisionBudget.reduce((a, d) => a + d.allocated, 0);
-  const totalSpent = divisionBudget.reduce((a, d) => a + d.spent, 0);
-  const totalTeam = portfolioProjects.reduce((a, p) => a + p.team, 0);
-  const avgCompletion = Math.round(portfolioProjects.reduce((a, p) => a + p.pct, 0) / portfolioProjects.length);
-  const totalOverdue = portfolioProjects.reduce((a, p) => a + p.overdue, 0);
-  const healthCounts = { green: portfolioProjects.filter((p) => p.health === 'green').length, amber: portfolioProjects.filter((p) => p.health === 'amber').length, red: portfolioProjects.filter((p) => p.health === 'red').length };
+function DivisionScorecard({ d }: { d: any }) {
+  const health = (d.health as RAG) || 'green';
+  const r = ragStyle[health];
+  const gradId = `vg-${d.divisionId}`;
+  const sparkData = (d.velocityTrend || []).map((v: number, i: number) => ({ i, v }));
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
+    <Card className={cn('overflow-hidden border-l-4', r.border)}>
+      <div className={cn('flex items-center justify-between px-4 py-3 border-b', r.bg)}>
+        <div className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+          <span className="font-semibold text-sm">{d.name}</span>
+        </div>
+        <Badge className={cn('text-[10px]', r.bg, r.text)}>
+          {health === 'green' ? 'On Track' : health === 'amber' ? 'At Risk' : 'Off Track'}
+        </Badge>
+      </div>
+
+      <CardContent className="pt-3 pb-4 space-y-3">
+        {/* Completion + Projects */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-muted/40 p-2.5">
+            <p className="text-[10px] text-muted-foreground">Completion</p>
+            <p className="text-xl font-bold">{d.completionPct}%</p>
+            <div className="h-1.5 rounded-full bg-muted mt-1.5 overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${d.completionPct}%`, backgroundColor: d.color }} />
+            </div>
+          </div>
+          <div className="rounded-lg bg-muted/40 p-2.5">
+            <p className="text-[10px] text-muted-foreground">Active Projects</p>
+            <p className="text-xl font-bold">{d.activeProjects}</p>
+            <p className="text-[10px] text-muted-foreground">of {d.projectCount} total</p>
+          </div>
+        </div>
+
+        {/* Key metrics row */}
+        <div className="grid grid-cols-4 gap-1 text-center">
+          {[
+            { label: 'Tasks', value: d.totalTasks },
+            { label: 'Done', value: d.completedTasks, accent: 'text-emerald-600' },
+            { label: 'Overdue', value: d.overdueTasks, accent: d.overdueTasks > 0 ? 'text-red-600' : 'text-muted-foreground' },
+            { label: 'Members', value: d.memberCount },
+          ].map(({ label, value, accent }) => (
+            <div key={label} className="rounded bg-muted/20 py-1.5">
+              <p className={cn('text-sm font-bold', accent)}>{value}</p>
+              <p className="text-[9px] text-muted-foreground">{label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Mini velocity sparkline */}
+        {sparkData.length > 0 && (
+          <div className="h-12">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={sparkData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={d.color} stopOpacity={0.35} />
+                    <stop offset="95%" stopColor={d.color} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area type="monotone" dataKey="v" stroke={d.color} fill={`url(#${gradId})`} strokeWidth={1.5} dot={false} />
+                <Tooltip contentStyle={{ fontSize: 10 }} formatter={(v: number) => [`${v} tasks`, 'Velocity']} labelFormatter={(l) => `Week ${+l + 1}`} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Feature + workflow badges */}
+        <div className="flex flex-wrap gap-1">
+          {d.workflowTemplate && (
+            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium capitalize">
+              {d.workflowTemplate.replace('wf_', '').replace(/([A-Z])/g, ' $1').trim()}
+            </span>
+          )}
+          <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+            {d.enabledFeatureCount} features on
+          </span>
+          {d.budget && (
+            <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+              ₹{(d.budget / 100000).toFixed(0)}L budget
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── KPI card ─────────────────────────────────────────────
+
+function KPICard({ icon: Icon, label, value, delta, trend, color }: {
+  icon: typeof TrendingUp; label: string; value: string; delta: string;
+  trend: 'up' | 'down' | 'flat'; color: string;
+}) {
+  const TrendIcon = trend === 'up' ? ArrowUpRight : trend === 'down' ? ArrowDownRight : Minus;
+  const trendColor = trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-muted-foreground';
+  return (
+    <Card className="p-3">
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className={cn('h-4 w-4', color)} />
+        <span className="text-[11px] text-muted-foreground">{label}</span>
+      </div>
+      <div className="text-xl font-bold">{value}</div>
+      <div className={cn('text-[10px] flex items-center gap-0.5 mt-0.5', trendColor)}>
+        <TrendIcon className="h-3 w-3" /> {delta}
+      </div>
+    </Card>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────
+
+export function ExecutiveDashboardPage() {
+  const qc = useQueryClient();
+  const { data: rollup, isLoading } = useExecutiveRollup();
+  const [period, setPeriod] = useState<'week' | 'month' | 'quarter'>('month');
+
+  const org        = rollup?.orgSummary;
+  const scorecards = rollup?.scorecards || [];
+  const velocity   = rollup?.velocityComparison || [];
+  const budget     = rollup?.budgetComparison   || [];
+  const alerts     = rollup?.alerts             || [];
+
+  // Fallback budget chart for initial render
+  const budgetChartData = budget.length
+    ? budget
+    : [
+        { division: 'Engineering', color: '#3B82F6', allocated: 50, spent: 34 },
+        { division: 'Sales',       color: '#10B981', allocated: 20, spent: 9  },
+        { division: 'HR',          color: '#F59E0B', allocated: 10, spent: 3  },
+      ];
+
+  const divisionColors = Object.fromEntries(scorecards.map((d: any) => [d.name, d.color]));
+
+  return (
+    <div className="space-y-5 p-1">
+      {/* ── Header ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Executive Dashboard</h1>
-          <p className="text-muted-foreground">Portfolio overview &middot; {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-muted-foreground text-sm">
+            Cross-division rollup &middot; {new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </p>
         </div>
         <div className="flex gap-2">
           <div className="inline-flex rounded-md border">
             {(['week', 'month', 'quarter'] as const).map((p) => (
-              <button key={p} onClick={() => setPeriod(p)} className={cn('px-3 py-1.5 text-xs font-medium capitalize', period === p ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}>{p}</button>
+              <button key={p} onClick={() => setPeriod(p)} className={cn('px-3 py-1.5 text-xs font-medium capitalize', period === p ? 'bg-primary text-primary-foreground' : 'hover:bg-accent')}>
+                {p}
+              </button>
             ))}
           </div>
-          <Button variant="outline" size="sm"><RefreshCw className="h-3.5 w-3.5" /> Refresh</Button>
-          <Button size="sm" onClick={() => alert('Generating executive PDF report...')}><Download className="h-3.5 w-3.5" /> Export</Button>
+          <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['executiveRollup'] })}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
+          </Button>
+          <Button size="sm">
+            <Download className="h-3.5 w-3.5 mr-1" /> Export
+          </Button>
         </div>
       </div>
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KPICard icon={FolderKanban} label="Active Projects" value={String(portfolioProjects.length)} delta="+2 this quarter" trend="up" color="text-blue-500" />
-        <KPICard icon={Target} label="Avg Completion" value={`${avgCompletion}%`} delta="+8% this month" trend="up" color="text-emerald-500" />
-        <KPICard icon={CheckCircle2} label="On Track" value={`${healthCounts.green}/${portfolioProjects.length}`} delta={`${healthCounts.red} off track`} trend={healthCounts.red > 0 ? 'down' : 'up'} color="text-green-500" />
-        <KPICard icon={Clock} label="Overdue Tasks" value={String(totalOverdue)} delta="-3 from last week" trend="down" color="text-red-500" />
-        <KPICard icon={DollarSign} label="Budget Burn" value={`$${(totalSpent / 1000).toFixed(0)}k`} delta={`of $${(totalBudget / 1000).toFixed(0)}k (${Math.round(totalSpent / totalBudget * 100)}%)`} trend="flat" color="text-violet-500" />
-        <KPICard icon={Users} label="Team Size" value={String(totalTeam)} delta="77 active resources" trend="flat" color="text-amber-500" />
+      {/* ── Division Health Scorecards ── */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5" /> Division Health Scorecards
+          </h2>
+          {isLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          {!isLoading && org && (
+            <span className="text-xs text-muted-foreground">
+              {org.greenDivisions} on track · {org.amberDivisions} at risk · {org.redDivisions} off track
+            </span>
+          )}
+        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="h-52 animate-pulse bg-muted/30" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {scorecards.map((d: any) => <DivisionScorecard key={d.divisionId} d={d} />)}
+          </div>
+        )}
       </div>
 
-      {/* Charts Row 1 */}
+      {/* ── Org KPIs ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <KPICard icon={FolderKanban} label="Active Projects"  value={String(org?.activeProjects ?? '–')}            delta={`${org?.totalProjects ?? 0} total`}                              trend="up"   color="text-blue-500" />
+        <KPICard icon={Target}       label="Org Completion"   value={`${org?.completionPct ?? 0}%`}                  delta={`${org?.completedTasks ?? 0}/${org?.totalTasks ?? 0} tasks`}    trend="up"   color="text-emerald-500" />
+        <KPICard icon={CheckCircle2} label="On Track"         value={`${org?.greenDivisions ?? 0}/${org?.divisionsCount ?? 0}`} delta={`${org?.amberDivisions ?? 0} at risk`}              trend={org?.redDivisions ? 'down' : 'up'}  color="text-green-500" />
+        <KPICard icon={Clock}        label="Overdue Tasks"    value={String(org?.overdueTasks ?? '–')}               delta="across all divisions"                                           trend={org?.overdueTasks ? 'down' : 'flat'} color="text-red-500" />
+        <KPICard icon={DollarSign}   label="Total Budget"     value={`₹${org ? (org.totalBudget / 100000).toFixed(0) : 0}L`} delta="allocated across divisions"                           trend="flat" color="text-violet-500" />
+        <KPICard icon={Users}        label="Total Members"    value={String(org?.totalMembers ?? '–')}               delta={`${org?.divisionsCount ?? 0} divisions`}                        trend="flat" color="text-amber-500" />
+      </div>
+
+      {/* ── Charts Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Portfolio Heatmap */}
+        {/* Cross-division velocity */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Portfolio Heatmap — All Projects</CardTitle>
-              <div className="flex gap-2 text-[10px]">
-                <span className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />On Track ({healthCounts.green})</span>
-                <span className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-full bg-amber-500" />At Risk ({healthCounts.amber})</span>
-                <span className="flex items-center gap-1"><div className="h-2.5 w-2.5 rounded-full bg-red-500" />Off Track ({healthCounts.red})</span>
+              <CardTitle className="text-sm">Cross-Division Weekly Velocity (12 weeks)</CardTitle>
+              <div className="flex gap-3">
+                {scorecards.map((d: any) => (
+                  <span key={d.divisionId} className="text-[10px] flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                    {d.name.split(' ')[0]}
+                  </span>
+                ))}
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {portfolioProjects.map((p) => {
-                const r = ragStyle[p.health];
-                return (
-                  <div key={p.id} className={cn('rounded-lg p-3 border cursor-pointer hover:shadow-md transition-shadow', r.bg)}>
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className={cn('h-2.5 w-2.5 rounded-full', r.dot)} />
-                      <span className="text-xs font-bold">{p.key}</span>
-                    </div>
-                    <div className="text-[11px] font-medium truncate mb-1">{p.name}</div>
-                    <div className="h-2 rounded-full bg-white/60 dark:bg-black/20 overflow-hidden mb-1.5">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${p.pct}%`, backgroundColor: p.health === 'green' ? '#10B981' : p.health === 'amber' ? '#F59E0B' : '#EF4444' }} />
-                    </div>
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className={cn('font-bold', r.text)}>{p.pct}%</span>
-                      <span className="text-muted-foreground">{p.division}</span>
-                    </div>
-                    {p.overdue > 0 && <div className="text-[10px] text-red-600 font-medium mt-1">{p.overdue} overdue</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Utilization Pie */}
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Headcount Utilization</CardTitle></CardHeader>
-          <CardContent>
             <ResponsiveContainer width="100%" height={200}>
-              <RPieChart>
-                <Pie data={utilization} dataKey="value" nameKey="name" outerRadius={65} innerRadius={35} label={{ fontSize: 10 }}>
-                  {utilization.map((d, i) => <Cell key={i} fill={d.color} />)}
-                </Pie>
-                <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-              </RPieChart>
-            </ResponsiveContainer>
-            <div className="text-center text-xs text-muted-foreground mt-1">{totalTeam} total resources across {portfolioProjects.length} projects</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Velocity Trend */}
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Org Velocity Trend (12 weeks)</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={velocityTrend}>
-                <defs>
-                  <linearGradient id="vGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <AreaChart data={velocity.length ? velocity : Array.from({ length: 12 }, (_, i) => ({ week: `W${i + 1}` }))}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="week" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip />
-                <Area type="monotone" dataKey="throughput" stroke="#3B82F6" fill="url(#vGrad)" strokeWidth={2} />
-                <Line type="monotone" dataKey="target" stroke="#94A3B8" strokeDasharray="5 5" dot={false} />
+                {scorecards.map((d: any) => (
+                  <Area key={d.divisionId} type="monotone" dataKey={d.name} stroke={d.color} fill={d.color} fillOpacity={0.08} strokeWidth={2} dot={false} />
+                ))}
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Budget by Division */}
+        {/* Headcount utilization */}
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Budget by Division ($k)</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Headcount Utilization</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={divisionBudget} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis type="number" tick={{ fontSize: 10 }} />
-                <YAxis type="category" dataKey="division" tick={{ fontSize: 10 }} width={80} />
-                <Tooltip formatter={(v: number) => `$${v}k`} />
+              <RPieChart>
+                <Pie data={UTILIZATION_STATIC} dataKey="value" nameKey="name" outerRadius={65} innerRadius={35} label={{ fontSize: 10 }}>
+                  {UTILIZATION_STATIC.map((d, i) => <Cell key={i} fill={d.color} />)}
+                </Pie>
+                <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="allocated" fill="#E2E8F0" name="Allocated" radius={[0, 4, 4, 0]} />
-                <Bar dataKey="spent" name="Spent" radius={[0, 4, 4, 0]}>
-                  {divisionBudget.map((d, i) => <Cell key={i} fill={d.color} />)}
-                </Bar>
-              </BarChart>
+              </RPieChart>
             </ResponsiveContainer>
+            <div className="text-center text-xs text-muted-foreground mt-1">
+              {org?.totalMembers ?? 0} total resources across {org?.divisionsCount ?? 0} divisions
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Bottom Row */}
+      {/* ── Budget ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Division Budget Utilisation (₹ Lakhs)</CardTitle>
+            <span className="text-xs text-muted-foreground">Total: ₹{org ? (org.totalBudget / 100000).toFixed(0) : 0}L allocated</span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={budgetChartData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+              <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v) => `₹${v}L`} />
+              <YAxis type="category" dataKey="division" tick={{ fontSize: 10 }} width={90} />
+              <Tooltip formatter={(v: number) => `₹${v}L`} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="allocated" fill="#E2E8F0" name="Allocated" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="spent"     name="Estimated Spend" radius={[0, 4, 4, 0]}>
+                {budgetChartData.map((d: any, i: number) => <Cell key={i} fill={d.color} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* ── Alerts + Milestones ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Key Milestones */}
+        {/* Key milestones */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">Key Milestones — This Month</CardTitle>
-              <Badge variant="outline" className="text-[10px]">{milestones.length} milestones</Badge>
+              <Badge variant="outline" className="text-[10px]">{MILESTONES.length}</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            {milestones.map((m, i) => {
+            {MILESTONES.map((m, i) => {
               const r = ragStyle[m.health];
               return (
                 <div key={i} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/30 cursor-pointer">
@@ -252,48 +351,39 @@ export function ExecutiveDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Top Risks */}
+        {/* Escalated alerts (real from API) */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-red-500" /> Escalated Risks</CardTitle>
-              <Badge variant="destructive" className="text-[10px]">{topRisks.length} active</Badge>
+              <CardTitle className="text-sm flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-amber-500" /> Division Alerts
+              </CardTitle>
+              {alerts.length > 0 && <Badge variant="destructive" className="text-[10px]">{alerts.length}</Badge>}
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            {topRisks.map((r, i) => (
-              <div key={i} className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20 p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="outline" className="text-[10px] font-mono">{r.project}</Badge>
-                  <Badge className={cn('text-[10px]', r.severity === 'critical' ? 'bg-red-600 text-white' : r.severity === 'high' ? 'bg-orange-500 text-white' : 'bg-amber-100 text-amber-800')}>{r.severity}</Badge>
-                  <span className="text-[11px] text-muted-foreground ml-auto">{r.owner}</span>
-                </div>
-                <p className="text-xs">{r.risk}</p>
+            {alerts.length === 0 ? (
+              <div className="flex flex-col items-center py-6 gap-2">
+                <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+                <p className="text-sm font-medium">All divisions on track</p>
+                <p className="text-xs text-muted-foreground">No escalated alerts at this time.</p>
               </div>
-            ))}
+            ) : (
+              alerts.map((a: any, i: number) => (
+                <div key={i} className={cn('rounded-lg border p-3', a.severity === 'critical' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50')}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="text-[10px]">{a.division}</Badge>
+                    <Badge className={cn('text-[10px]', a.severity === 'critical' ? 'bg-red-600 text-white' : 'bg-amber-500 text-white')}>
+                      {a.severity}
+                    </Badge>
+                  </div>
+                  <p className="text-xs">{a.message}</p>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
-  );
-}
-
-function KPICard({ icon: Icon, label, value, delta, trend, color }: {
-  icon: typeof TrendingUp; label: string; value: string; delta: string;
-  trend: 'up' | 'down' | 'flat'; color: string;
-}) {
-  const TrendIcon = trend === 'up' ? ArrowUpRight : trend === 'down' ? ArrowDownRight : Minus;
-  const trendColor = trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-muted-foreground';
-  return (
-    <Card className="p-3">
-      <div className="flex items-center gap-2 mb-1">
-        <Icon className={cn('h-4 w-4', color)} />
-        <span className="text-[11px] text-muted-foreground">{label}</span>
-      </div>
-      <div className="text-xl font-bold">{value}</div>
-      <div className={cn('text-[10px] flex items-center gap-0.5 mt-0.5', trendColor)}>
-        <TrendIcon className="h-3 w-3" /> {delta}
-      </div>
-    </Card>
   );
 }

@@ -1,66 +1,117 @@
-const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 
+const commentsStore = new Map();
+
+// Seed some comments for dev tasks so the UI isn't empty
+const SEED = [
+  {
+    id: 'c1', orgId: 'dev-org-id', taskId: 't1',
+    authorId: 'dev-project_manager-id',
+    author: { id: 'dev-project_manager-id', name: 'Demo PM', avatar_url: null },
+    body: 'Great progress on this task! Please make sure to test in Safari as well — there were animation issues in the previous iteration.',
+    parentId: null, isEdited: false,
+    createdAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+  },
+  {
+    id: 'c2', orgId: 'dev-org-id', taskId: 't1',
+    authorId: 'dev-member-id',
+    author: { id: 'dev-member-id', name: 'Demo Member', avatar_url: null },
+    body: 'Safari issues fixed! Added cross-browser tests in Playwright. Ready for review.',
+    parentId: 'c1', isEdited: false,
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+  },
+  {
+    id: 'c3', orgId: 'dev-org-id', taskId: 't2',
+    authorId: 'dev-project_manager-id',
+    author: { id: 'dev-project_manager-id', name: 'Demo PM', avatar_url: null },
+    body: 'Remember to handle token rotation edge cases — especially concurrent refresh scenarios.',
+    parentId: null, isEdited: false,
+    createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+  },
+];
+
+SEED.forEach((c) => commentsStore.set(c.id, c));
+
+function toResponse(comment, replies = []) {
+  return {
+    id: comment.id,
+    author: comment.author,
+    body: comment.body,
+    is_edited: comment.isEdited,
+    created_at: comment.createdAt,
+    replies: replies.map((r) => ({
+      id: r.id,
+      author: r.author,
+      body: r.body,
+      is_edited: r.isEdited,
+      created_at: r.createdAt,
+    })),
+  };
+}
+
+// Build author object from user info stored on comment (or fallback)
+function resolveAuthor(userId) {
+  const MAP = {
+    'dev-org_admin-id':       { id: 'dev-org_admin-id',       name: 'Demo Admin',     avatar_url: null },
+    'dev-division_admin-id':  { id: 'dev-division_admin-id',  name: 'Demo Div Admin', avatar_url: null },
+    'dev-project_manager-id': { id: 'dev-project_manager-id', name: 'Demo PM',        avatar_url: null },
+    'dev-member-id':          { id: 'dev-member-id',          name: 'Demo Member',    avatar_url: null },
+    'dev-executive-id':       { id: 'dev-executive-id',       name: 'Demo Executive', avatar_url: null },
+    'dev-viewer-id':          { id: 'dev-viewer-id',          name: 'Demo Viewer',    avatar_url: null },
+  };
+  return MAP[userId] || { id: userId, name: 'Unknown User', avatar_url: null };
+}
+
 class CommentService {
-  async listByTask(orgId, taskId) {
-    const comments = await prisma.comment.findMany({
-      where: { orgId, taskId, deletedAt: null, parentId: null },
-      include: {
-        author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
-        replies: {
-          where: { deletedAt: null },
-          include: { author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return comments.map((c) => ({
-      id: c.id,
-      author: { id: c.author.id, name: `${c.author.firstName} ${c.author.lastName}`, avatar_url: c.author.avatarUrl },
-      body: c.body,
-      is_edited: c.isEdited,
-      created_at: c.createdAt,
-      replies: c.replies.map((r) => ({
-        id: r.id,
-        author: { id: r.author.id, name: `${r.author.firstName} ${r.author.lastName}`, avatar_url: r.author.avatarUrl },
-        body: r.body,
-        is_edited: r.isEdited,
-        created_at: r.createdAt,
-      })),
-    }));
-  }
-
-  async create(orgId, taskId, userId, { body, parent_id }) {
-    const task = await prisma.task.findFirst({ where: { id: taskId, orgId, deletedAt: null } });
-    if (!task) throw ApiError.notFound('Task not found');
-
-    return prisma.comment.create({
-      data: { orgId, taskId, authorId: userId, body, parentId: parent_id || null },
-      include: { author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
+  listByTask(orgId, taskId) {
+    const all = [...commentsStore.values()].filter(
+      (c) => c.orgId === orgId && c.taskId === taskId && !c.deletedAt
+    );
+    const roots = all.filter((c) => !c.parentId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return roots.map((root) => {
+      const replies = all
+        .filter((c) => c.parentId === root.id)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      return toResponse(root, replies);
     });
   }
 
-  async update(orgId, commentId, userId, { body }) {
-    const comment = await prisma.comment.findFirst({ where: { id: commentId, orgId, deletedAt: null } });
-    if (!comment) throw ApiError.notFound('Comment not found');
+  create(orgId, taskId, userId, { body, parent_id }) {
+    if (!body || !body.trim()) throw ApiError.badRequest('Comment body is required');
+
+    const id = `c-${crypto.randomUUID()}`;
+    const comment = {
+      id,
+      orgId,
+      taskId,
+      authorId: userId,
+      author: resolveAuthor(userId),
+      body: body.trim(),
+      parentId: parent_id || null,
+      isEdited: false,
+      createdAt: new Date().toISOString(),
+    };
+    commentsStore.set(id, comment);
+    return toResponse(comment, []);
+  }
+
+  update(orgId, commentId, userId, { body }) {
+    const comment = commentsStore.get(commentId);
+    if (!comment || comment.orgId !== orgId || comment.deletedAt) throw ApiError.notFound('Comment not found');
     if (comment.authorId !== userId) throw ApiError.forbidden('Can only edit own comments');
 
-    return prisma.comment.update({
-      where: { id: commentId },
-      data: { body, isEdited: true, editedAt: new Date() },
-    });
+    const updated = { ...comment, body: body.trim(), isEdited: true, editedAt: new Date().toISOString() };
+    commentsStore.set(commentId, updated);
+    return toResponse(updated, []);
   }
 
-  async delete(orgId, commentId, userId, userRole) {
-    const comment = await prisma.comment.findFirst({ where: { id: commentId, orgId, deletedAt: null } });
-    if (!comment) throw ApiError.notFound('Comment not found');
+  delete(orgId, commentId, userId, userRole) {
+    const comment = commentsStore.get(commentId);
+    if (!comment || comment.orgId !== orgId || comment.deletedAt) throw ApiError.notFound('Comment not found');
     if (comment.authorId !== userId && !['org_admin', 'project_manager'].includes(userRole)) {
       throw ApiError.forbidden('Insufficient permissions');
     }
-
-    return prisma.comment.update({ where: { id: commentId }, data: { deletedAt: new Date() } });
+    commentsStore.set(commentId, { ...comment, deletedAt: new Date().toISOString() });
   }
 }
 

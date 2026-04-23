@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { DndContext, DragOverlay, closestCorners, PointerSensor, useSensor, useSensors, type DragStartEvent, type DragEndEvent, type DragOverEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Filter, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
-import { useKanbanTasks, useCreateTask, useMoveTask, useProject } from '@/api/hooks';
+import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask } from '@/api/hooks';
 import type { Task, KanbanColumn, WorkflowStatus } from '@/types';
 
 // ─── Fallback mock data (used when API is unavailable) ──
@@ -51,7 +51,7 @@ const fallbackMembers = [
 
 // ─── Sortable Task Card ─────────────────────────────────
 
-function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
+function SortableTaskCard({ task, onClick, onDelete }: { task: Task; onClick: () => void; onDelete: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { task } });
 
   const style = {
@@ -62,12 +62,62 @@ function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <TaskCardContent task={task} onClick={onClick} dragListeners={listeners} />
+      <TaskCardContent task={task} onClick={onClick} dragListeners={listeners} onDelete={onDelete} />
     </div>
   );
 }
 
-function TaskCardContent({ task, onClick, dragListeners }: { task: Task; onClick?: () => void; dragListeners?: any }) {
+function TaskCardMenu({ task, onDelete, onOpen }: { task: Task; onDelete: (id: string) => void; onOpen: (task: Task) => void }) {
+  const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setConfirmDelete(false); } }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-accent"
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+      >
+        <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-6 z-50 w-40 rounded-md border bg-popover shadow-lg py-1">
+          <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
+            onClick={(e) => { e.stopPropagation(); onOpen(task); setOpen(false); }}
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /> Open Task
+          </button>
+          <div className="my-1 border-t" />
+          {!confirmDelete ? (
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-accent"
+              onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete Task
+            </button>
+          ) : (
+            <div className="px-3 py-2 space-y-1" onClick={(e) => e.stopPropagation()}>
+              <p className="text-xs text-destructive font-medium">Delete this task?</p>
+              <div className="flex gap-1">
+                <button className="flex-1 rounded bg-destructive text-destructive-foreground text-xs py-1" onClick={() => { onDelete(task.id); setOpen(false); }}>Delete</button>
+                <button className="flex-1 rounded border text-xs py-1" onClick={() => setConfirmDelete(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskCardContent({ task, onClick, dragListeners, onDelete }: { task: Task; onClick?: () => void; dragListeners?: any; onDelete?: (id: string) => void }) {
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && !task.completed_at;
 
   return (
@@ -82,9 +132,7 @@ function TaskCardContent({ task, onClick, dragListeners }: { task: Task; onClick
           </button>
           <span className="text-xs font-mono text-muted-foreground">{task.task_key}</span>
         </div>
-        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-accent" onClick={(e) => e.stopPropagation()}>
-          <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-        </button>
+        {onDelete && <TaskCardMenu task={task} onDelete={onDelete} onOpen={(t) => onClick && onClick()} />}
       </div>
 
       <h4 className="text-sm font-medium mb-2 leading-snug">{task.title}</h4>
@@ -125,7 +173,7 @@ function TaskCardContent({ task, onClick, dragListeners }: { task: Task; onClick
 
 // ─── Droppable Column ───────────────────────────────────
 
-function KanbanColumnComponent({ column, onAddTask, onTaskClick }: { column: KanbanColumn; onAddTask: (statusId: string) => void; onTaskClick: (task: Task) => void }) {
+function KanbanColumnComponent({ column, onAddTask, onTaskClick, onDeleteTask }: { column: KanbanColumn; onAddTask: (statusId: string) => void; onTaskClick: (task: Task) => void; onDeleteTask: (id: string) => void }) {
   return (
     <div className="flex flex-col w-72 shrink-0">
       <div className="flex items-center justify-between px-2 py-2 mb-3">
@@ -144,7 +192,7 @@ function KanbanColumnComponent({ column, onAddTask, onTaskClick }: { column: Kan
       <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="flex-1 space-y-2 overflow-y-auto rounded-lg bg-secondary/30 p-2 min-h-[200px]" data-column-id={column.id}>
           {column.tasks.map((task) => (
-            <SortableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+            <SortableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} onDelete={onDeleteTask} />
           ))}
           {column.tasks.length === 0 && (
             <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed text-sm text-muted-foreground">
@@ -168,6 +216,7 @@ export function KanbanBoardPage() {
   const projectQuery = useProject(projectId || '');
   const createTask = useCreateTask(projectId || '');
   const moveTask = useMoveTask();
+  const deleteTask = useDeleteTask();
 
   // State
   const [columns, setColumns] = useState<KanbanColumn[]>(fallbackColumns);
@@ -352,7 +401,7 @@ export function KanbanBoardPage() {
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
           <div className="flex gap-4 h-full min-w-max">
             {filteredColumns.map((column) => (
-              <KanbanColumnComponent key={column.id} column={column} onAddTask={handleAddTask} onTaskClick={handleTaskClick} />
+              <KanbanColumnComponent key={column.id} column={column} onAddTask={handleAddTask} onTaskClick={handleTaskClick} onDeleteTask={(id) => deleteTask.mutate(id)} />
             ))}
           </div>
 

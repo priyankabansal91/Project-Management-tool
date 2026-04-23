@@ -1,9 +1,17 @@
 import { useState } from 'react';
-import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Bell, Check, CheckCheck, MessageSquare, UserPlus, AlertTriangle, FolderKanban, ArrowRightCircle, X } from 'lucide-react';
+import {
+  Bell, Check, CheckCheck, MessageSquare, UserPlus, AlertTriangle,
+  FolderKanban, ArrowRightCircle, X, Loader2,
+} from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
+import {
+  useNotifications,
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+  useDeleteNotification,
+} from '@/api/hooks';
 
 interface Notification {
   id: string;
@@ -16,15 +24,6 @@ interface Notification {
   is_read: boolean;
   created_at: string;
 }
-
-const mockNotifications: Notification[] = [
-  { id: '1', type: 'task_assigned', title: 'New task assigned', body: 'You were assigned "Implement search functionality" in CPR', actor: 'Bob Martinez', is_read: false, created_at: new Date(Date.now() - 300000).toISOString() },
-  { id: '2', type: 'task_commented', title: 'New comment', body: 'Carol Johnson commented on CPR-1: "Safari issues fixed!"', actor: 'Carol Johnson', is_read: false, created_at: new Date(Date.now() - 3600000).toISOString() },
-  { id: '3', type: 'due_date_reminder', title: 'Task due tomorrow', body: 'CPR-2 "Implement authentication flow" is due Feb 20', actor: 'System', is_read: false, created_at: new Date(Date.now() - 7200000).toISOString() },
-  { id: '4', type: 'task_updated', title: 'Status changed', body: 'CPR-4 moved from "In Review" to "Done"', actor: 'David Park', is_read: true, created_at: new Date(Date.now() - 14400000).toISOString() },
-  { id: '5', type: 'member_added', title: 'New team member', body: 'Eve Wilson was added to your organization', actor: 'Alice Chen', is_read: true, created_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: '6', type: 'project_created', title: 'New project', body: 'Project "Mobile App v2" (MAV2) was created', actor: 'Bob Martinez', is_read: true, created_at: new Date(Date.now() - 172800000).toISOString() },
-];
 
 const typeIcons: Record<string, typeof Bell> = {
   task_assigned: UserPlus,
@@ -52,19 +51,20 @@ interface NotificationPanelProps {
 }
 
 export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
-  const [notifications, setNotifications] = useState(mockNotifications);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
-  const filtered = filter === 'unread' ? notifications.filter((n) => !n.is_read) : notifications;
+  const { data, isLoading } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const deleteNotif = useDeleteNotification();
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
-  };
+  const notifications: Notification[] = (data?.items ?? []) as Notification[];
+  const unreadCount = data?.unreadCount ?? notifications.filter((n) => !n.is_read).length;
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-  };
+  const filtered = filter === 'unread'
+    ? notifications.filter((n) => !n.is_read)
+    : notifications;
 
   if (!open) return null;
 
@@ -85,7 +85,13 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
           </div>
           <div className="flex items-center gap-1">
             {unreadCount > 0 && (
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={markAllRead}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => markAllRead.mutate()}
+                disabled={markAllRead.isPending}
+              >
                 <CheckCheck className="h-3.5 w-3.5" /> Mark all read
               </Button>
             )}
@@ -95,15 +101,28 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
 
         {/* Filter tabs */}
         <div className="flex items-center gap-1 px-4 py-2 border-b bg-secondary/30">
-          <button onClick={() => setFilter('all')} className={cn('px-3 py-1 rounded-full text-xs font-medium', filter === 'all' ? 'bg-card shadow-sm' : 'text-muted-foreground')}>All</button>
-          <button onClick={() => setFilter('unread')} className={cn('px-3 py-1 rounded-full text-xs font-medium', filter === 'unread' ? 'bg-card shadow-sm' : 'text-muted-foreground')}>
+          <button
+            onClick={() => setFilter('all')}
+            className={cn('px-3 py-1 rounded-full text-xs font-medium', filter === 'all' ? 'bg-card shadow-sm' : 'text-muted-foreground')}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilter('unread')}
+            className={cn('px-3 py-1 rounded-full text-xs font-medium', filter === 'unread' ? 'bg-card shadow-sm' : 'text-muted-foreground')}
+          >
             Unread ({unreadCount})
           </button>
         </div>
 
         {/* Notifications list */}
         <div className="flex-1 overflow-y-auto">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mb-2 opacity-50" />
+              <p className="text-sm">Loading notifications...</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bell className="h-8 w-8 mb-2 opacity-30" />
               <p className="text-sm">No notifications</p>
@@ -114,9 +133,11 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
               return (
                 <div
                   key={notif.id}
-                  onClick={() => markAsRead(notif.id)}
+                  onMouseEnter={() => setHoveredId(notif.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => markRead.mutate(notif.id)}
                   className={cn(
-                    'flex gap-3 px-4 py-3 border-b last:border-0 cursor-pointer hover:bg-accent/50 transition-colors',
+                    'relative flex gap-3 px-4 py-3 border-b last:border-0 cursor-pointer hover:bg-accent/50 transition-colors',
                     !notif.is_read && 'bg-primary/[0.02]'
                   )}
                 >
@@ -137,6 +158,20 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
                       <span className="text-[10px] text-muted-foreground">{timeAgo(notif.created_at)}</span>
                     </div>
                   </div>
+
+                  {/* Delete button (shown on hover) */}
+                  {hoveredId === notif.id && (
+                    <button
+                      className="absolute right-2 top-2 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotif.mutate(notif.id);
+                      }}
+                      title="Delete notification"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               );
             })
@@ -156,7 +191,8 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const unreadCount = mockNotifications.filter((n) => !n.is_read).length;
+  const { data } = useNotifications();
+  const unreadCount = data?.unreadCount ?? 0;
 
   return (
     <div className="relative">
