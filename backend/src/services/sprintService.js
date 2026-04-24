@@ -1,54 +1,42 @@
+const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
-const taskService = require('./taskService');
 
-const sprintsStore = new Map();
+const TASK_INCLUDE = {
+  project: { select: { key: true, name: true, color: true } },
+  assignee: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+  reporter: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+  _count: { select: { comments: { where: { deletedAt: null } }, subtasks: true } },
+};
 
-// Seed sprints for the default engineering project
-const defaultSprints = [
-  {
-    id: 'sprint_1',
-    orgId: 'dev-org-id',
-    projectId: 'proj_default_1',
-    name: 'Sprint 1',
-    goal: 'Set up project foundation and core architecture',
-    status: 'completed',
-    startDate: '2026-01-05',
-    endDate: '2026-01-18',
-    taskIds: [],
-    createdAt: new Date('2026-01-05'),
-    updatedAt: new Date('2026-01-18'),
-  },
-  {
-    id: 'sprint_2',
-    orgId: 'dev-org-id',
-    projectId: 'proj_default_1',
-    name: 'Sprint 2',
-    goal: 'Implement user authentication and dashboard',
-    status: 'active',
-    startDate: '2026-01-19',
-    endDate: '2026-02-01',
-    taskIds: [],
-    createdAt: new Date('2026-01-19'),
-    updatedAt: new Date('2026-01-19'),
-  },
-  {
-    id: 'sprint_3',
-    orgId: 'dev-org-id',
-    projectId: 'proj_default_1',
-    name: 'Sprint 3',
-    goal: 'Task management and reporting features',
-    status: 'planned',
-    startDate: '2026-02-02',
-    endDate: '2026-02-15',
-    taskIds: [],
-    createdAt: new Date('2026-02-02'),
-    updatedAt: new Date('2026-02-02'),
-  },
-];
+function fmtUser(u) {
+  if (!u) return null;
+  return { id: u.id, name: `${u.firstName} ${u.lastName}`, avatar_url: u.avatarUrl || null };
+}
 
-defaultSprints.forEach((s) => sprintsStore.set(s.id, s));
+function fmtTask(t) {
+  return {
+    id: t.id,
+    seq_number: t.seqNumber,
+    task_key: `${t.project?.key ?? '?'}-${t.seqNumber}`,
+    title: t.title,
+    description: t.description,
+    status_id: t.statusId,
+    status_name: t.statusName,
+    priority: t.priority,
+    assignee: fmtUser(t.assignee),
+    reporter: fmtUser(t.reporter),
+    due_date: t.dueDate,
+    estimated_hours: t.estimatedHours ? Number(t.estimatedHours) : null,
+    logged_hours: Number(t.loggedHours ?? 0),
+    sprint_id: t.sprintId,
+    completed_at: t.completedAt,
+    created_at: t.createdAt,
+    updated_at: t.updatedAt,
+  };
+}
 
-function formatSprint(sprint, tasks = []) {
+function fmtSprint(sprint) {
+  const tasks = sprint.tasks || [];
   return {
     id: sprint.id,
     project_id: sprint.projectId,
@@ -57,135 +45,112 @@ function formatSprint(sprint, tasks = []) {
     status: sprint.status,
     start_date: sprint.startDate,
     end_date: sprint.endDate,
-    tasks,
+    tasks: tasks.map(fmtTask),
     task_count: tasks.length,
-    completed_tasks: tasks.filter((t) => t.status_name?.toLowerCase() === 'done').length,
+    completed_tasks: tasks.filter((t) => t.completedAt).length,
     created_at: sprint.createdAt,
     updated_at: sprint.updatedAt,
   };
 }
 
+const SPRINT_INCLUDE = {
+  tasks: {
+    where: { deletedAt: null, isArchived: false },
+    include: TASK_INCLUDE,
+    orderBy: { position: 'asc' },
+  },
+};
+
 class SprintService {
   async listByProject(orgId, projectId) {
-    const sprints = [...sprintsStore.values()]
-      .filter((s) => s.orgId === orgId && s.projectId === projectId && !s.deletedAt)
-      .sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
-
-    const result = [];
-    for (const sprint of sprints) {
-      const tasks = await this._resolveSprintTasks(orgId, sprint);
-      result.push(formatSprint(sprint, tasks));
-    }
-    return result;
+    const sprints = await prisma.sprint.findMany({
+      where: { orgId, projectId },
+      include: SPRINT_INCLUDE,
+      orderBy: { startDate: 'asc' },
+    });
+    return sprints.map(fmtSprint);
   }
 
   async getBacklog(orgId, projectId) {
-    // Tasks in this project not assigned to any sprint
-    const allSprints = [...sprintsStore.values()]
-      .filter((s) => s.orgId === orgId && s.projectId === projectId && !s.deletedAt);
-    const sprintedTaskIds = new Set(allSprints.flatMap((s) => s.taskIds));
-
-    const allTasks = taskService.listAllForProject(orgId, projectId);
-    return allTasks.filter((t) => !sprintedTaskIds.has(t.id));
+    const tasks = await prisma.task.findMany({
+      where: { orgId, projectId, sprintId: null, deletedAt: null, isArchived: false },
+      include: TASK_INCLUDE,
+      orderBy: { position: 'asc' },
+    });
+    return tasks.map(fmtTask);
   }
 
   async create(orgId, projectId, userId, data) {
-    const id = `sprint_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    const sprint = {
-      id,
-      orgId,
-      projectId,
-      name: data.name,
-      goal: data.goal || '',
-      status: 'planned',
-      startDate: data.start_date || null,
-      endDate: data.end_date || null,
-      taskIds: [],
-      createdBy: userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    sprintsStore.set(id, sprint);
-    return formatSprint(sprint, []);
+    const sprint = await prisma.sprint.create({
+      data: {
+        orgId,
+        projectId,
+        name: data.name,
+        goal: data.goal || null,
+        status: 'planned',
+        startDate: data.start_date ? new Date(data.start_date) : null,
+        endDate: data.end_date ? new Date(data.end_date) : null,
+        createdBy: userId,
+      },
+      include: SPRINT_INCLUDE,
+    });
+    return fmtSprint(sprint);
   }
 
   async update(orgId, sprintId, data) {
-    const sprint = sprintsStore.get(sprintId);
-    if (!sprint || sprint.orgId !== orgId || sprint.deletedAt) throw ApiError.notFound('Sprint not found');
+    const existing = await prisma.sprint.findFirst({ where: { id: sprintId, orgId } });
+    if (!existing) throw ApiError.notFound('Sprint not found');
 
-    if (data.name !== undefined) sprint.name = data.name;
-    if (data.goal !== undefined) sprint.goal = data.goal;
-    if (data.start_date !== undefined) sprint.startDate = data.start_date;
-    if (data.end_date !== undefined) sprint.endDate = data.end_date;
-    if (data.status !== undefined) {
-      // If starting: mark any current active sprint as completed first
-      if (data.status === 'active') {
-        [...sprintsStore.values()]
-          .filter((s) => s.orgId === orgId && s.projectId === sprint.projectId && s.status === 'active' && s.id !== sprintId)
-          .forEach((s) => { s.status = 'completed'; s.updatedAt = new Date(); sprintsStore.set(s.id, s); });
-      }
-      sprint.status = data.status;
+    if (data.status === 'active') {
+      await prisma.sprint.updateMany({
+        where: { orgId, projectId: existing.projectId, status: 'active', id: { not: sprintId } },
+        data: { status: 'completed' },
+      });
     }
-    sprint.updatedAt = new Date();
-    sprintsStore.set(sprintId, sprint);
 
-    const tasks = await this._resolveSprintTasks(orgId, sprint);
-    return formatSprint(sprint, tasks);
+    const sprint = await prisma.sprint.update({
+      where: { id: sprintId },
+      data: {
+        ...(data.name       !== undefined && { name: data.name }),
+        ...(data.goal       !== undefined && { goal: data.goal }),
+        ...(data.status     !== undefined && { status: data.status }),
+        ...(data.start_date !== undefined && { startDate: data.start_date ? new Date(data.start_date) : null }),
+        ...(data.end_date   !== undefined && { endDate: data.end_date ? new Date(data.end_date) : null }),
+      },
+      include: SPRINT_INCLUDE,
+    });
+    return fmtSprint(sprint);
   }
 
   async delete(orgId, sprintId) {
-    const sprint = sprintsStore.get(sprintId);
-    if (!sprint || sprint.orgId !== orgId || sprint.deletedAt) throw ApiError.notFound('Sprint not found');
-    sprint.deletedAt = new Date();
-    sprintsStore.set(sprintId, sprint);
+    const existing = await prisma.sprint.findFirst({ where: { id: sprintId, orgId } });
+    if (!existing) throw ApiError.notFound('Sprint not found');
+    await prisma.task.updateMany({ where: { sprintId }, data: { sprintId: null } });
+    await prisma.sprint.delete({ where: { id: sprintId } });
     return { success: true };
   }
 
   async addTask(orgId, sprintId, taskId) {
-    const sprint = sprintsStore.get(sprintId);
-    if (!sprint || sprint.orgId !== orgId || sprint.deletedAt) throw ApiError.notFound('Sprint not found');
+    const sprint = await prisma.sprint.findFirst({ where: { id: sprintId, orgId } });
+    if (!sprint) throw ApiError.notFound('Sprint not found');
 
-    // Remove from any other sprint in this project first
-    [...sprintsStore.values()]
-      .filter((s) => s.orgId === orgId && s.projectId === sprint.projectId && s.id !== sprintId && !s.deletedAt)
-      .forEach((s) => {
-        const idx = s.taskIds.indexOf(taskId);
-        if (idx !== -1) { s.taskIds.splice(idx, 1); s.updatedAt = new Date(); sprintsStore.set(s.id, s); }
-      });
+    const task = await prisma.task.findFirst({ where: { id: taskId, orgId } });
+    if (!task) throw ApiError.notFound('Task not found');
 
-    if (!sprint.taskIds.includes(taskId)) {
-      sprint.taskIds.push(taskId);
-      sprint.updatedAt = new Date();
-      sprintsStore.set(sprintId, sprint);
-    }
+    await prisma.task.update({ where: { id: taskId }, data: { sprintId } });
 
-    const tasks = await this._resolveSprintTasks(orgId, sprint);
-    return formatSprint(sprint, tasks);
+    const updated = await prisma.sprint.findUnique({ where: { id: sprintId }, include: SPRINT_INCLUDE });
+    return fmtSprint(updated);
   }
 
   async removeTask(orgId, sprintId, taskId) {
-    const sprint = sprintsStore.get(sprintId);
-    if (!sprint || sprint.orgId !== orgId || sprint.deletedAt) throw ApiError.notFound('Sprint not found');
+    const sprint = await prisma.sprint.findFirst({ where: { id: sprintId, orgId } });
+    if (!sprint) throw ApiError.notFound('Sprint not found');
 
-    sprint.taskIds = sprint.taskIds.filter((id) => id !== taskId);
-    sprint.updatedAt = new Date();
-    sprintsStore.set(sprintId, sprint);
+    await prisma.task.update({ where: { id: taskId }, data: { sprintId: null } });
 
-    const tasks = await this._resolveSprintTasks(orgId, sprint);
-    return formatSprint(sprint, tasks);
-  }
-
-  async _resolveSprintTasks(orgId, sprint) {
-    const tasks = [];
-    for (const taskId of sprint.taskIds) {
-      try {
-        const task = await taskService.getById(orgId, taskId);
-        tasks.push(taskService.formatTask(task));
-      } catch {
-        // Task deleted — skip it
-      }
-    }
-    return tasks;
+    const updated = await prisma.sprint.findUnique({ where: { id: sprintId }, include: SPRINT_INCLUDE });
+    return fmtSprint(updated);
   }
 }
 
