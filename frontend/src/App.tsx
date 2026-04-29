@@ -45,6 +45,9 @@ import { DivisionConfigPage } from '@/pages/admin/DivisionConfigPage';
 import { AdminHandoffPage } from '@/pages/admin/AdminHandoffPage';
 import { PortfolioDashboardPage } from '@/pages/executive/PortfolioDashboardPage';
 import { CapacityPlanningPage } from '@/pages/pm/CapacityPlanningPage';
+import { GanttPage } from '@/pages/pm/GanttPage';
+import { FeatureFlagsPage } from '@/pages/admin/FeatureFlagsPage';
+import { OnboardingWizardPage } from '@/pages/admin/OnboardingWizardPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -82,6 +85,8 @@ export default function App() {
         <Route path="/projects" element={<ProjectListPage />} />
         <Route path="/projects/:projectId/board" element={<KanbanBoardPage />} />
         <Route path="/projects/:projectId/calendar" element={<CalendarViewPage />} />
+        <Route path="/projects/:projectId/gantt" element={<GanttPage />} />
+        <Route path="/gantt" element={<GanttPage />} />
         <Route path="/my-tasks" element={<MyTasksPage />} />
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
 
@@ -123,6 +128,8 @@ export default function App() {
         <Route path="/admin/approvals" element={<ApprovalInboxPage />} />
         <Route path="/admin/forms" element={<FormsPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />
+        <Route path="/admin/onboarding" element={<OnboardingWizardPage />} />
         <Route path="/reports/advanced" element={<ReportsAdvancedPage />} />
         <Route path="/settings" element={<OrgSettingsPage />} />
         <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />

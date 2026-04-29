@@ -1,4 +1,4 @@
-import { LogOut, ChevronDown, Users } from 'lucide-react';
+import { LogOut, ChevronDown, Users, Building2, Check } from 'lucide-react';
 import { useAuthStore, STAKEHOLDER_PERSONAS } from '@/store/authStore';
 import { Avatar } from '@/components/ui/avatar';
 import { NotificationBell } from '@/components/shared/NotificationPanel';
@@ -7,12 +7,16 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useMyDivisions } from '@/api/hooks';
 
 export function Header() {
-  const { user, currentRole, logout, switchRole } = useAuthStore();
+  const { user, currentRole, currentDivisionId, logout, switchRole, setDivision } = useAuthStore();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
+  const [showDivisionMenu, setShowDivisionMenu] = useState(false);
+  const { data: myDivisions = [] } = useMyDivisions();
+  const activeDivision = myDivisions.find((d: any) => d.divisionId === currentDivisionId);
 
   const handleLogout = () => {
     logout();
@@ -44,6 +48,59 @@ export function Header() {
 
       <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
         <div className="hidden lg:block"><ThemeToggle /></div>
+
+        {/* Division Switcher */}
+        {myDivisions.length > 0 && (
+          <div className="relative hidden md:block">
+            <button
+              onClick={() => { setShowDivisionMenu((o) => !o); setShowUserMenu(false); setShowRoleSwitcher(false); }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 transition-colors border"
+            >
+              <Building2 className="h-3 w-3 text-primary" />
+              <span className="text-primary font-semibold truncate max-w-[100px]">
+                {activeDivision?.divisionName || 'All Divisions'}
+              </span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            </button>
+
+            {showDivisionMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowDivisionMenu(false)} />
+                <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border bg-card shadow-xl z-50 overflow-hidden">
+                  <div className="p-2.5 border-b bg-muted/30">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Switch Division</p>
+                  </div>
+                  <div className="p-1">
+                    <button
+                      onClick={() => { setDivision(null); setShowDivisionMenu(false); }}
+                      className={cn('flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent transition-colors', !currentDivisionId && 'bg-accent font-medium')}
+                    >
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="flex-1 text-left">All Divisions</span>
+                      {!currentDivisionId && <Check className="h-4 w-4 text-primary" />}
+                    </button>
+                    {myDivisions.map((div: any) => (
+                      <button
+                        key={div.divisionId}
+                        onClick={() => { setDivision(div.divisionId); setShowDivisionMenu(false); }}
+                        className={cn('flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent transition-colors', currentDivisionId === div.divisionId && 'bg-accent font-medium')}
+                      >
+                        <div className="h-5 w-5 rounded flex items-center justify-center text-[10px] font-bold text-white bg-primary flex-shrink-0">
+                          {div.divisionName?.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-sm font-medium truncate">{div.divisionName}</p>
+                          <p className="text-[10px] text-muted-foreground capitalize">{div.role?.replace('_', ' ')}</p>
+                        </div>
+                        {currentDivisionId === div.divisionId && <Check className="h-4 w-4 text-primary" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Role Switcher Button */}
         <div className="relative">

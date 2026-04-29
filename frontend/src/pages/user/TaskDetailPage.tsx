@@ -108,7 +108,7 @@ export function TaskDetailPage() {
             <CardContent>
               {task?.description ? (
                 <div className="prose prose-sm max-w-none text-muted-foreground">
-                  {task.description.split('\n').map((line, i) => {
+                  {task.description.split('\n').map((line: string, i: number) => {
                     if (line.startsWith('## ')) return <h3 key={i} className="text-sm font-semibold text-foreground mt-4 mb-2">{line.replace('## ', '')}</h3>;
                     if (line.startsWith('- ')) return <div key={i} className="flex items-start gap-2 ml-2"><span>•</span><span>{line.replace('- ', '')}</span></div>;
                     return <p key={i}>{line}</p>;
@@ -124,7 +124,7 @@ export function TaskDetailPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Comments ({comments.length})</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              {comments.map((comment) => (
+              {comments.map((comment: any) => (
                 <div key={comment.id} className="space-y-4">
                   <div className="flex gap-3">
                     <Avatar name={comment.author.name} size="md" />
@@ -138,7 +138,7 @@ export function TaskDetailPage() {
                   </div>
 
                   {/* Replies */}
-                  {comment.replies.map((reply) => (
+                  {comment.replies.map((reply: any) => (
                     <div key={reply.id} className="flex gap-3 ml-12">
                       <Avatar name={reply.author.name} size="sm" />
                       <div className="flex-1">
@@ -278,7 +278,7 @@ export function TaskDetailPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tags</label>
                   <div className="flex flex-wrap gap-1">
-                    {task.tags.map((tag) => (
+                    {task.tags.map((tag: string) => (
                       <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
                     ))}
                   </div>
