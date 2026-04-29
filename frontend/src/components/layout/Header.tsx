@@ -30,7 +30,7 @@ export function Header() {
   const currentPersona = STAKEHOLDER_PERSONAS.find((p) => p.role === currentRole);
 
   return (
-    <header className="flex h-14 sm:h-16 items-center justify-between border-b bg-card px-3 sm:px-4 md:px-6 gap-2 sm:gap-4 flex-shrink-0">
+    <header className="flex h-14 sm:h-16 items-center justify-between border-b bg-white shadow-sm px-3 sm:px-4 md:px-6 gap-2 sm:gap-4 flex-shrink-0">
       {/* Search */}
       <div className="hidden sm:flex flex-1 max-w-xs md:max-w-md">
         <SearchTrigger />

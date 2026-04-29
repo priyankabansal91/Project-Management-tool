@@ -8,10 +8,11 @@ import type { WorkflowConfig } from '@/types';
 interface ProjectModalProps {
   open: boolean;
   onClose: () => void;
-  onSave: (data: ProjectFormData) => void;
+  onSave: (data: ProjectFormData) => void | Promise<void>;
   project?: ProjectData | null;
   workflows?: WorkflowConfig[];
   saving?: boolean;
+  error?: string;
 }
 
 export interface ProjectFormData {
@@ -48,7 +49,7 @@ const VISIBILITY_OPTIONS = [
   { value: 'public', label: 'Public' },
 ];
 
-export function ProjectModal({ open, onClose, onSave, project, workflows = [], saving = false }: ProjectModalProps) {
+export function ProjectModal({ open, onClose, onSave, project, workflows = [], saving = false, error: externalError }: ProjectModalProps) {
   const isEdit = !!project;
   const [form, setForm] = useState<ProjectFormData>({
     name: '',
@@ -104,12 +105,12 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError('');
     if (validateForm()) {
       try {
-        onSave({
+        await onSave({
           ...form,
           key: form.key.toUpperCase(),
         });
@@ -133,9 +134,9 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Error Message */}
-          {submitError && (
+          {(externalError || submitError) && (
             <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-              {submitError}
+              {externalError || submitError}
             </div>
           )}
 

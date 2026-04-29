@@ -73,6 +73,7 @@ export function ProjectListPage() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   const { data: projectsData, isLoading } = useProjects();
   const { data: workflowsData } = useWorkflows();
@@ -88,11 +89,22 @@ export function ProjectListPage() {
   const filtered = projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
 
   const handleCreateProject = async (data: ProjectFormData) => {
+    setModalError('');
     try {
-      await createProjectMutation.mutateAsync(data as unknown as Record<string, unknown>);
+      const payload = {
+        ...data,
+        description: data.description || undefined,
+        workflow_config_id: data.workflow_config_id || undefined,
+        start_date: data.start_date || undefined,
+        due_date: data.due_date || undefined,
+      };
+      await createProjectMutation.mutateAsync(payload as unknown as Record<string, unknown>);
       setModalOpen(false);
-    } catch (error) {
-      console.error('Failed to create project:', error);
+    } catch (error: any) {
+      const msg =
+        error?.response?.data?.error?.message ||
+        'Failed to create project. Please try again.';
+      setModalError(msg);
     }
   };
 
@@ -115,10 +127,11 @@ export function ProjectListPage() {
 
       <ProjectModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => { setModalOpen(false); setModalError(''); }}
         onSave={handleCreateProject}
         saving={createProjectMutation.isPending}
         workflows={workflows}
+        error={modalError}
       />
 
       {/* Filters */}

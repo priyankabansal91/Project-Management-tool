@@ -104,14 +104,14 @@ export function Sidebar() {
 
   return (
     <aside className={cn(
-      'flex flex-col h-screen border-r bg-card transition-all duration-200 overflow-hidden border-t-4',
+      'flex flex-col h-screen border-r bg-secondary/30 transition-all duration-200 overflow-hidden border-t-4',
       accentClass,
       collapsed ? 'w-16' : 'w-64'
     )}>
       {/* Logo */}
-      <div className="flex h-14 items-center gap-3 border-b px-4 flex-shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm flex-shrink-0">PF</div>
-        {!collapsed && <span className="text-base font-semibold truncate">ProjectFlow</span>}
+      <div className="flex h-14 items-center gap-3 border-b border-border/60 px-4 flex-shrink-0 bg-primary">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 text-white font-bold text-sm flex-shrink-0">PF</div>
+        {!collapsed && <span className="text-base font-semibold truncate text-white">ProjectFlow</span>}
       </div>
 
       {/* Navigation */}
