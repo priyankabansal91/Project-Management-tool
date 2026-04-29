@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
-import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask } from '@/api/hooks';
+import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask } from '@/api/hooks';
 import type { Task, KanbanColumn, WorkflowStatus } from '@/types';
 
 // ─── Fallback mock data (used when API is unavailable) ──
@@ -217,6 +217,7 @@ export function KanbanBoardPage() {
   const createTask = useCreateTask(projectId || '');
   const moveTask = useMoveTask();
   const deleteTask = useDeleteTask();
+  const updateTask = useUpdateTask();
 
   // State
   const [columns, setColumns] = useState<KanbanColumn[]>(fallbackColumns);
@@ -226,9 +227,14 @@ export function KanbanBoardPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [search, setSearch] = useState('');
 
-  // Use API data when available, otherwise fallback
-  const boardColumns = kanbanQuery.data?.columns || columns;
   const projectData = projectQuery.data;
+
+  // Sync API data into local columns so drag-and-drop stays consistent
+  useEffect(() => {
+    if (kanbanQuery.data?.columns) {
+      setColumns(kanbanQuery.data.columns);
+    }
+  }, [kanbanQuery.data]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -237,13 +243,13 @@ export function KanbanBoardPage() {
 
   // Find which column a task belongs to
   const findColumn = (taskId: string): KanbanColumn | undefined => {
-    return boardColumns.find((col) => col.tasks.some((t) => t.id === taskId));
+    return columns.find((col) => col.tasks.some((t) => t.id === taskId));
   };
 
   // ─── Drag Handlers ────────────────────────────────────
 
   const handleDragStart = (event: DragStartEvent) => {
-    const task = boardColumns.flatMap((c) => c.tasks).find((t) => t.id === event.active.id);
+    const task = columns.flatMap((c) => c.tasks).find((t) => t.id === event.active.id);
     setActiveTask(task || null);
   };
 
@@ -252,7 +258,7 @@ export function KanbanBoardPage() {
     if (!over) return;
 
     const activeCol = findColumn(active.id as string);
-    const overCol = findColumn(over.id as string) || boardColumns.find((c) => c.id === over.id);
+    const overCol = findColumn(over.id as string) || columns.find((c) => c.id === over.id);
 
     if (!activeCol || !overCol || activeCol.id === overCol.id) return;
 
@@ -276,9 +282,9 @@ export function KanbanBoardPage() {
     setActiveTask(null);
     if (!over) return;
 
-    const task = boardColumns.flatMap((c) => c.tasks).find((t) => t.id === active.id) ||
+    const task = columns.flatMap((c) => c.tasks).find((t) => t.id === active.id) ||
                  columns.flatMap((c) => c.tasks).find((t) => t.id === active.id);
-    const targetCol = findColumn(over.id as string) || boardColumns.find((c) => c.id === over.id) ||
+    const targetCol = findColumn(over.id as string) || columns.find((c) => c.id === over.id) ||
                       columns.find((c) => c.tasks.some((t) => t.id === over.id)) || columns.find((c) => c.id === over.id);
 
     if (task && targetCol) {
@@ -311,8 +317,20 @@ export function KanbanBoardPage() {
 
   const handleSaveTask = (formData: TaskFormData) => {
     if (editingTask) {
-      // TODO: update task API
-      setShowModal(false);
+      updateTask.mutate({
+        taskId: editingTask.id,
+        title: formData.title,
+        description: formData.description || undefined,
+        priority: formData.priority,
+        status_id: formData.status_id || undefined,
+        assignee_id: formData.assignee_id || undefined,
+        due_date: formData.due_date || undefined,
+        start_date: formData.start_date || undefined,
+        estimated_hours: formData.estimated_hours ? parseFloat(formData.estimated_hours) : undefined,
+        tags: formData.tags,
+      }, {
+        onSuccess: () => setShowModal(false),
+      });
     } else {
       createTask.mutate({
         title: formData.title,
@@ -364,12 +382,12 @@ export function KanbanBoardPage() {
 
   // Filter tasks by search
   const filteredColumns = useMemo(() => {
-    if (!search) return kanbanQuery.data?.columns || columns;
-    return (kanbanQuery.data?.columns || columns).map((col) => ({
+    if (!search) return columns;
+    return columns.map((col) => ({
       ...col,
       tasks: col.tasks.filter((t) => t.title.toLowerCase().includes(search.toLowerCase()) || t.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))),
     }));
-  }, [kanbanQuery.data, columns, search]);
+  }, [columns, search]);
 
   return (
     <div className="flex flex-col h-full -m-6">
