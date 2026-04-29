@@ -48,6 +48,7 @@ import { CapacityPlanningPage } from '@/pages/pm/CapacityPlanningPage';
 import { GanttPage } from '@/pages/pm/GanttPage';
 import { FeatureFlagsPage } from '@/pages/admin/FeatureFlagsPage';
 import { OnboardingWizardPage } from '@/pages/admin/OnboardingWizardPage';
+import { AttendancePage } from '@/pages/pm/AttendancePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -106,6 +107,7 @@ export default function App() {
         <Route path="/team" element={<UserManagementPage />} />
         <Route path="/portfolio" element={<PortfolioDashboardPage />} />
         <Route path="/capacity" element={<CapacityPlanningPage />} />
+        <Route path="/attendance" element={<AttendancePage />} />
 
         {/* AI */}
         <Route path="/ai" element={<AIFeaturesPage />} />

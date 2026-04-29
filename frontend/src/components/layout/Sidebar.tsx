@@ -5,7 +5,7 @@ import {
   Calendar, Clock, Target, Sparkles, Activity, Layers, ClipboardList, PieChart,
   Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
   Crown, Map, ClipboardCheck, AlertTriangle, DollarSign, Users2,
-  LayoutGrid, Lock, Briefcase, Zap, GanttChartSquare, Network,
+  LayoutGrid, Lock, Briefcase, Zap, GanttChartSquare, Network, UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
   { label: 'Project Tracking',  path: '/project-tracking',    icon: Gauge,           roles: ['org_admin','division_admin','project_manager','executive','viewer'], section: 'pm' },
   { label: 'AI Features',       path: '/ai',                  icon: Sparkles,        roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
   { label: 'Gantt Timeline',    path: '/gantt',               icon: GanttChartSquare,roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
+  { label: 'Attendance',        path: '/attendance',          icon: UserCheck,       roles: ['org_admin','division_admin','project_manager','member'], section: 'pm' },
 
   // Executive — executive + admin
   { label: 'Executive View',    path: '/executive',           icon: Crown,           roles: ['org_admin','executive'], section: 'executive' },
