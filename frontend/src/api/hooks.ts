@@ -954,8 +954,16 @@ export function useMyTimeLogs(params?: { weekStart?: string; projectId?: string 
   return useQuery({
     queryKey: ['myTimeLogs', params],
     queryFn: async () => {
-      const { data } = await api.get('/time-logs/my', { params });
-      return data.data as any[];
+      const queryParams: Record<string, string> = {};
+      if (params?.weekStart) {
+        queryParams.startDate = params.weekStart;
+        const end = new Date(params.weekStart + 'T00:00:00Z');
+        end.setUTCDate(end.getUTCDate() + 6);
+        queryParams.endDate = end.toISOString().slice(0, 10);
+      }
+      if (params?.projectId) queryParams.projectId = params.projectId;
+      const { data } = await api.get('/time-logs/my', { params: queryParams });
+      return (data.data?.items ?? data.data ?? []) as any[];
     },
   });
 }
