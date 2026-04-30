@@ -156,7 +156,6 @@ class TimeLogService {
     taskKey, taskTitle, projectId, projectKey, projectColor,
     divisionId, hours, description, loggedDate,
   }) {
-    if (!taskKey) throw Object.assign(new Error('taskKey is required'), { code: 'VALIDATION_ERROR', status: 400 });
     if (typeof hours !== 'number' || hours <= 0) throw Object.assign(new Error('hours must be a positive number'), { code: 'VALIDATION_ERROR', status: 400 });
 
     const date = loggedDate || new Date().toISOString().slice(0, 10);
@@ -167,8 +166,8 @@ class TimeLogService {
       id,
       orgId,
       userId,
-      taskKey,
-      taskTitle: taskTitle || taskKey,
+      taskKey: taskKey || null,
+      taskTitle: taskTitle || taskKey || 'General',
       projectId: projectId || null,
       projectKey: projectKey || null,
       projectColor: projectColor || null,
