@@ -88,8 +88,10 @@ export function TimeLoggingPage() {
 
   // ── API hooks ──────────────────────────────────────────
   const { data: summary, isLoading: summaryLoading } = useWeeklySummary(weekStart);
-  const { data: myLogs = [], isLoading: logsLoading } = useMyTimeLogs({ weekStart });
-  const { data: timesheets = [], isLoading: tsLoading } = useTimesheets();
+  const { data: _myLogsRaw = [], isLoading: logsLoading } = useMyTimeLogs({ weekStart });
+  const myLogs: any[] = Array.isArray(_myLogsRaw) ? _myLogsRaw : (_myLogsRaw as any)?.items ?? [];
+  const { data: _timesheetsRaw = [], isLoading: tsLoading } = useTimesheets();
+  const timesheets: any[] = Array.isArray(_timesheetsRaw) ? _timesheetsRaw : (_timesheetsRaw as any)?.items ?? [];
   const { data: projectsData } = useProjects();
   const projects: any[] = (projectsData as any)?.items ?? [];
 
