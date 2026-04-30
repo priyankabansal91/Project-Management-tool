@@ -54,6 +54,8 @@ class ExternalUserService {
    * List external users
    */
   async list(orgId, { search, accessLevel, page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     let items = Array.from(externalUsersStore.values())
       .filter(u => u.orgId === orgId);
 

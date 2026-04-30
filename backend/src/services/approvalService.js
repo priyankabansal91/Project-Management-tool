@@ -77,6 +77,8 @@ class ApprovalService {
    * List pending approvals for a user
    */
   async listPendingApprovals(orgId, userId, { page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     // Get all approvals for this org that are pending
     const approvals = Array.from(approvalsStore.values())
       .filter(a => a.orgId === orgId && a.status === 'pending')
@@ -95,6 +97,8 @@ class ApprovalService {
    * List all approvals for a user (created by or assigned to)
    */
   async listApprovals(orgId, userId, { status, page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     let approvals = Array.from(approvalsStore.values())
       .filter(a => a.orgId === orgId);
 

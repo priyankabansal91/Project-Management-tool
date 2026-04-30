@@ -144,6 +144,8 @@ class CustomRoleService {
    * List roles
    */
   async list(orgId, { search, page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     const where = {
       orgId,
       ...(search && { name: { contains: search, mode: 'insensitive' } }),

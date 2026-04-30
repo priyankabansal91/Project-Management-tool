@@ -55,6 +55,8 @@ class ExportService {
    * List exports
    */
   async list(orgId, { exportType, status, page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     const where = {
       orgId,
       ...(exportType && { exportType }),

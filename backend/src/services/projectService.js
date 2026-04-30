@@ -39,6 +39,8 @@ const MEMBER_INCLUDE = {
 
 class ProjectService {
   async list(orgId, { status, search, page = 1, page_size = 20 } = {}, divisionScope = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     const where = { orgId, deletedAt: null };
     if (status) where.status = status;
     if (search) where.name = { contains: search, mode: 'insensitive' };

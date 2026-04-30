@@ -22,6 +22,8 @@ function fmtMember(om) {
 
 class MemberService {
   async list(orgId, { role, search, page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     const where = { orgId };
     if (role) where.role = role;
     if (search) {

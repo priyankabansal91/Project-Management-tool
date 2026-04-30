@@ -111,6 +111,8 @@ class FormService {
    * Get form submissions for a user
    */
   async getFormSubmissions(orgId, userId, { form_id, status, page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     let items = Array.from(tasksStore.values())
       .filter(t => t.orgId === orgId && t.createdBy === userId);
 

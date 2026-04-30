@@ -40,6 +40,8 @@ class VersioningService {
    * Get entity version history
    */
   async getHistory(orgId, entityType, entityId, { page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     const [items, total] = await Promise.all([
       prisma.entityVersion.findMany({
         where: { orgId, entityType, entityId },
@@ -155,6 +157,8 @@ class VersioningService {
    * List snapshots
    */
   async listSnapshots(orgId, { snapshotType, page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     const where = {
       orgId,
       ...(snapshotType && { snapshotType }),

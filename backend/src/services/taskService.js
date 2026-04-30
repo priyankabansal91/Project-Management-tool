@@ -46,6 +46,8 @@ const TASK_INCLUDE = {
 
 class TaskService {
   async listByProject(orgId, projectId, { status_id, assignee_id, priority, search, view, page = 1, page_size = 50 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 50;
     const where = { orgId, projectId, deletedAt: null, isArchived: false };
     if (status_id)   where.statusId   = status_id;
     if (assignee_id) where.assigneeId = assignee_id;
@@ -76,6 +78,8 @@ class TaskService {
   }
 
   async getMyTasks(orgId, userId, { status, priority, search, page = 1, page_size = 20 } = {}) {
+    page = parseInt(page) || 1;
+    page_size = parseInt(page_size) || 20;
     const where = { orgId, assigneeId: userId, deletedAt: null };
     if (priority) where.priority = priority;
     if (search)   where.title    = { contains: search, mode: 'insensitive' };
