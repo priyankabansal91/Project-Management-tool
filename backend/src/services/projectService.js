@@ -78,11 +78,20 @@ class ProjectService {
   }
 
   async create(orgId, userId, data) {
-    const key = (data.key || data.name.substring(0, 4).toUpperCase().replace(/\s/g, ''))
+    let key = (data.key || data.name.substring(0, 4).toUpperCase().replace(/\s/g, ''))
       .toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 6);
 
-    const exists = await prisma.project.findFirst({ where: { orgId, key, deletedAt: null } });
-    if (exists) throw ApiError.badRequest(`Project key "${key}" already in use`);
+    // Check active projects for user-facing conflict message
+    const activeConflict = await prisma.project.findFirst({ where: { orgId, key, deletedAt: null } });
+    if (activeConflict) throw ApiError.badRequest(`Project key "${key}" already in use`);
+
+    // Soft-deleted records still hold the DB unique slot — append suffix when needed
+    if (!data.key) {
+      const anyConflict = await prisma.project.findFirst({ where: { orgId, key } });
+      if (anyConflict) {
+        key = (key.substring(0, 4) + (Date.now() % 9999).toString().padStart(4, '0')).substring(0, 6);
+      }
+    }
 
     const p = await prisma.project.create({
       data: {
