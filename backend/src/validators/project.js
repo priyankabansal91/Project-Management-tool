@@ -6,7 +6,7 @@ const createProjectSchema = z.object({
   key: z.string().min(2).max(10).toUpperCase(),
   visibility: z.enum(['private', 'org_wide', 'public']).optional().default('private'),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().default('#3B82F6'),
-  workflow_config_id: z.string().uuid().optional(),
+  workflow_config_id: z.string().optional(),
   start_date: z.string().optional().nullable(),
   due_date: z.string().optional().nullable(),
 });
