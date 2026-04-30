@@ -71,7 +71,7 @@ router.patch('/:userId/status', authorize('org_admin'), async (req, res, next) =
 // Remove member
 router.delete('/:userId', authorize('org_admin'), async (req, res, next) => {
   try {
-    memberService.remove(req.user.orgId, req.user.id, req.params.userId);
+    await memberService.remove(req.user.orgId, req.user.id, req.params.userId);
     res.status(204).end();
   } catch (err) { next(err); }
 });

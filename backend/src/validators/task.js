@@ -7,7 +7,7 @@ const createTaskSchema = z.object({
   assignee_id: z.string().optional().nullable(),
   due_date: z.string().optional().nullable(),
   start_date: z.string().optional().nullable(),
-  estimated_hours: z.union([z.number().positive(), z.string().transform(v => v ? parseFloat(v) : null)]).optional().nullable(),
+  estimated_hours: z.union([z.number().min(0), z.string().transform(v => v !== '' ? parseFloat(v) : null)]).optional().nullable(),
   tags: z.array(z.string()).optional().default([]),
   status_id: z.string().optional(),
   status_name: z.string().optional(),

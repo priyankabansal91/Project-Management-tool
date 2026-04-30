@@ -62,7 +62,7 @@ router.patch('/bulk', async (req, res, next) => {
 
     if (operation === 'delete') {
       const results = await Promise.allSettled(
-        taskIds.map(id => taskService.delete(req.user.orgId, id, req.user.id))
+        taskIds.map(id => taskService.delete(req.user.orgId, id))
       );
       return res.json({ success: true, data: { deleted: results.filter(r => r.status === 'fulfilled').length } });
     }
@@ -73,7 +73,7 @@ router.patch('/bulk', async (req, res, next) => {
     if (operation === 'assignee') updateData.assignee_id = value;
 
     const results = await Promise.allSettled(
-      taskIds.map(id => taskService.update(req.user.orgId, id, req.user.id, updateData))
+      taskIds.map(id => taskService.update(req.user.orgId, id, updateData))
     );
     const succeeded = results.filter(r => r.status === 'fulfilled').length;
     return res.json({ success: true, data: { updated: succeeded, failed: taskIds.length - succeeded } });
