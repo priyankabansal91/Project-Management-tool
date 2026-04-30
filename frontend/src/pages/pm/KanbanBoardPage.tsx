@@ -229,6 +229,26 @@ export function KanbanBoardPage() {
 
   const projectData = projectQuery.data;
 
+  // Derive real statuses from API columns; fall back to mock only when API hasn't responded yet
+  const apiColumns = kanbanQuery.data?.columns;
+  const modalStatuses: WorkflowStatus[] = apiColumns?.length
+    ? apiColumns.map((col, i) => ({
+        id: col.id,
+        name: col.name,
+        color: col.color || '#6B7280',
+        is_initial: i === 0,
+        is_final: i === apiColumns.length - 1,
+        order: i + 1,
+      }))
+    : fallbackStatuses;
+
+  // Real project members mapped to the shape TaskModal expects
+  const modalMembers = projectData?.members?.map((m: { id: string; name: string; avatar_url: string | null }) => ({
+    id: m.id,
+    name: m.name,
+    avatar_url: m.avatar_url,
+  })) ?? fallbackMembers;
+
   // Sync API data into local columns so drag-and-drop stays consistent
   useEffect(() => {
     if (kanbanQuery.data?.columns) {
@@ -408,7 +428,7 @@ export function KanbanBoardPage() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Filter tasks..." className="pl-8 h-9 w-48 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <Button size="sm" onClick={() => handleAddTask(fallbackStatuses[0]?.id || 's1')}>
+          <Button size="sm" onClick={() => handleAddTask(columns[0]?.id || modalStatuses[0]?.id || 'backlog')}>
             <Plus className="h-3.5 w-3.5" /> Add Task
           </Button>
         </div>
@@ -437,8 +457,8 @@ export function KanbanBoardPage() {
         onSave={handleSaveTask}
         task={editingTask}
         projectKey={projectData?.key || 'CPR'}
-        statuses={fallbackStatuses}
-        members={fallbackMembers}
+        statuses={modalStatuses}
+        members={modalMembers}
         saving={createTask.isPending}
       />
     </div>
