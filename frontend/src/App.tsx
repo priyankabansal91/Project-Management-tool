@@ -49,6 +49,7 @@ import { GanttPage } from '@/pages/pm/GanttPage';
 import { FeatureFlagsPage } from '@/pages/admin/FeatureFlagsPage';
 import { OnboardingWizardPage } from '@/pages/admin/OnboardingWizardPage';
 import { AttendancePage } from '@/pages/pm/AttendancePage';
+import { DivisionMISPage } from '@/pages/admin/DivisionMISPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -136,6 +137,7 @@ export default function App() {
         <Route path="/settings" element={<OrgSettingsPage />} />
         <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />
         <Route path="/admin/integrations" element={<OutlookIntegrationPage />} />
+        <Route path="/admin/division-mis" element={<DivisionMISPage />} />
       </Route>
 
       {/* Default redirect */}

@@ -29,6 +29,15 @@ router.get('/my', (req, res) => {
 });
 
 /**
+ * GET /v1/division-config/modules
+ * Returns the list of all available modules.
+ */
+router.get('/modules', (req, res) => {
+  const modules = divisionConfigService.getAllModules();
+  res.json({ success: true, data: modules });
+});
+
+/**
  * GET /v1/division-config/handoff/all
  * Handoff readiness for every division — org_admin only.
  */

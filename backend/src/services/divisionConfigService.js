@@ -1,5 +1,17 @@
 // In-memory division config service for development
 
+// All available modules — "projects" is always on (core)
+const ALL_MODULES = [
+  'projects',
+  'time_tracking',
+  'approvals',
+  'forms_templates',
+  'sprint_management',
+  'reports_mis',
+  'resource_planning',
+  'documents_files',
+];
+
 const DIVISION_METADATA = new Map([
   ['div_engineering', {
     id: 'div_engineering',
@@ -28,6 +40,7 @@ const DIVISION_METADATA = new Map([
 const divisionConfigs = new Map([
   ['div_engineering', {
     workflowTemplate: 'wf_scrum',
+    enabled_modules: [...ALL_MODULES], // all enabled for engineering
     features: {
       timeTracking: true,
       sprints: true,
@@ -50,6 +63,7 @@ const divisionConfigs = new Map([
   }],
   ['div_sales', {
     workflowTemplate: 'wf_marketing',
+    enabled_modules: ['projects', 'time_tracking', 'approvals', 'forms_templates', 'reports_mis'],
     features: {
       timeTracking: true,
       sprints: false,
@@ -72,6 +86,7 @@ const divisionConfigs = new Map([
   }],
   ['div_hr', {
     workflowTemplate: 'wf_kanban',
+    enabled_modules: ['projects', 'approvals', 'forms_templates', 'resource_planning', 'reports_mis'],
     features: {
       timeTracking: true,
       sprints: false,
@@ -148,13 +163,25 @@ class DivisionConfigService {
 
   /**
    * Updates division config in-memory.
+   * Accepts enabled_modules as a string[] to replace the entire list.
    */
   updateDivisionConfig(divisionId, config, updatedBy) {
     const existing = divisionConfigs.get(divisionId);
     if (!existing) return null;
+
+    // Validate enabled_modules if provided — "projects" is always required
+    let enabled_modules = existing.enabled_modules || [...ALL_MODULES];
+    if (Array.isArray(config.enabled_modules)) {
+      const validModules = config.enabled_modules.filter((m) => ALL_MODULES.includes(m));
+      // Always keep "projects" (core module) enabled
+      if (!validModules.includes('projects')) validModules.unshift('projects');
+      enabled_modules = validModules;
+    }
+
     const updated = {
       ...existing,
       ...config,
+      enabled_modules,
       features: { ...existing.features, ...(config.features || {}) },
       roleOverrides: { ...existing.roleOverrides, ...(config.roleOverrides || {}) },
       reportAccess: { ...existing.reportAccess, ...(config.reportAccess || {}) },
@@ -163,6 +190,13 @@ class DivisionConfigService {
     };
     divisionConfigs.set(divisionId, updated);
     return this.getDivisionConfig(divisionId);
+  }
+
+  /**
+   * Returns all available module IDs.
+   */
+  getAllModules() {
+    return ALL_MODULES;
   }
 
   /**

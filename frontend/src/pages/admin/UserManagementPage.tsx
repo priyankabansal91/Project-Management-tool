@@ -31,8 +31,8 @@ const roleColors: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   active:    'bg-green-100 text-green-700',
-  inactive:  'bg-gray-100 text-gray-700',
-  suspended: 'bg-red-100 text-red-700',
+  inactive:  'bg-gray-100 text-gray-600',
+  suspended: 'bg-orange-100 text-orange-700',
 };
 
 // ─── Action Menu ────────────────────────────────────────
@@ -44,19 +44,22 @@ function ActionMenu({ member, onStatusChange, onRemove }: {
 }) {
   const [open, setOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false); setConfirmRemove(false);
+        setOpen(false); setConfirmRemove(false); setConfirmDeactivate(false);
       }
     }
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
+  const isActive    = member.status === 'active';
   const isSuspended = member.status === 'suspended';
+  const isInactive  = member.status === 'inactive';
 
   return (
     <div className="relative" ref={ref}>
@@ -64,7 +67,7 @@ function ActionMenu({ member, onStatusChange, onRemove }: {
         <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
       </button>
       {open && (
-        <div className="absolute right-0 top-7 z-50 w-44 rounded-md border bg-popover shadow-lg py-1">
+        <div className="absolute right-0 top-7 z-50 w-52 rounded-md border bg-popover shadow-lg py-1">
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
             onClick={() => { window.open(`mailto:${member.email}`); setOpen(false); }}
@@ -73,18 +76,58 @@ function ActionMenu({ member, onStatusChange, onRemove }: {
           </button>
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
-            onClick={() => { alert(`${member.first_name} ${member.last_name}\n${member.email}`); setOpen(false); }}
+            onClick={() => { alert(`${member.first_name} ${member.last_name}\n${member.email}\nStatus: ${member.status}`); setOpen(false); }}
           >
             <Eye className="h-4 w-4 text-muted-foreground" /> View Profile
           </button>
           <div className="my-1 border-t" />
-          <button
-            className={cn('flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent', isSuspended ? 'text-green-600' : 'text-yellow-600')}
-            onClick={() => { onStatusChange(member.id, isSuspended ? 'active' : 'suspended'); setOpen(false); }}
-          >
-            {isSuspended ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
-            {isSuspended ? 'Reactivate' : 'Suspend'}
-          </button>
+
+          {/* Activate — shown when inactive or suspended */}
+          {(isInactive || isSuspended) && (
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-green-600"
+              onClick={() => { onStatusChange(member.id, 'active'); setOpen(false); }}
+            >
+              <UserCheck className="h-4 w-4" /> Activate
+            </button>
+          )}
+
+          {/* Suspend — shown when active */}
+          {isActive && (
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-yellow-600"
+              onClick={() => { onStatusChange(member.id, 'suspended'); setOpen(false); }}
+            >
+              <UserX className="h-4 w-4" /> Suspend
+            </button>
+          )}
+
+          {/* Deactivate (permanent) — shown when active or suspended */}
+          {!isInactive && (
+            confirmDeactivate ? (
+              <div className="px-3 py-2 space-y-1">
+                <p className="text-xs text-orange-700 font-medium">Permanently deactivate this user?</p>
+                <div className="flex gap-1">
+                  <button
+                    className="flex-1 rounded bg-orange-500 text-white text-xs py-1"
+                    onClick={() => { onStatusChange(member.id, 'inactive'); setOpen(false); setConfirmDeactivate(false); }}
+                  >Deactivate</button>
+                  <button className="flex-1 rounded border text-xs py-1" onClick={() => setConfirmDeactivate(false)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-orange-600"
+                onClick={() => setConfirmDeactivate(true)}
+              >
+                <UserX className="h-4 w-4" /> Deactivate
+              </button>
+            )
+          )}
+
+          <div className="my-1 border-t" />
+
+          {/* Remove member */}
           {!confirmRemove ? (
             <button
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-accent"
@@ -260,7 +303,7 @@ export function UserManagementPage() {
                         </Badge>
                       </td>
                       <td className="p-4">
-                        <Badge className={cn('text-xs', statusColors[m.status])}>{m.status}</Badge>
+                        <Badge className={cn('text-xs capitalize', statusColors[m.status] ?? 'bg-gray-100 text-gray-700')}>{m.status}</Badge>
                       </td>
                       <td className="p-4 text-muted-foreground">{formatDate(m.joined_at)}</td>
                       <td className="p-4 text-muted-foreground">{m.last_login_at ? formatDate(m.last_login_at) : 'Never'}</td>

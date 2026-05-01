@@ -6,6 +6,7 @@ import {
   Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
   Crown, Map, ClipboardCheck, AlertTriangle, DollarSign, Users2,
   LayoutGrid, Lock, Briefcase, Zap, GanttChartSquare, Network, UserCheck,
+  BarChart2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { label: 'Admin Dashboard',   path: '/admin/dashboard',     icon: LayoutGrid,      roles: ['org_admin'], section: 'admin' },
   { label: 'Roles & Permissions',path: '/admin/roles',        icon: KeyRound,        roles: ['org_admin'], section: 'admin' },
   { label: 'Division Config',   path: '/admin/division-config',icon: Building2,      roles: ['org_admin','division_admin'], section: 'admin' },
+  { label: 'Division MIS',     path: '/admin/division-mis',  icon: BarChart2,      roles: ['org_admin','division_admin'], section: 'admin' },
   { label: 'Handoff Panel',    path: '/admin/handoff',        icon: ClipboardCheck,  roles: ['org_admin'], section: 'admin' },
   { label: 'User Management',   path: '/admin/users',         icon: Shield,          roles: ['org_admin'], section: 'admin' },
   { label: 'Workflows',         path: '/admin/workflows',     icon: Workflow,        roles: ['org_admin'], section: 'admin' },
