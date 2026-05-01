@@ -165,12 +165,12 @@ export function ProjectListPage() {
 
       {/* Grid View */}
       {view === 'grid' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 animate-fade-in-up stagger-children">
           {filtered.map((p) => {
             const pct = p.task_count > 0 ? Math.round(((p as any).completed / p.task_count) * 100) : 0;
             return (
               <Link key={p.id} to={`/projects/${p.id}/board`}>
-                <Card className="p-4 sm:p-5 hover:shadow-md transition-shadow cursor-pointer group h-full">
+                <Card className="p-4 sm:p-5 card-hover cursor-pointer group h-full">
                   <div className="flex items-start justify-between mb-3 gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="h-4 w-4 rounded flex-shrink-0" style={{ backgroundColor: p.color }} />
@@ -239,7 +239,7 @@ export function ProjectListPage() {
                 {filtered.map((p) => {
                   const pct = p.task_count > 0 ? Math.round(((p as any).completed / p.task_count) * 100) : 0;
                   return (
-                    <tr key={p.id} className="border-b last:border-0 hover:bg-accent/50 cursor-pointer transition-colors">
+                    <tr key={p.id} className="border-b last:border-0 row-hover cursor-pointer transition-colors">
                       <td className="p-2 sm:p-4">
                         <Link to={`/projects/${p.id}/board`} className="flex items-center gap-2 min-w-0">
                           <div className="h-3 w-3 rounded flex-shrink-0" style={{ backgroundColor: p.color }} />

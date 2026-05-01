@@ -4,45 +4,56 @@
 
 @layer base {
   :root {
-    /* Blue & White theme */
-    --background: 0 0% 100%;
-    --foreground: 215 25% 15%;
+    /* QCI Brand Theme — Navy + Saffron */
+    --background: 215 43% 96%;
+    --foreground: 215 68% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
-    --primary: 221 83% 53%;
+    --card-foreground: 215 68% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 68% 15%;
+    --primary: 215 80% 27%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 214 100% 97%;
-    --secondary-foreground: 221 60% 35%;
-    --muted: 214 40% 95%;
-    --muted-foreground: 215 20% 50%;
-    --accent: 214 80% 93%;
-    --accent-foreground: 221 60% 30%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 215 55% 93%;
+    --secondary-foreground: 215 80% 27%;
+    --muted: 215 40% 93%;
+    --muted-foreground: 215 28% 44%;
+    --accent: 28 76% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 40% 88%;
-    --input: 214 40% 88%;
-    --ring: 221 83% 53%;
-    --radius: 0.5rem;
+    --border: 215 40% 87%;
+    --input: 215 40% 87%;
+    --ring: 215 80% 27%;
+    --radius: 0.625rem;
+    /* QCI custom tokens */
+    --qci-navy: 215 80% 27%;
+    --qci-navy-dark: 215 80% 18%;
+    --qci-orange: 28 76% 52%;
+    --qci-orange-light: 28 86% 94%;
+    --sidebar-width: 256px;
+    --header-height: 60px;
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
+    --background: 215 50% 8%;
+    --foreground: 210 40% 96%;
+    --card: 215 50% 11%;
+    --card-foreground: 210 40% 96%;
+    --popover: 215 50% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 215 74% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 18%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 22%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --secondary: 215 35% 18%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 215 35% 18%;
+    --muted-foreground: 215 20% 64%;
+    --accent: 28 76% 52%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 42%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 221 83% 53%;
+    --border: 215 35% 20%;
+    --input: 215 35% 20%;
+    --ring: 215 74% 52%;
   }
 }
 
@@ -52,11 +63,48 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-/* Responsive utilities */
+/* ── Keyframe Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35); }
+  70%  { box-shadow: 0 0 0 8px hsl(var(--primary) / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-4px); }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Responsive utilities ── */
 @layer components {
   /* Safe area support for notched devices */
   .safe-area-bottom {
@@ -140,3 +188,158 @@
   }
 }
 
+/* ── Utility classes ── */
+@layer utilities {
+  /* ── Page entry ── */
+  .animate-fade-in-up  { animation: fadeInUp  0.35s ease both; }
+  .animate-fade-in     { animation: fadeIn    0.25s ease both; }
+  .animate-slide-left  { animation: slideInLeft 0.3s ease both; }
+  .animate-scale-in    { animation: scaleIn   0.2s ease both; }
+  .animate-float       { animation: float 3s ease-in-out infinite; }
+  .animate-spin-slow   { animation: spin-slow 8s linear infinite; }
+
+  /* ── Staggered children ── */
+  .stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+  .stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+  .stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+  .stagger-children > *:nth-child(4) { animation-delay: 0.20s; }
+  .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+  .stagger-children > *:nth-child(6) { animation-delay: 0.30s; }
+
+  /* ── Card hover lift ── */
+  .card-hover {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    will-change: transform;
+  }
+  .card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 32px -4px hsl(var(--primary) / 0.14), 0 4px 12px -2px hsl(var(--primary) / 0.08);
+    border-color: hsl(var(--primary) / 0.25) !important;
+  }
+
+  /* ── Stat tile highlight ── */
+  .stat-tile {
+    transition: all 0.22s ease;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.04) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+  }
+  .stat-tile:hover::before { opacity: 1; }
+  .stat-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -4px hsl(var(--primary) / 0.12);
+    border-color: hsl(var(--primary) / 0.2) !important;
+  }
+
+  /* ── Interactive row ── */
+  .row-hover {
+    transition: background 0.15s ease;
+  }
+  .row-hover:hover {
+    background: hsl(var(--primary) / 0.04);
+  }
+
+  /* ── Button glow on active ── */
+  .btn-primary-glow:focus-visible {
+    animation: pulse-ring 0.6s ease forwards;
+  }
+
+  /* ── Shimmer skeleton ── */
+  .shimmer-bg {
+    background: linear-gradient(90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--secondary)) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* ── Nav item active indicator ── */
+  .nav-active-indicator {
+    position: relative;
+  }
+  .nav-active-indicator::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    border-radius: 0 2px 2px 0;
+    background: hsl(var(--qci-orange));
+    transition: height 0.2s ease;
+  }
+
+  /* ── QCI gradient accent bar ── */
+  .qci-gradient {
+    background: linear-gradient(135deg, hsl(var(--qci-navy)) 0%, hsl(var(--qci-navy-dark)) 100%);
+  }
+  .qci-gradient-h {
+    background: linear-gradient(90deg, hsl(var(--qci-navy)) 0%, hsl(215 74% 36%) 100%);
+  }
+  .qci-orange-gradient {
+    background: linear-gradient(135deg, hsl(var(--qci-orange)) 0%, hsl(28 90% 60%) 100%);
+  }
+
+  /* ── Glass card ── */
+  .glass-card {
+    background: hsl(0 0% 100% / 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* ── Badge pill ── */
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    height: 6px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: hsl(var(--muted));
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.7) 100%);
+    transition: width 0.5s ease;
+  }
+
+  /* ── Tooltip arrow ── */
+  .tooltip-content {
+    animation: scaleIn 0.15s ease;
+  }
+}
+
+/* ── Scrollbar styling ── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}

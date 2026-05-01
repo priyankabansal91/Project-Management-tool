@@ -43,7 +43,7 @@ export function DashboardPage() {
   const teamWorkload = dashboardQuery.data?.team_workload || mockTeamWorkload;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold">Welcome back, {firstName}</h1>
@@ -51,22 +51,22 @@ export function DashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Active Projects" value={stats.active_projects} icon={FolderKanban} trend={{ value: 12, label: 'vs last month' }} />
-        <StatCard title="Total Tasks" value={stats.total_tasks} icon={ListTodo} subtitle={`${stats.completed_tasks} completed`} />
-        <StatCard title="My Open Tasks" value={stats.my_open_tasks} icon={CheckSquare} iconColor="text-blue-600" />
-        <StatCard title="Overdue" value={stats.overdue_tasks} icon={AlertTriangle} iconColor="text-red-600" className={stats.overdue_tasks > 0 ? 'border-red-200' : ''} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children animate-fade-in-up">
+        <StatCard title="Active Projects" value={stats.active_projects} icon={FolderKanban} trend={{ value: 12, label: 'vs last month' }} className="stat-tile card-hover" />
+        <StatCard title="Total Tasks" value={stats.total_tasks} icon={ListTodo} subtitle={`${stats.completed_tasks} completed`} className="stat-tile card-hover" />
+        <StatCard title="My Open Tasks" value={stats.my_open_tasks} icon={CheckSquare} iconColor="text-blue-600" className="stat-tile card-hover" />
+        <StatCard title="Overdue" value={stats.overdue_tasks} icon={AlertTriangle} iconColor="text-red-600" className={cn('stat-tile card-hover', stats.overdue_tasks > 0 ? 'border-red-200' : '')} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Project Progress */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 card-hover">
           <CardHeader>
             <CardTitle className="text-lg">Project Progress</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {projectProgress.map((p) => (
-              <div key={p.project_id} className="space-y-2">
+              <div key={p.project_id} className="space-y-2 row-hover transition-colors rounded px-2 py-1 -mx-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
@@ -87,14 +87,14 @@ export function DashboardPage() {
         </Card>
 
         {/* Recent Activity */}
-        <Card>
+        <Card className="card-hover">
           <CardHeader>
             <CardTitle className="text-lg">Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {recentActivity.map((a, i) => (
-                <div key={i} className="flex gap-3">
+                <div key={i} className="flex gap-3 row-hover transition-colors rounded px-2 py-1 -mx-2">
                   <Avatar name={a.actor} size="sm" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm"><span className="font-medium">{a.actor}</span> {String((a as { detail?: unknown }).detail ?? '')}</p>
@@ -112,7 +112,7 @@ export function DashboardPage() {
 
       {/* Team Workload (Admin / PM only) */}
       {(currentRole === 'org_admin' || currentRole === 'project_manager') && (
-        <Card>
+        <Card className="card-hover">
           <CardHeader>
             <CardTitle className="text-lg">Team Workload</CardTitle>
           </CardHeader>
@@ -131,7 +131,7 @@ export function DashboardPage() {
                 </thead>
                 <tbody>
                   {teamWorkload.map((m) => (
-                    <tr key={m.user_id} className="border-b last:border-0">
+                    <tr key={m.user_id} className="border-b last:border-0 row-hover transition-colors">
                       <td className="py-3">
                         <div className="flex items-center gap-2">
                           <Avatar name={m.name} size="sm" />
@@ -141,12 +141,12 @@ export function DashboardPage() {
                       <td className="py-3">
                         <Badge variant="secondary" className="text-xs">{m.role.replace('_', ' ')}</Badge>
                       </td>
-                      <td className="py-3 text-center">{m.open_tasks}</td>
+                      <td className="py-3 text-center"><span className="text-2xl font-bold text-primary">{m.open_tasks}</span></td>
                       <td className="py-3 text-center">
-                        <span className={cn(m.high_priority > 0 && 'text-orange-600 font-medium')}>{m.high_priority}</span>
+                        <span className={cn('text-2xl font-bold', m.high_priority > 0 ? 'text-orange-600' : 'text-primary')}>{m.high_priority}</span>
                       </td>
                       <td className="py-3 text-center">
-                        <span className={cn(m.overdue_tasks > 0 && 'text-red-600 font-medium')}>{m.overdue_tasks}</span>
+                        <span className={cn('text-2xl font-bold', m.overdue_tasks > 0 ? 'text-red-600' : 'text-primary')}>{m.overdue_tasks}</span>
                       </td>
                       <td className="py-3 text-right">{m.estimated_hours}h</td>
                     </tr>

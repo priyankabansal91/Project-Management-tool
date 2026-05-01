@@ -75,86 +75,98 @@ function PermissionsMatrix() {
         </div>
       </div>
 
-      {/* Role headers */}
-      <div className="grid grid-cols-5 gap-2 mb-2">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-2">Permission</div>
-        {roles.map((role) => {
-          const rs = getRoleStyle(role);
-          const Icon = rs.icon;
-          return (
-            <div key={role} className={cn('rounded-lg p-3 text-center', rs.bg)}>
-              <Icon className={cn('h-5 w-5 mx-auto mb-1', rs.color)} />
-              <p className={cn('text-xs font-semibold', rs.color)}>{rs.label}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{rs.description}</p>
-              {editingRole !== role ? (
-                <Button size="sm" variant="outline" className="mt-2 h-6 text-[10px] px-2" onClick={() => startEdit(role)}>
-                  <Edit2 className="h-3 w-3 mr-1" /> Edit
-                </Button>
-              ) : (
-                <div className="flex gap-1 justify-center mt-2">
-                  <Button size="sm" className="h-6 text-[10px] px-2" onClick={saveEdit} disabled={updateMatrix.isPending}>
-                    <Check className="h-3 w-3" />
+      {/* Permissions table with sticky header */}
+      <div className="overflow-x-auto rounded-xl border">
+        {/* Sticky role header row */}
+        <div className="grid grid-cols-5 gap-0 sticky top-0 z-10 bg-background border-b">
+          <div className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-end">
+            Permission
+          </div>
+          {roles.map((role) => {
+            const rs = getRoleStyle(role);
+            const Icon = rs.icon;
+            return (
+              <div key={role} className={cn('px-3 py-3 text-center border-l', rs.bg)}>
+                <Icon className={cn('h-5 w-5 mx-auto mb-1', rs.color)} />
+                <p className={cn('text-xs font-semibold', rs.color)}>{rs.label}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 hidden lg:block">{rs.description}</p>
+                {editingRole !== role ? (
+                  <Button size="sm" variant="outline" className="mt-2 h-6 text-[10px] px-2" onClick={() => startEdit(role)}>
+                    <Edit2 className="h-3 w-3 mr-1" /> Edit
                   </Button>
-                  <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => setEditingRole(null)}>
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Permission rows by category */}
-      {categories.map((cat) => (
-        <div key={cat.key} className="border rounded-lg overflow-hidden">
-          <button
-            onClick={() => toggleCategory(cat.key)}
-            className="flex w-full items-center gap-2 bg-muted/40 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors"
-          >
-            {expandedCategories.has(cat.key) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            <span className="text-sm font-semibold">{cat.label}</span>
-            <span className="text-xs text-muted-foreground">{cat.permissions.length} permissions</span>
-          </button>
-
-          {expandedCategories.has(cat.key) && (
-            <div className="divide-y">
-              {cat.permissions.map((perm) => (
-                <div key={perm} className="grid grid-cols-5 gap-2 items-center px-4 py-2 hover:bg-muted/20">
-                  <div>
-                    <p className="text-xs font-mono text-muted-foreground">{perm}</p>
+                ) : (
+                  <div className="flex gap-1 justify-center mt-2">
+                    <Button size="sm" className="h-6 text-[10px] px-2" onClick={saveEdit} disabled={updateMatrix.isPending}>
+                      <Check className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => setEditingRole(null)}>
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
-                  {roles.map((role) => {
-                    const isActive = editingRole === role
-                      ? editPerms.includes(perm)
-                      : (permsMap[role] || []).includes(perm);
-                    return (
-                      <div key={role} className="flex justify-center">
-                        {editingRole === role ? (
-                          <button onClick={() => togglePerm(perm)} className={cn('h-6 w-6 rounded flex items-center justify-center border-2 transition-colors', isActive ? 'bg-primary border-primary' : 'border-muted-foreground/30 hover:border-primary/50')}>
-                            {isActive && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-                          </button>
-                        ) : (
-                          <div className={cn('h-6 w-6 rounded-full flex items-center justify-center', isActive ? 'bg-green-100' : 'bg-red-50')}>
-                            {isActive
-                              ? <CheckCircle className="h-4 w-4 text-green-600" />
-                              : <X className="h-3.5 w-3.5 text-red-300" />}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+              </div>
+            );
+          })}
         </div>
-      ))}
+
+        {/* Permission rows by category */}
+        {categories.map((cat) => (
+          <div key={cat.key}>
+            {/* Category header row */}
+            <button
+              onClick={() => toggleCategory(cat.key)}
+              className="grid grid-cols-5 w-full bg-muted/40 hover:bg-muted/60 transition-colors border-b"
+            >
+              <div className="flex items-center gap-2 px-4 py-2.5 text-left col-span-5">
+                {expandedCategories.has(cat.key) ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
+                <span className="text-sm font-semibold">{cat.label}</span>
+                <span className="text-xs text-muted-foreground">{cat.permissions.length} permissions</span>
+              </div>
+            </button>
+
+            {/* Permission rows */}
+            {expandedCategories.has(cat.key) && (
+              <div className="divide-y">
+                {cat.permissions.map((perm) => (
+                  <div key={perm} className="grid grid-cols-5 items-center row-hover transition-colors">
+                    {/* Permission name */}
+                    <div className="px-4 py-2.5 pl-8">
+                      <p className="text-xs font-mono text-muted-foreground">{perm}</p>
+                    </div>
+                    {/* One cell per role */}
+                    {roles.map((role) => {
+                      const rs = getRoleStyle(role);
+                      const isActive = editingRole === role
+                        ? editPerms.includes(perm)
+                        : (permsMap[role] || []).includes(perm);
+                      return (
+                        <div key={role} className="border-l flex justify-center py-2.5">
+                          {editingRole === role ? (
+                            <button onClick={() => togglePerm(perm)} className={cn('h-6 w-6 rounded flex items-center justify-center border-2 transition-colors', isActive ? 'bg-primary border-primary' : 'border-muted-foreground/30 hover:border-primary/50')}>
+                              {isActive && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
+                            </button>
+                          ) : (
+                            <div className={cn('h-6 w-6 rounded-full flex items-center justify-center', isActive ? rs.bg : 'bg-muted/20')}>
+                              {isActive
+                                ? <CheckCircle className={cn('h-4 w-4', rs.color)} />
+                                : <X className="h-3.5 w-3.5 text-muted-foreground/30" />}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* Legend */}
       <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5"><CheckCircle className="h-3.5 w-3.5 text-green-600" /> Has permission</span>
-        <span className="flex items-center gap-1.5"><X className="h-3.5 w-3.5 text-red-300" /> No access</span>
+        <span className="flex items-center gap-1.5"><X className="h-3.5 w-3.5 text-muted-foreground/40" /> No access</span>
         <span className="flex items-center gap-1.5"><Edit2 className="h-3 w-3" /> Click Edit on a role to modify</span>
       </div>
     </div>
@@ -467,7 +479,7 @@ export function CustomRolesPage() {
   const [activeTab, setActiveTab] = useState('matrix');
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className="space-y-6 p-4 sm:p-6 max-w-6xl mx-auto animate-fade-in-up stagger-children">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Shield className="h-6 w-6 text-primary" /> Roles & Permissions
