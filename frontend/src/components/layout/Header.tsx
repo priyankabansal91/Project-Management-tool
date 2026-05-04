@@ -11,12 +11,12 @@ import { useMyDivisions } from '@/api/hooks';
 
 /** Ring color class per role — used on the avatar and as a visual identity cue */
 const ROLE_RING: Record<string, string> = {
-  org_admin:       'ring-red-400',
-  division_admin:  'ring-orange-400',
+  org_admin:       'ring-rose-400',
+  division_admin:  'ring-sky-400',
   project_manager: 'ring-blue-400',
-  member:          'ring-green-400',
-  executive:       'ring-purple-400',
-  viewer:          'ring-gray-400',
+  member:          'ring-emerald-400',
+  executive:       'ring-violet-400',
+  viewer:          'ring-slate-400',
 };
 
 export function Header() {
@@ -47,7 +47,7 @@ export function Header() {
   const roleRingColor = ROLE_RING[currentRole || ''] || 'ring-primary';
 
   return (
-    <header className="relative flex h-[60px] items-center justify-between bg-white border-b border-border/60 shadow-header px-4 md:px-6 gap-4 flex-shrink-0 animate-fade-in z-30">
+    <header className="relative flex h-[60px] items-center justify-between bg-card border-b border-border/60 shadow-header px-4 md:px-6 gap-4 flex-shrink-0 animate-fade-in z-30">
       {/* QCI brand accent bar */}
       <div className="absolute top-0 left-0 right-0 h-[3px] qci-gradient-h" />
 
@@ -59,9 +59,9 @@ export function Header() {
       {/* Mobile logo — only visible when search is hidden */}
       <div className="flex items-center gap-2 sm:hidden flex-shrink-0">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs flex-shrink-0">
-          PF
+          QF
         </div>
-        <span className="text-xs font-semibold truncate text-foreground">ProjectFlow</span>
+        <span className="text-xs font-semibold truncate text-foreground">Q-Flow</span>
       </div>
 
       {/* ── RIGHT: Controls ── */}
@@ -81,7 +81,7 @@ export function Header() {
                 setShowUserMenu(false);
                 setShowRoleSwitcher(false);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-border/70 bg-white hover:bg-slate-50 hover:border-primary/30 transition-all duration-200 shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-border/70 bg-card hover:bg-muted hover:border-primary/30 transition-all duration-200 shadow-sm"
             >
               {/* Avatar-letter for division */}
               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white flex-shrink-0">
@@ -106,8 +106,8 @@ export function Header() {
                     <button
                       onClick={() => { setDivision(null); setShowDivisionMenu(false); }}
                       className={cn(
-                        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors',
-                        !currentDivisionId && 'bg-accent font-medium'
+                        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors',
+                        !currentDivisionId && 'bg-primary/10 font-medium'
                       )}
                     >
                       <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -119,8 +119,8 @@ export function Header() {
                         key={div.divisionId}
                         onClick={() => { setDivision(div.divisionId); setShowDivisionMenu(false); }}
                         className={cn(
-                          'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors',
-                          currentDivisionId === div.divisionId && 'bg-accent font-medium'
+                          'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors',
+                          currentDivisionId === div.divisionId && 'bg-primary/10 font-medium'
                         )}
                       >
                         <div className="h-5 w-5 rounded-md flex items-center justify-center text-[9px] font-bold text-white bg-primary flex-shrink-0">
@@ -176,8 +176,8 @@ export function Header() {
                       key={persona.role}
                       onClick={() => handleSwitchRole(persona)}
                       className={cn(
-                        'flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-accent',
-                        currentRole === persona.role && 'bg-accent'
+                        'flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-muted',
+                        currentRole === persona.role && 'bg-muted'
                       )}
                     >
                       <div className={cn(
@@ -217,7 +217,7 @@ export function Header() {
         <div className="relative flex-shrink-0">
           <button
             onClick={() => { setShowUserMenu(!showUserMenu); setShowRoleSwitcher(false); }}
-            className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-slate-50 transition-all duration-200 border border-transparent hover:border-border"
+            className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-muted transition-all duration-200 border border-transparent hover:border-border"
             title={displayName}
           >
             <div className={cn('ring-2 ring-offset-1 rounded-full', roleRingColor)}>
@@ -260,8 +260,8 @@ export function Header() {
                       key={persona.role}
                       onClick={() => handleSwitchRole(persona)}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-accent',
-                        currentRole === persona.role && 'bg-accent font-medium'
+                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted',
+                        currentRole === persona.role && 'bg-muted font-medium'
                       )}
                     >
                       <span className={cn('h-2 w-2 rounded-full flex-shrink-0', persona.color.split(' ')[0])} />

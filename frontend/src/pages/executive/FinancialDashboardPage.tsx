@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, AlertCircle, PieChart } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, AlertCircle, PieChart, Building2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/store/authStore';
+import { useMyDivisions } from '@/api/hooks';
 
 interface Budget {
   id: string;
@@ -15,6 +17,10 @@ interface Budget {
 }
 
 export function FinancialDashboardPage() {
+  const { currentDivisionId } = useAuthStore();
+  const { data: myDivisions = [] } = useMyDivisions();
+  const activeDivision = (myDivisions as any[]).find((d: any) => d.divisionId === currentDivisionId);
+
   const [budgets] = useState<Budget[]>([
     {
       id: 'budget_1',
@@ -73,6 +79,16 @@ export function FinancialDashboardPage() {
           New Budget
         </Button>
       </div>
+
+      {/* Division filter banner */}
+      {currentDivisionId && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-sm">
+          <Building2 className="h-4 w-4 text-primary" />
+          <span className="text-muted-foreground">Filtered by division:</span>
+          <span className="font-semibold text-primary">{activeDivision?.divisionName ?? 'Selected Division'}</span>
+          <span className="ml-auto text-xs text-muted-foreground">Budget figures scoped to this division</span>
+        </div>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

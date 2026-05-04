@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Users2, TrendingUp, AlertTriangle, Minus } from 'lucide-react';
+import { Users2, TrendingUp, AlertTriangle, Minus, Settings, UserCog, Building2, X, Crown, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { usePortfolioCapacity } from '@/api/hooks';
 
 // ── Types ─────────────────────────────────────────────────
@@ -186,11 +187,148 @@ function StatCard({ title, value, icon: Icon, iconClassName = 'text-muted-foregr
   );
 }
 
+// ── Capacity Config Modal ─────────────────────────────────
+
+const DIVISIONS = ['Engineering', 'Product', 'Infrastructure', 'Sales', 'HR'];
+
+function CapacityConfigModal({ onClose }: { onClose: () => void }) {
+  const [divisionHeads, setDivisionHeads] = useState<Record<string, string>>({
+    Engineering: 'Alice Johnson', Product: 'Bob Martinez', Infrastructure: 'David Kim', Sales: '', HR: '',
+  });
+  const [orgHead, setOrgHead] = useState('Emma Williams');
+  const [saved, setSaved] = useState(false);
+
+  function handleSave() {
+    setSaved(true);
+    setTimeout(() => { setSaved(false); onClose(); }, 800);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-card text-card-foreground rounded-xl shadow-xl w-full max-w-lg border border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <Settings className="h-4 w-4 text-primary" /> Configure Capacity Management
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Org Head */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold flex items-center gap-2">
+              <Crown className="h-4 w-4 text-amber-500" /> Organisation Head (Capacity Approver)
+            </label>
+            <select
+              value={orgHead}
+              onChange={(e) => setOrgHead(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">— Not assigned —</option>
+              <option>Emma Williams</option>
+              <option>Alice Johnson</option>
+              <option>Bob Martinez</option>
+              <option>David Kim</option>
+            </select>
+            <p className="text-xs text-muted-foreground">The org head can approve capacity changes across all divisions.</p>
+          </div>
+
+          {/* Division heads */}
+          <div className="space-y-3">
+            <label className="text-sm font-semibold flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-primary" /> Division Heads (Capacity Owners)
+            </label>
+            <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
+              {DIVISIONS.map((div) => (
+                <div key={div} className="flex items-center gap-3 px-4 py-2.5 bg-card">
+                  <span className="text-sm flex-1 font-medium">{div}</span>
+                  <select
+                    value={divisionHeads[div] || ''}
+                    onChange={(e) => setDivisionHeads((prev) => ({ ...prev, [div]: e.target.value }))}
+                    className="rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring w-40"
+                  >
+                    <option value="">— Not assigned —</option>
+                    <option>Alice Johnson</option>
+                    <option>Bob Martinez</option>
+                    <option>Carol Lee</option>
+                    <option>David Kim</option>
+                    <option>Emma Williams</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Division heads can manage capacity for their team members.</p>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
+          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+          <Button size="sm" onClick={handleSave} className={saved ? 'bg-green-600 hover:bg-green-600' : ''}>
+            {saved ? 'Saved!' : 'Save Configuration'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Set Capacity Modal ────────────────────────────────────
+
+function SetCapacityModal({ member, onClose }: { member: TeamMember; onClose: () => void }) {
+  const [hours, setHours] = useState(String(member.capacityHours));
+  const [saved, setSaved] = useState(false);
+
+  function handleSave() {
+    setSaved(true);
+    setTimeout(() => { setSaved(false); onClose(); }, 600);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-card text-card-foreground rounded-xl shadow-xl w-full max-w-sm border border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <UserCog className="h-4 w-4 text-primary" /> Set Capacity — {member.name}
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <p className="text-sm text-muted-foreground">Role: <span className="font-medium text-foreground">{member.role}</span> · Division: <span className="font-medium text-foreground">{member.division}</span></p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Weekly Capacity (hours)</label>
+            <input
+              type="number"
+              min={1}
+              max={80}
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="text-xs text-muted-foreground">Standard is 40 hrs/week. Adjust for part-time or contractors.</p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
+          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+          <Button size="sm" onClick={handleSave} className={saved ? 'bg-green-600 hover:bg-green-600' : ''}>
+            {saved ? 'Saved!' : 'Update Capacity'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────
 
 export function CapacityPlanningPage() {
   const [selectedWeeks, setSelectedWeeks] = useState<2 | 4 | 8>(4);
   const { data: rawData, isLoading, isError } = usePortfolioCapacity(selectedWeeks);
+  const [showConfig, setShowConfig] = useState(false);
+  const [configMember, setConfigMember] = useState<TeamMember | null>(null);
 
   // Use API data if available, otherwise mock
   const capacityData: CapacityData =
@@ -222,8 +360,8 @@ export function CapacityPlanningPage() {
           </div>
         </div>
 
-        {/* Week range selector */}
-        <div className="flex items-center gap-2">
+        {/* Right controls */}
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground font-medium">Show:</span>
           {([2, 4, 8] as const).map(w => (
             <button
@@ -232,12 +370,16 @@ export function CapacityPlanningPage() {
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors border ${
                 selectedWeeks === w
                   ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background border-input text-muted-foreground hover:bg-accent'
+                  : 'bg-background border-input text-muted-foreground hover:bg-muted'
               }`}
             >
               {w} weeks
             </button>
           ))}
+          <div className="h-5 border-l border-border mx-1" />
+          <Button size="sm" variant="outline" onClick={() => setShowConfig(true)}>
+            <Settings className="h-3.5 w-3.5 mr-1.5" /> Configure
+          </Button>
         </div>
       </div>
 
@@ -330,16 +472,27 @@ export function CapacityPlanningPage() {
                   members.map((member) => {
                     const avg = getAvgUtilization(member);
                     return (
-                      <tr key={member.id} className="border-b hover:bg-muted/20 transition-colors">
+                      <tr key={member.id} className="border-b hover:bg-muted/20 transition-colors group">
                         <td className="px-4 py-3">
-                          <p className="font-medium">{member.name}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span className={`inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-medium ${getRoleBadgeClass(member.role)}`}>
-                              {member.role}
-                            </span>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                              {member.division}
-                            </Badge>
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="font-medium">{member.name}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className={`inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-medium ${getRoleBadgeClass(member.role)}`}>
+                                  {member.role}
+                                </span>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {member.division}
+                                </Badge>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setConfigMember(member)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                              title="Set capacity"
+                            >
+                              <UserCog className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         </td>
                         {member.weeks.slice(0, selectedWeeks).map((week, wi) => (
@@ -392,6 +545,14 @@ export function CapacityPlanningPage() {
                         <p className="font-medium text-sm">{member.name}</p>
                         <p className="text-xs text-muted-foreground">{member.role}</p>
                       </div>
+                      <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setConfigMember(member)}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        title="Set capacity"
+                      >
+                        <UserCog className="h-3.5 w-3.5" />
+                      </button>
                       <span className={`text-sm font-bold ${
                         avg > 100 ? 'text-red-600' :
                         avg >= 80  ? 'text-yellow-600' :
@@ -400,6 +561,7 @@ export function CapacityPlanningPage() {
                       }`}>
                         {avg}%
                       </span>
+                      </div>
                     </div>
 
                     {/* Utilization bar */}
@@ -428,6 +590,10 @@ export function CapacityPlanningPage() {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      {showConfig && <CapacityConfigModal onClose={() => setShowConfig(false)} />}
+      {configMember && <SetCapacityModal member={configMember} onClose={() => setConfigMember(null)} />}
     </div>
   );
 }

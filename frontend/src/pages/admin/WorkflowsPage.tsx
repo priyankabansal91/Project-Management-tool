@@ -101,19 +101,25 @@ export function WorkflowsPage() {
               className={`p-4 cursor-pointer transition-colors ${selectedWf?.id === wf.id ? 'ring-2 ring-primary' : 'hover:bg-accent/50'}`}
               onClick={() => setSelectedWf(wf)}
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1.5">
                 <h3 className="font-medium">{wf.name}</h3>
                 {wf.is_default && <Badge className="text-xs bg-blue-100 text-blue-700">Default</Badge>}
               </div>
+              {wf.description && (
+                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{wf.description}</p>
+              )}
               <div className="flex flex-wrap gap-1">
-                {wf.statuses.map((s) => (
-                  <span key={s.id} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] border" style={{ borderColor: s.color, color: s.color }}>
-                    <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
-                    {s.name}
+                {wf.statuses.map((s, i) => (
+                  <span key={s.id} className="inline-flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] border" style={{ borderColor: s.color, color: s.color }}>
+                      <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.color }} />
+                      {s.name}
+                    </span>
+                    {i < wf.statuses.length - 1 && <span className="text-muted-foreground/40 text-xs">→</span>}
                   </span>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">{wf.statuses.length} statuses</p>
+              <p className="text-xs text-muted-foreground mt-2">{wf.statuses.length} statuses · {wf.transitions.length} transitions</p>
             </Card>
           ))}
         </div>

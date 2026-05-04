@@ -18,10 +18,23 @@ const defaultDev = DEV_USERS['dev-org_admin-id'];
 
 function authenticate(req, res, next) {
   // Development-only bypass: only active when NODE_ENV is explicitly 'development'
-  // This block must NEVER run in production — config validation enforces this
+  // If a valid Bearer JWT is present, prefer it over the dev bypass so that
+  // real invited/registered users are correctly identified in dev mode.
   if (config.nodeEnv === 'development') {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      // Try to use the real JWT first
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, config.jwt.secret, { algorithms: ['HS256'] });
+        if (decoded.sub && decoded.org_id && decoded.role && typeof decoded.sub === 'string') {
+          req.user = { id: decoded.sub, orgId: decoded.org_id, role: decoded.role, email: decoded.email };
+          return next();
+        }
+      } catch { /* invalid JWT — fall through to dev bypass */ }
+    }
+    // No Authorization header (or invalid JWT) — use dev bypass
     const devUserId = req.headers['x-dev-user-id'];
-    // Strictly whitelist — only predefined IDs allowed, no free-form values
     req.user = (devUserId && ALLOWED_DEV_IDS.has(devUserId)) ? DEV_USERS[devUserId] : defaultDev;
     return next();
   }
@@ -38,7 +51,6 @@ function authenticate(req, res, next) {
   try {
     const decoded = jwt.verify(token, config.jwt.secret, { algorithms: ['HS256'] });
 
-    // Validate required claims are present and are strings
     if (!decoded.sub || !decoded.org_id || !decoded.role || typeof decoded.sub !== 'string') {
       return res.status(401).json({
         success: false,
@@ -46,12 +58,7 @@ function authenticate(req, res, next) {
       });
     }
 
-    req.user = {
-      id: decoded.sub,
-      orgId: decoded.org_id,
-      role: decoded.role,
-      email: decoded.email,
-    };
+    req.user = { id: decoded.sub, orgId: decoded.org_id, role: decoded.role, email: decoded.email };
     next();
   } catch (err) {
     return res.status(401).json({

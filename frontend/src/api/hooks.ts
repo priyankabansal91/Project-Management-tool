@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import api from './client';
+
+// Bare axios instance — no auth headers, no dev-bypass header. Used for public endpoints.
+const publicApi = axios.create({
+  baseURL: (import.meta as any).env?.VITE_API_URL || '/v1',
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
+});
 import type { ApiResponse, Project, Task, KanbanColumn, DashboardData, OrgMemberItem, WorkflowConfig, Comment, Pagination } from '@/types';
 
 // ─── Dashboard ──────────────────────────────────────────
@@ -235,6 +243,30 @@ export function useInviteMember() {
       return data.data as { id: string; email: string; role: string; expires_at: string; invite_link: string };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['members'] }),
+  });
+}
+
+export function useCreateMemberDirect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { email: string; first_name: string; last_name: string; password: string; role: string }) => {
+      const { data } = await api.post('/members/create-direct', body);
+      return data.data as { id: string; email: string; first_name: string; last_name: string; role: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['members'] });
+      qc.invalidateQueries({ queryKey: ['pendingInvites'] });
+    },
+  });
+}
+
+export function useAcceptInvite() {
+  return useMutation({
+    mutationFn: async (body: { token: string; first_name: string; last_name: string; password: string }) => {
+      // Use publicApi — no auth or dev-bypass headers on this public endpoint
+      const { data } = await publicApi.post('/auth/accept-invite', body);
+      return data.data as { access_token: string; user: { id: string; email: string; first_name: string; last_name: string; avatar_url: string | null }; organizations: { id: string; name: string; slug: string; role: string }[] };
+    },
   });
 }
 
@@ -905,6 +937,17 @@ export function useOKRs(params?: { level?: string; quarter?: string; year?: stri
       const { data } = await api.get('/okrs', { params });
       return data.data;
     },
+  });
+}
+
+export function useCreateOKR() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/okrs', body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['okrs'] }),
   });
 }
 

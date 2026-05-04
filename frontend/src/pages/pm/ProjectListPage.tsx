@@ -32,9 +32,9 @@ function ProjectActionMenu({ project, onDelete }: { project: Project; onDelete: 
         <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
       </button>
       {open && (
-        <div className="absolute right-0 top-7 z-50 w-44 rounded-md border bg-popover shadow-lg py-1">
+        <div className="absolute right-0 top-7 z-50 w-44 rounded-md border bg-popover text-popover-foreground shadow-lg py-1">
           <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
             onClick={(e) => { e.preventDefault(); navigate(`/projects/${project.id}/board`); setOpen(false); }}
           >
             <ExternalLink className="h-4 w-4 text-muted-foreground" /> Open Board
@@ -42,7 +42,7 @@ function ProjectActionMenu({ project, onDelete }: { project: Project; onDelete: 
           <div className="my-1 border-t" />
           {!confirmDelete ? (
             <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-accent"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted"
               onClick={(e) => { e.preventDefault(); setConfirmDelete(true); }}
             >
               <Trash2 className="h-4 w-4" /> Delete Project

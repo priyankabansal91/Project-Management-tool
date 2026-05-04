@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,6 +54,7 @@ interface NotificationPanelProps {
 export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const { data, isLoading } = useNotifications();
   const markRead = useMarkNotificationRead();
@@ -179,8 +181,13 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t text-center">
-          <button className="text-xs text-primary hover:underline">View all notifications</button>
+        <div className="px-4 py-2.5 border-t text-center">
+          <button
+            className="text-xs text-primary hover:underline font-medium"
+            onClick={() => { onClose(); navigate('/notifications'); }}
+          >
+            View all notifications →
+          </button>
         </div>
       </div>
     </>

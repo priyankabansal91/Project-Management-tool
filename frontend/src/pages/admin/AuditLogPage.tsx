@@ -8,15 +8,15 @@ import { cn, timeAgo } from '@/lib/utils';
 import { useAuditLogs, type AuditLogEntry } from '@/api/hooks';
 
 const actionColors: Record<string, string> = {
-  created: 'bg-green-100 text-green-700',
-  updated: 'bg-blue-100 text-blue-700',
-  deleted: 'bg-red-100 text-red-700',
-  status_changed: 'bg-purple-100 text-purple-700',
-  assigned: 'bg-orange-100 text-orange-700',
-  commented: 'bg-cyan-100 text-cyan-700',
-  role_changed: 'bg-yellow-100 text-yellow-700',
-  config_changed: 'bg-gray-100 text-gray-700',
-  member_added: 'bg-indigo-100 text-indigo-700',
+  created:        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+  updated:        'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+  deleted:        'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+  status_changed: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
+  assigned:       'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  commented:      'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
+  role_changed:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+  config_changed: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  member_added:   'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
 };
 
 const entityIcons: Record<string, typeof Activity> = {
@@ -162,14 +162,14 @@ export function AuditLogPage() {
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm">
+                    <div className="text-sm flex items-center gap-1 flex-wrap">
                       <span className="font-medium">{actorName}</span>
-                      <span className="text-muted-foreground"> {log.action.replace(/_/g, ' ')} </span>
+                      <span className="text-muted-foreground">{log.action.replace(/_/g, ' ')}</span>
                       <Badge variant="outline" className="text-xs font-mono">{log.entity_type}</Badge>
                       {log.entity_id && (
-                        <span className="text-muted-foreground text-xs ml-1">#{log.entity_id.slice(0, 8)}</span>
+                        <span className="text-muted-foreground text-xs">#{log.entity_id.slice(0, 8)}</span>
                       )}
-                    </p>
+                    </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {log.actor?.email ? `${log.actor.email} · ` : ''}
                       {log.ip_address ? `IP: ${log.ip_address}` : ''}

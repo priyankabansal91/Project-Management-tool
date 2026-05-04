@@ -110,8 +110,8 @@ function PermissionsMatrix() {
                 className={cn(
                   'w-full flex items-center gap-3 px-4 py-3 border-b text-left transition-all duration-150 group',
                   isSelected
-                    ? 'bg-white border-l-[3px] border-l-primary shadow-sm'
-                    : 'hover:bg-white/60 border-l-[3px] border-l-transparent'
+                    ? 'bg-card border-l-[3px] border-l-primary shadow-sm'
+                    : 'hover:bg-muted/50 border-l-[3px] border-l-transparent'
                 )}
               >
                 <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all', s.bg, isSelected && 'shadow-sm')}>
@@ -132,7 +132,7 @@ function PermissionsMatrix() {
         </div>
 
         {/* ── RIGHT: Permissions for selected role ── */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-white">
+        <div className="flex-1 flex flex-col overflow-hidden bg-card">
           {/* Role header bar */}
           <div className={cn('flex items-center justify-between px-5 py-3 border-b', rs.bg)}>
             <div className="flex items-center gap-3">
@@ -149,7 +149,7 @@ function PermissionsMatrix() {
                 {currentPerms.length} / {allPermsCount} granted
               </span>
               {editingRole !== activeRole ? (
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 bg-white/80" onClick={startEdit}>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={startEdit}>
                   <Edit2 className="h-3 w-3" /> Edit Permissions
                 </Button>
               ) : (
@@ -158,7 +158,7 @@ function PermissionsMatrix() {
                     {updateMatrix.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                     Save
                   </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs bg-white/80" onClick={cancelEdit}>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={cancelEdit}>
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
@@ -202,7 +202,7 @@ function PermissionsMatrix() {
                   </div>
 
                   {/* Permission pills grid — side by side */}
-                  <div className="grid grid-cols-2 gap-2 p-3 bg-white">
+                  <div className="grid grid-cols-2 gap-2 p-3 bg-card">
                     {cat.permissions.map((perm) => {
                       const has = currentPerms.includes(perm);
                       const isEditing = editingRole === activeRole;
@@ -223,7 +223,7 @@ function PermissionsMatrix() {
                             'h-5 w-5 rounded flex items-center justify-center flex-shrink-0 transition-all',
                             has
                               ? isEditing ? 'bg-primary border-2 border-primary' : cn('rounded-full', rs.bg)
-                              : 'border-2 border-muted-foreground/25 bg-white'
+                              : 'border-2 border-muted-foreground/25 bg-background'
                           )}>
                             {has && <Check className={cn('h-3 w-3', isEditing ? 'text-white' : rs.color)} />}
                           </div>

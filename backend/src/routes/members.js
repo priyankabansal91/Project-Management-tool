@@ -48,6 +48,19 @@ router.post('/invite', authorize('org_admin', 'division_admin'), async (req, res
   } catch (err) { next(err); }
 });
 
+// Create member directly (no email required — admin sets password)
+router.post('/create-direct', authorize('org_admin'), async (req, res, next) => {
+  try {
+    const { email, first_name, last_name, password, role } = req.body;
+    if (!email) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'email is required' } });
+    if (!first_name || !last_name) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'first_name and last_name are required' } });
+    if (!password || password.length < 6) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'password must be at least 6 characters' } });
+    if (role && !VALID_ROLES.has(role)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid role' } });
+    const member = await memberService.createDirect(req.user.orgId, { email, firstName: first_name, lastName: last_name, password, role });
+    res.status(201).json({ success: true, data: member });
+  } catch (err) { next(err); }
+});
+
 // Update member role
 router.patch('/:userId/role', authorize('org_admin'), async (req, res, next) => {
   try {

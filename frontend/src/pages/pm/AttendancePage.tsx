@@ -137,13 +137,14 @@ export function AttendancePage() {
     setLeaveForm({ date: today, leaveType: 'casual', reason: '' });
   };
 
-  const TABS: { id: Tab; label: string; icon: React.ElementType; managerOnly?: boolean }[] = [
+  const ALL_TABS: { id: Tab; label: string; icon: React.ElementType; managerOnly?: boolean }[] = [
     { id: 'today',   label: 'Today',         icon: Clock    },
     { id: 'weekly',  label: 'This Week',     icon: BarChart3 },
     { id: 'monthly', label: 'Monthly',       icon: Calendar },
     { id: 'leave',   label: 'Leave Request', icon: Umbrella },
     { id: 'team',    label: 'Team View',     icon: Users, managerOnly: true },
-  ].filter((t) => !t.managerOnly || isManager);
+  ];
+  const TABS = ALL_TABS.filter((t) => !t.managerOnly || isManager);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -158,26 +159,18 @@ export function AttendancePage() {
           </p>
         </div>
 
-        {/* Quick clock-in/out */}
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <p className="text-2xl font-mono font-bold text-primary">
-              {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+        {/* Live clock */}
+        <div className="text-right">
+          <p className="text-2xl font-mono font-bold text-primary">
+            {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+          </p>
+          {isClocked && (
+            <p className="text-xs text-muted-foreground">Session: {formatDuration(currentSessionSecs)}</p>
+          )}
+          {todayRecord?.clockOut && (
+            <p className="text-xs text-muted-foreground">
+              {formatTime(todayRecord.clockIn)} – {formatTime(todayRecord.clockOut)}
             </p>
-            {isClocked && (
-              <p className="text-xs text-muted-foreground">Session: {formatDuration(currentSessionSecs)}</p>
-            )}
-          </div>
-          {!isClocked ? (
-            <Button className="h-12 px-6 text-base gap-2" onClick={() => clockIn(userId)}
-              disabled={!!todayRecord?.clockOut}>
-              <LogIn className="h-5 w-5" />
-              {todayRecord?.clockOut ? 'Checked Out' : 'Clock In'}
-            </Button>
-          ) : (
-            <Button variant="destructive" className="h-12 px-6 text-base gap-2" onClick={() => clockOut(userId)}>
-              <LogOut className="h-5 w-5" /> Clock Out
-            </Button>
           )}
         </div>
       </div>
@@ -212,11 +205,53 @@ export function AttendancePage() {
           {/* Today summary card */}
           <Card className="md:col-span-2 p-5">
             <h3 className="font-semibold mb-4 flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> Today's Summary</h3>
+
+            {/* ── Primary action buttons ── */}
+            <div className="flex items-center gap-3 mb-5 p-4 rounded-xl bg-muted/40 border">
+              <div className="flex-1">
+                <p className="text-sm font-semibold">
+                  {isClocked
+                    ? 'You are currently clocked in'
+                    : todayRecord?.clockOut
+                    ? 'You have completed today\'s session'
+                    : 'Mark your attendance for today'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isClocked
+                    ? `Session running: ${formatDuration(currentSessionSecs)}`
+                    : todayRecord?.clockIn
+                    ? `Clocked in at ${formatTime(todayRecord.clockIn)}${todayRecord.clockOut ? ` · Out at ${formatTime(todayRecord.clockOut)}` : ''}`
+                    : 'Click Check In to start your work session'}
+                </p>
+              </div>
+              {!isClocked ? (
+                <Button
+                  size="lg"
+                  className="gap-2 min-w-[130px]"
+                  onClick={() => clockIn(userId)}
+                  disabled={!!todayRecord?.clockOut}
+                >
+                  <LogIn className="h-5 w-5" />
+                  {todayRecord?.clockOut ? 'Checked Out' : 'Check In'}
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  variant="destructive"
+                  className="gap-2 min-w-[130px]"
+                  onClick={() => clockOut(userId)}
+                >
+                  <LogOut className="h-5 w-5" /> Check Out
+                </Button>
+              )}
+            </div>
+
+            {/* Stats grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: 'Clock In',  value: formatTime(todayRecord?.clockIn || null),  color: 'text-green-600' },
-                { label: 'Clock Out', value: formatTime(todayRecord?.clockOut || null),  color: 'text-red-600'   },
-                { label: 'Hours',     value: `${(todayRecord?.hoursWorked || 0) + (isClocked ? currentSessionSecs / 3600 : 0).toFixed(1)}h`, color: 'text-blue-600' },
+                { label: 'Check In',  value: formatTime(todayRecord?.clockIn || null),  color: 'text-green-600' },
+                { label: 'Check Out', value: formatTime(todayRecord?.clockOut || null),  color: 'text-red-600'   },
+                { label: 'Hours',     value: `${((todayRecord?.hoursWorked || 0) + (isClocked ? currentSessionSecs / 3600 : 0)).toFixed(1)}h`, color: 'text-blue-600' },
                 { label: 'Status',    value: todayRecord ? STATUS_CONFIG[todayRecord.status].label : 'Not marked', color: 'text-foreground' },
               ].map((item) => (
                 <div key={item.label} className="bg-muted/30 rounded-lg p-3 text-center">
@@ -227,10 +262,10 @@ export function AttendancePage() {
             </div>
 
             {isClocked && (
-              <div className="mt-4 p-3 rounded-lg border border-green-200 bg-green-50">
-                <p className="text-sm font-medium text-green-800 flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" /> Currently clocked in
-                  <span className="font-mono ml-auto text-green-700">{formatDuration(currentSessionSecs)}</span>
+              <div className="mt-4 p-3 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-900">
+                <p className="text-sm font-medium text-green-800 dark:text-green-300 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" /> Session active
+                  <span className="font-mono ml-auto text-green-700 dark:text-green-400">{formatDuration(currentSessionSecs)}</span>
                 </p>
               </div>
             )}

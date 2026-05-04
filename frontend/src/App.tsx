@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { AppShell } from '@/components/layout/AppShell';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -50,6 +50,7 @@ import { FeatureFlagsPage } from '@/pages/admin/FeatureFlagsPage';
 import { OnboardingWizardPage } from '@/pages/admin/OnboardingWizardPage';
 import { AttendancePage } from '@/pages/pm/AttendancePage';
 import { DivisionMISPage } from '@/pages/admin/DivisionMISPage';
+import { NotificationsPage } from '@/pages/user/NotificationsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -63,6 +64,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AcceptInviteRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/invite${search}`} replace />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -72,6 +78,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/invite" element={<InviteAcceptPage />} />
+      <Route path="/accept-invite" element={<AcceptInviteRedirect />} />
       <Route path="/auth/microsoft-callback" element={<MicrosoftCallbackPage />} />
 
       {/* Protected routes */}
@@ -91,6 +98,7 @@ export default function App() {
         <Route path="/gantt" element={<GanttPage />} />
         <Route path="/my-tasks" element={<MyTasksPage />} />
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
 
         {/* PM Views */}
         <Route path="/sprints" element={<SprintManagementPage />} />

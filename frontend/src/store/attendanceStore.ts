@@ -78,7 +78,7 @@ function seedDemoRecords(): AttendanceRecord[] {
       let leaveType: LeaveType | undefined;
 
       if (rand < 0.04) {
-        status = 'sick';
+        status = 'leave';
         leaveType = 'sick';
       } else if (rand < 0.07) {
         status = 'leave';

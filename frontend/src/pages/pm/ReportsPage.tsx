@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { Download, Calendar, TrendingUp, Clock, PieChartIcon, BarChart3 } from 'lucide-react';
+import { Download, Calendar, TrendingUp, Clock, PieChartIcon, BarChart3, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
+import { useMyDivisions } from '@/api/hooks';
 
 // ─── Mock Chart Data ────────────────────────────────────
 
@@ -67,6 +69,9 @@ type ReportTab = 'burndown' | 'velocity' | 'time' | 'distribution';
 
 export function ReportsPage() {
   const [activeTab, setActiveTab] = useState<ReportTab>('burndown');
+  const { currentDivisionId } = useAuthStore();
+  const { data: myDivisions = [] } = useMyDivisions();
+  const activeDivision = (myDivisions as any[]).find((d: any) => d.divisionId === currentDivisionId);
 
   const tabs: { id: ReportTab; label: string; icon: typeof TrendingUp }[] = [
     { id: 'burndown', label: 'Burndown', icon: TrendingUp },
@@ -80,7 +85,10 @@ export function ReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">Project analytics and team performance insights</p>
+          <p className="text-muted-foreground">
+            Project analytics and team performance insights
+            {activeDivision && <span className="ml-2 text-primary font-medium">· {activeDivision.divisionName}</span>}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <select className="rounded-md border px-3 py-2 text-sm bg-card">
@@ -91,6 +99,15 @@ export function ReportsPage() {
           <Button variant="outline" size="sm"><Download className="h-4 w-4" /> Export</Button>
         </div>
       </div>
+
+      {currentDivisionId && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-sm">
+          <Building2 className="h-4 w-4 text-primary" />
+          <span className="text-muted-foreground">Division:</span>
+          <span className="font-semibold text-primary">{activeDivision?.divisionName ?? 'Selected Division'}</span>
+          <span className="ml-auto text-xs text-muted-foreground">Metrics filtered to this division</span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b">

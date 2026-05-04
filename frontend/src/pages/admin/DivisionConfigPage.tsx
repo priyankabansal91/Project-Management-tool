@@ -131,9 +131,10 @@ function FeatureToggles({ divisionId, features, onChange }: { divisionId: string
             </div>
             <button
               onClick={() => onChange(f.key, !enabled)}
-              className={cn('relative h-5 w-9 rounded-full transition-colors flex-shrink-0', enabled ? 'bg-primary' : 'bg-muted-foreground/30')}
+              className={cn('relative h-6 w-11 rounded-full transition-colors flex-shrink-0 overflow-hidden', enabled ? 'bg-primary' : 'bg-muted-foreground/30')}
+              title={enabled ? 'Click to disable' : 'Click to enable'}
             >
-              <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform', enabled ? 'translate-x-4' : 'translate-x-0.5')} />
+              <span className={cn('absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', enabled ? 'translate-x-5' : 'translate-x-0')} />
             </button>
           </div>
         );
@@ -372,16 +373,16 @@ function ModuleAccessSection({
                 disabled={mod.core}
                 onClick={() => toggle(mod.id, !enabled)}
                 className={cn(
-                  'relative h-5 w-9 rounded-full transition-colors flex-shrink-0',
+                  'relative h-6 w-11 rounded-full transition-colors flex-shrink-0 overflow-hidden',
                   enabled ? 'bg-primary' : 'bg-muted-foreground/30',
-                  mod.core && 'cursor-not-allowed opacity-60'
+                  mod.core ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
                 )}
                 title={mod.core ? 'Core module — always enabled' : (enabled ? 'Disable module' : 'Enable module')}
               >
                 <span
                   className={cn(
-                    'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
-                    enabled ? 'translate-x-4' : 'translate-x-0.5'
+                    'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                    enabled ? 'translate-x-5' : 'translate-x-0'
                   )}
                 />
               </button>

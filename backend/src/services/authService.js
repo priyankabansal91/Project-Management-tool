@@ -182,6 +182,57 @@ class AuthService {
 
     return token;
   }
+
+  async acceptInvite({ token, first_name, last_name, password }) {
+    const tokenHash = require('crypto').createHash('sha256').update(token).digest('hex');
+    const invite = await prisma.invitation.findFirst({
+      where: { tokenHash, acceptedAt: null, expiresAt: { gt: new Date() } },
+      include: { organization: true },
+    });
+    if (!invite) throw ApiError.badRequest('Invalid or expired invitation link');
+
+    // Check if user already exists (re-invite scenario)
+    let user = await prisma.user.findUnique({ where: { email: invite.email } });
+    if (user) {
+      // Already registered — just add to org if not already a member
+      const existing = await prisma.orgMember.findFirst({ where: { orgId: invite.orgId, userId: user.id } });
+      if (!existing) {
+        await prisma.orgMember.create({ data: { orgId: invite.orgId, userId: user.id, role: invite.role } });
+      }
+    } else {
+      const passwordHash = await bcrypt.hash(password, 12);
+      user = await prisma.user.create({
+        data: {
+          email: invite.email,
+          firstName: first_name,
+          lastName: last_name,
+          passwordHash,
+          status: 'active',
+          emailVerifiedAt: new Date(),
+        },
+      });
+      await prisma.orgMember.create({ data: { orgId: invite.orgId, userId: user.id, role: invite.role } });
+    }
+
+    await prisma.invitation.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
+
+    const membership = await prisma.orgMember.findFirst({
+      where: { userId: user.id, orgId: invite.orgId },
+      include: { organization: true },
+    });
+
+    const accessToken = this.generateAccessToken(user, membership.organization, membership.role);
+    const refreshToken = await this.generateRefreshToken(user.id, invite.orgId);
+
+    return {
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 900,
+      refresh_token: refreshToken,
+      user: { id: user.id, email: user.email, first_name: user.firstName, last_name: user.lastName, avatar_url: user.avatarUrl },
+      organizations: [{ id: membership.organization.id, name: membership.organization.name, slug: membership.organization.slug, role: membership.role }],
+    };
+  }
 }
 
 module.exports = new AuthService();

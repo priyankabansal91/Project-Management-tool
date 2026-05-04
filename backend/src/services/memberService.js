@@ -73,7 +73,7 @@ class MemberService {
     });
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const inviteLink  = `${frontendUrl}/accept-invite?token=${rawToken}`;
+    const inviteLink  = `${frontendUrl}/invite?token=${rawToken}`;
 
     const inviter = await prisma.user.findUnique({ where: { id: invitedBy }, select: { firstName: true, lastName: true } });
     const inviterName = inviter ? `${inviter.firstName} ${inviter.lastName}` : 'An admin';
@@ -140,6 +140,30 @@ class MemberService {
     if (member.isOwner) throw ApiError.badRequest('Cannot remove the organization owner');
     await prisma.orgMember.delete({ where: { orgId_userId: { orgId, userId } } });
     return { success: true };
+  }
+
+  async createDirect(orgId, { email, firstName, lastName, password, role }) {
+    const bcrypt = require('bcryptjs');
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      // If user exists, just add to org if not already a member
+      const member = await prisma.orgMember.findFirst({ where: { orgId, userId: existing.id } });
+      if (member) throw ApiError.badRequest('User with this email is already a member');
+      const om = await prisma.orgMember.create({ data: { orgId, userId: existing.id, role: role || 'member' }, include: { user: true } });
+      return fmtMember(om);
+    }
+    const passwordHash = await bcrypt.hash(password, 12);
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { email, firstName, lastName, passwordHash, status: 'active', emailVerifiedAt: new Date() },
+      });
+      const om = await tx.orgMember.create({
+        data: { orgId, userId: user.id, role: role || 'member' },
+        include: { user: true },
+      });
+      return om;
+    });
+    return fmtMember(result);
   }
 }
 

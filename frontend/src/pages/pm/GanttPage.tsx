@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useProjectTasks, useProject } from '@/api/hooks';
+import { useProjectTasks, useProject, useProjects } from '@/api/hooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, LayoutGrid, Calendar, List } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutGrid, Calendar, List, FolderKanban } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import type { Task } from '@/types';
 
@@ -47,9 +47,13 @@ const ZOOM_COLS: Record<ZoomLevel, { count: number; dayWidth: number; stepDays: 
 };
 
 export function GanttPage() {
-  const { projectId } = useParams<{ projectId: string }>();
-  const projectQuery = useProject(projectId || '');
-  const tasksQuery = useProjectTasks(projectId || '');
+  const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const { data: allProjects } = useProjects();
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+
+  const projectId = routeProjectId || selectedProjectId;
+  const projectQuery = useProject(projectId);
+  const tasksQuery = useProjectTasks(projectId);
   const project = projectQuery.data;
   const allTasks: Task[] = tasksQuery.data?.items || [];
 
@@ -105,29 +109,50 @@ export function GanttPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <Link to="/projects" className="hover:text-primary">Projects</Link>
-            <span>/</span>
-            <span>{project?.name || 'Loading...'}</span>
-          </div>
+          {routeProjectId && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <Link to="/projects" className="hover:text-primary">Projects</Link>
+              <span>/</span>
+              <span>{project?.name || 'Loading...'}</span>
+            </div>
+          )}
           <h1 className="text-xl font-bold flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" /> Gantt Timeline
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Project view switcher */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Project selector (shown when not coming from a project route) */}
+          {!routeProjectId && (
+            <div className="flex items-center gap-2">
+              <FolderKanban className="h-4 w-4 text-muted-foreground" />
+              <select
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">— Select a project —</option>
+                {(allProjects?.items || []).map((p: any) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Project view switcher (only when project selected) */}
+          {projectId && (
           <div className="flex items-center rounded-md border bg-card">
-            <Link to={`/projects/${projectId}/board`} className="p-2 hover:bg-accent rounded-l-md" title="Board">
+            <Link to={`/projects/${projectId}/board`} className="p-2 hover:bg-muted rounded-l-md" title="Board">
               <LayoutGrid className="h-4 w-4" />
             </Link>
-            <Link to={`/projects/${projectId}/calendar`} className="p-2 hover:bg-accent" title="Calendar">
+            <Link to={`/projects/${projectId}/calendar`} className="p-2 hover:bg-muted" title="Calendar">
               <Calendar className="h-4 w-4" />
             </Link>
-            <button className="p-2 bg-accent rounded-r-md" title="Gantt" disabled>
+            <button className="p-2 bg-muted rounded-r-md" title="Gantt" disabled>
               <List className="h-4 w-4 text-primary" />
             </button>
           </div>
+          )}
 
           {/* Zoom controls */}
           <div className="flex items-center rounded-md border bg-card">
@@ -155,7 +180,13 @@ export function GanttPage() {
         </div>
       </div>
 
-      {tasks.length === 0 ? (
+      {!projectId ? (
+        <Card className="p-12 text-center">
+          <FolderKanban className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground font-medium">Select a project to view its Gantt timeline</p>
+          <p className="text-sm text-muted-foreground mt-1">Use the project selector above to choose a project.</p>
+        </Card>
+      ) : tasks.length === 0 ? (
         <Card className="p-12 text-center">
           <Calendar className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground font-medium">No tasks with dates found</p>

@@ -181,7 +181,7 @@ function DivisionSelector({
         <ChevronDown className="h-4 w-4 opacity-50" />
       </Button>
       {open && (
-        <div className="absolute z-50 mt-1 min-w-[200px] rounded-md border bg-popover shadow-md">
+        <div className="absolute z-50 mt-1 min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-md">
           {options.map((o) => (
             <button
               key={o.id}

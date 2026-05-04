@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { OrgRole } from '@/types';
 
 interface NavItem {
@@ -102,11 +102,19 @@ export function Sidebar() {
     ? `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim()
     : 'User';
 
+  // Fixed-position tooltip state (escapes overflow clipping)
+  const [tooltip, setTooltip] = useState<{ label: string; top: number } | null>(null);
+  const showTooltip = useCallback((e: React.MouseEvent<HTMLAnchorElement>, label: string) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltip({ label, top: rect.top + rect.height / 2 });
+  }, []);
+  const hideTooltip = useCallback(() => setTooltip(null), []);
+
   // Sidebar dark navy color tokens (inline for full JIT safety)
   const sidebarBg    = 'hsl(215 60% 14%)';   // #0D2345
   const sidebarHover = 'hsl(215 60% 20%)';   // #152F59
   const activeBg     = 'hsl(215 60% 22%)';   // #183366
-  const activeBorder = 'hsl(28 76% 52%)';    // #E07B2A
+  const activeBorder = 'hsl(200 88% 52%)';   // sky blue
   const inactiveText = 'hsl(215 30% 65%)';   // #8BA4C4
   const sectionLabel = 'hsl(215 20% 50%)';   // #617899
   const dividerColor = 'hsl(215 60% 20%)';   // subtle white/navy
@@ -124,10 +132,10 @@ export function Sidebar() {
         style={{ borderBottomColor: 'hsl(215 60% 20%)' }}
         className="flex h-[60px] items-center gap-3 px-4 flex-shrink-0 border-b"
       >
-        {/* PF logo with orange dot */}
+        {/* QF logo with orange dot */}
         <div className="relative flex-shrink-0">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white font-bold text-sm">
-            PF
+            QF
           </div>
           <div
             style={{
@@ -141,7 +149,7 @@ export function Sidebar() {
         {!collapsed && (
           <div className="min-w-0">
             <span className="block text-white font-semibold text-sm leading-tight">
-              ProjectFlow
+              Q-Flow
             </span>
             <p className="text-[10px] text-white/40 mt-0 leading-tight">
               Quality Council of India
@@ -177,7 +185,6 @@ export function Sidebar() {
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  title={collapsed ? item.label : undefined}
                   className={({ isActive }) =>
                     cn(
                       'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 group whitespace-nowrap',
@@ -193,6 +200,7 @@ export function Sidebar() {
                     color: isActive ? 'white' : inactiveText,
                   })}
                   onMouseEnter={(e) => {
+                    showTooltip(e, item.label);
                     const el = e.currentTarget;
                     const active = el.getAttribute('aria-current') === 'page';
                     if (!active) {
@@ -201,6 +209,7 @@ export function Sidebar() {
                     }
                   }}
                   onMouseLeave={(e) => {
+                    hideTooltip();
                     const el = e.currentTarget;
                     const active = el.getAttribute('aria-current') === 'page';
                     if (!active) {
@@ -209,11 +218,7 @@ export function Sidebar() {
                     }
                   }}
                 >
-                  <item.icon
-                    className={cn(
-                      'h-4 w-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110'
-                    )}
-                  />
+                  <item.icon className="h-4 w-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110" />
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </NavLink>
               ))}
@@ -256,6 +261,22 @@ export function Sidebar() {
           : <ChevronLeft className="h-4 w-4" />
         }
       </button>
+
+      {/* Fixed-position tooltip — escapes overflow:hidden */}
+      {tooltip && (
+        <div
+          className="fixed z-[500] pointer-events-none px-2.5 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap shadow-xl -translate-y-1/2"
+          style={{
+            top: tooltip.top,
+            left: collapsed ? 72 : 272,
+            background: 'hsl(215 80% 18%)',
+            color: 'white',
+            border: '1px solid hsl(215 60% 32%)',
+          }}
+        >
+          {tooltip.label}
+        </div>
+      )}
     </aside>
   );
 }
