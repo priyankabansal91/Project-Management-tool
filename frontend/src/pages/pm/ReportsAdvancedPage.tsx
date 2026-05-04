@@ -111,9 +111,9 @@ const widgetCatalog: { type: WidgetType; name: string; icon: typeof Activity; de
 
 const sizeClasses: Record<Widget['size'], string> = {
   sm: 'col-span-1',
-  md: 'col-span-2',
-  lg: 'col-span-3',
-  xl: 'col-span-4',
+  md: 'col-span-1 lg:col-span-2',
+  lg: 'col-span-1 md:col-span-2 lg:col-span-3',
+  xl: 'col-span-1 md:col-span-2 lg:col-span-4',
 };
 
 // Default dashboard
@@ -238,8 +238,7 @@ export function ReportsAdvancedPage() {
       {/* Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {widgets.map((widget) => (
-          <div key={widget.id} className={cn('relative', sizeClasses[widget.size], 'col-span-1 md:col-span-2')}>
-            {widget.size === 'sm' && <div className="md:col-span-1 lg:col-span-1" />}
+          <div key={widget.id} className={cn('relative', sizeClasses[widget.size])}>
             <WidgetRenderer
               widget={widget}
               editMode={editMode}

@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import api from './client';
+
+// Bare axios instance — no auth headers, no dev-bypass header. Used for public endpoints.
+const publicApi = axios.create({
+  baseURL: (import.meta as any).env?.VITE_API_URL || '/v1',
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
+});
 import type { ApiResponse, Project, Task, KanbanColumn, DashboardData, OrgMemberItem, WorkflowConfig, Comment, Pagination } from '@/types';
 
 // ─── Dashboard ──────────────────────────────────────────
@@ -235,6 +243,30 @@ export function useInviteMember() {
       return data.data as { id: string; email: string; role: string; expires_at: string; invite_link: string };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['members'] }),
+  });
+}
+
+export function useCreateMemberDirect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { email: string; first_name: string; last_name: string; password: string; role: string }) => {
+      const { data } = await api.post('/members/create-direct', body);
+      return data.data as { id: string; email: string; first_name: string; last_name: string; role: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['members'] });
+      qc.invalidateQueries({ queryKey: ['pendingInvites'] });
+    },
+  });
+}
+
+export function useAcceptInvite() {
+  return useMutation({
+    mutationFn: async (body: { token: string; first_name: string; last_name: string; password: string }) => {
+      // Use publicApi — no auth or dev-bypass headers on this public endpoint
+      const { data } = await publicApi.post('/auth/accept-invite', body);
+      return data.data as { access_token: string; user: { id: string; email: string; first_name: string; last_name: string; avatar_url: string | null }; organizations: { id: string; name: string; slug: string; role: string }[] };
+    },
   });
 }
 
@@ -844,6 +876,30 @@ export function useRemoveDivisionMember() {
   });
 }
 
+/**
+ * useDivisionModules — fetches enabled_modules for a specific division.
+ * Returns { modules: string[], isLoading, isEnabled: (moduleId: string) => boolean }
+ */
+export function useDivisionModules(divisionId: string | null) {
+  const query = useDivisionConfig(divisionId);
+  const modules: string[] = query.data?.enabled_modules ?? [];
+  return {
+    ...query,
+    modules,
+    isEnabled: (moduleId: string) => modules.includes(moduleId),
+  };
+}
+
+/**
+ * useMyDivisionModules — fetches enabled modules for the first division
+ * the current user belongs to (used for PermissionGate checks).
+ */
+export function useMyDivisionModules() {
+  const myDivisions = useMyDivisions();
+  const firstDivisionId = myDivisions.data?.[0]?.divisionId ?? null;
+  return useDivisionModules(firstDivisionId);
+}
+
 // ─── Executive Rollup ────────────────────────────────────
 
 export function useExecutiveRollup() {
@@ -881,6 +937,17 @@ export function useOKRs(params?: { level?: string; quarter?: string; year?: stri
       const { data } = await api.get('/okrs', { params });
       return data.data;
     },
+  });
+}
+
+export function useCreateOKR() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/okrs', body);
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['okrs'] }),
   });
 }
 
@@ -1265,5 +1332,100 @@ interface Sprint {
   tasks: Task[];
   task_count: number;
   completed_tasks: number;
+}
+
+// ─── Audit Logs ──────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  old_value: unknown;
+  new_value: unknown;
+  diff: unknown;
+  ip_address: string | null;
+  created_at: string;
+  actor: {
+    id: string;
+    name: string;
+    email: string;
+    avatar_url: string | null;
+  } | null;
+}
+
+export interface AuditLogParams {
+  page?: number;
+  page_size?: number;
+  entity_type?: string;
+  action?: string;
+  actor_id?: string;
+  search?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export function useAuditLogs(params?: AuditLogParams) {
+  return useQuery({
+    queryKey: ['auditLogs', params],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<{ items: AuditLogEntry[]; pagination: Pagination }>>(
+        '/audit-logs',
+        { params }
+      );
+      return data.data;
+    },
+    staleTime: 30000,
+  });
+}
+
+// ─── Division MIS ─────────────────────────────────────────
+
+export interface DivisionMISData {
+  division: { id: string; name: string; code: string };
+  members: { total: number; active: number; inactive: number; suspended: number };
+  projects: { total: number; active: number; completed: number; on_hold: number; overdue: number };
+  tasks: {
+    total: number; open: number; in_progress: number; completed: number;
+    overdue: number; due_this_week: number;
+    by_priority: { critical: number; high: number; medium: number; low: number };
+  };
+  time_tracking: { hours_this_week: number; hours_this_month: number };
+  approvals: { pending: number; approved_this_month: number; rejected_this_month: number };
+  top_contributors: { user_id: string; name: string; tasks_completed: number; hours_logged: number }[];
+  recent_activity: { action: string; entity: string; actor: string; timestamp: string }[];
+}
+
+export interface DivisionOverviewMISItem {
+  id: string;
+  name: string;
+  color: string;
+  member_count: number;
+  project_count: number;
+  task_completion_rate: number;
+  health_score: number;
+}
+
+export function useDivisionMIS(divisionId: string) {
+  return useQuery({
+    queryKey: ['divisionMIS', divisionId],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<DivisionMISData>>(`/mis/division/${divisionId}`);
+      return data.data;
+    },
+    enabled: !!divisionId,
+    staleTime: 30_000,
+  });
+}
+
+export function useDivisionOverviewMIS() {
+  return useQuery({
+    queryKey: ['divisionOverviewMIS'],
+    queryFn: async () => {
+      const { data } = await api.get<ApiResponse<DivisionOverviewMISItem[]>>('/mis/division-overview');
+      return data.data;
+    },
+    staleTime: 30_000,
+  });
 }
 

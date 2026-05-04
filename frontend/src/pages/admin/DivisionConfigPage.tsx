@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useAllDivisionConfigs, useUpdateDivisionConfig, useDivisionMembers, useAddDivisionMember, useRemoveDivisionMember, useWorkflows } from '@/api/hooks';
 import type { WorkflowConfig } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Building2, Settings, Users, Shield, Check, X, ChevronDown, ChevronRight,
+  Building2, Users, Shield, Check, X, ChevronDown, ChevronRight,
   Clock, Calendar, Zap, BarChart3, DollarSign, Target, FileText, CheckCircle,
   Download, Brain, Loader2, UserPlus, Trash2, Crown, Briefcase, UserCheck, Eye,
-  Workflow,
+  Workflow, LayoutGrid, FolderKanban, Timer, ClipboardCheck, FormInput,
+  Gauge, BookOpen, Boxes,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,67 @@ const FEATURES = [
   { key: 'resourceDashboard', label: 'Resource Dashboard',  icon: Users,       description: 'Capacity planning and skill matrix' },
   { key: 'approvals',         label: 'Approvals',           icon: CheckCircle, description: 'Multi-step approval workflows' },
   { key: 'forms',             label: 'Forms & Intake',      icon: FileText,    description: 'Intake forms for requests' },
+];
+
+// ─── Module definitions ───────────────────────────────────
+
+const MODULES = [
+  {
+    id: 'projects',
+    label: 'Projects & Tasks',
+    icon: FolderKanban,
+    description: 'Core project and task management (always enabled)',
+    core: true,
+  },
+  {
+    id: 'time_tracking',
+    label: 'Time Tracking',
+    icon: Timer,
+    description: 'Log hours, timesheets, and weekly summaries',
+    core: false,
+  },
+  {
+    id: 'approvals',
+    label: 'Approvals',
+    icon: ClipboardCheck,
+    description: 'Multi-step approval workflows for tasks and documents',
+    core: false,
+  },
+  {
+    id: 'forms_templates',
+    label: 'Forms & Templates',
+    icon: FormInput,
+    description: 'Intake forms, task templates, and structured submissions',
+    core: false,
+  },
+  {
+    id: 'sprint_management',
+    label: 'Sprint Management',
+    icon: Gauge,
+    description: 'Agile sprints, backlog, and burndown charts',
+    core: false,
+  },
+  {
+    id: 'reports_mis',
+    label: 'Reports & MIS',
+    icon: BarChart3,
+    description: 'Analytics, executive reports, and data exports',
+    core: false,
+  },
+  {
+    id: 'resource_planning',
+    label: 'Resource Planning',
+    icon: Boxes,
+    description: 'Capacity planning, skill matrix, and resource allocation',
+    core: false,
+  },
+  {
+    id: 'documents_files',
+    label: 'Documents / Files',
+    icon: BookOpen,
+    description: 'File attachments, document versioning, and storage',
+    core: false,
+  },
 ];
 
 const ROLE_OVERRIDES = [
@@ -69,9 +131,10 @@ function FeatureToggles({ divisionId, features, onChange }: { divisionId: string
             </div>
             <button
               onClick={() => onChange(f.key, !enabled)}
-              className={cn('relative h-5 w-9 rounded-full transition-colors flex-shrink-0', enabled ? 'bg-primary' : 'bg-muted-foreground/30')}
+              className={cn('relative h-6 w-11 rounded-full transition-colors flex-shrink-0 overflow-hidden', enabled ? 'bg-primary' : 'bg-muted-foreground/30')}
+              title={enabled ? 'Click to disable' : 'Click to enable'}
             >
-              <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform', enabled ? 'translate-x-4' : 'translate-x-0.5')} />
+              <span className={cn('absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200', enabled ? 'translate-x-5' : 'translate-x-0')} />
             </button>
           </div>
         );
@@ -251,15 +314,96 @@ function WorkflowSection({ selectedId, onChange }: { selectedId: string | null; 
   );
 }
 
+// ─── Module Access Section ────────────────────────────────
+
+function ModuleAccessSection({
+  enabledModules,
+  onChange,
+}: {
+  enabledModules: string[];
+  onChange: (modules: string[]) => void;
+}) {
+  const toggle = (moduleId: string, enabled: boolean) => {
+    if (enabled) {
+      onChange([...enabledModules, moduleId]);
+    } else {
+      onChange(enabledModules.filter((m) => m !== moduleId));
+    }
+  };
+
+  const enabledCount = enabledModules.length;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Choose which modules are accessible to members of this division.
+        <strong> Projects &amp; Tasks</strong> is always on as the core module.
+      </p>
+      <div className="text-xs text-muted-foreground font-medium">
+        {enabledCount} / {MODULES.length} modules enabled
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {MODULES.map((mod) => {
+          const Icon = mod.icon;
+          const enabled = mod.core || enabledModules.includes(mod.id);
+          return (
+            <div
+              key={mod.id}
+              className={cn(
+                'flex items-center gap-3 rounded-lg border p-3 transition-colors',
+                enabled ? 'border-primary/30 bg-primary/5' : 'border-muted bg-muted/20',
+                mod.core && 'opacity-80'
+              )}
+            >
+              <div className={cn('rounded-lg p-2 flex-shrink-0', enabled ? 'bg-primary/10' : 'bg-muted')}>
+                <Icon className={cn('h-4 w-4', enabled ? 'text-primary' : 'text-muted-foreground')} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn('text-sm font-medium', !enabled && 'text-muted-foreground')}>
+                  {mod.label}
+                  {mod.core && (
+                    <span className="ml-1.5 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide">
+                      Core
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">{mod.description}</p>
+              </div>
+              <button
+                disabled={mod.core}
+                onClick={() => toggle(mod.id, !enabled)}
+                className={cn(
+                  'relative h-6 w-11 rounded-full transition-colors flex-shrink-0 overflow-hidden',
+                  enabled ? 'bg-primary' : 'bg-muted-foreground/30',
+                  mod.core ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                )}
+                title={mod.core ? 'Core module — always enabled' : (enabled ? 'Disable module' : 'Enable module')}
+              >
+                <span
+                  className={cn(
+                    'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                    enabled ? 'translate-x-5' : 'translate-x-0'
+                  )}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Division Card ────────────────────────────────────────
 
 function DivisionCard({ division }: { division: any }) {
-  const [activeTab, setActiveTab] = useState<'features' | 'permissions' | 'members' | 'workflow'>('features');
+  const [activeTab, setActiveTab] = useState<'modules' | 'features' | 'permissions' | 'members' | 'workflow'>('modules');
   const [localConfig, setLocalConfig] = useState({
-    features:       division.config?.features       || {},
-    roleOverrides:  division.config?.roleOverrides  || {},
-    reportAccess:   division.config?.reportAccess   || {},
+    features:         division.config?.features         || {},
+    roleOverrides:    division.config?.roleOverrides    || {},
+    reportAccess:     division.config?.reportAccess     || {},
     workflowTemplate: division.config?.workflowTemplate || null,
+    enabled_modules:  division.config?.enabled_modules  || MODULES.map((m) => m.id),
   });
   const [dirty, setDirty] = useState(false);
   const update = useUpdateDivisionConfig();
@@ -282,12 +426,17 @@ function DivisionCard({ division }: { division: any }) {
     setDirty(true);
   };
 
+  const setEnabledModules = (modules: string[]) => {
+    setLocalConfig((c: any) => ({ ...c, enabled_modules: modules }));
+    setDirty(true);
+  };
+
   const save = async () => {
     await update.mutateAsync({ divisionId: division.id, config: localConfig });
     setDirty(false);
   };
 
-  const enabledCount = Object.values(localConfig.features || {}).filter(Boolean).length;
+  const enabledModulesCount = (localConfig.enabled_modules || []).length;
   const colorClass = DIVISION_COLORS[division.id] || 'bg-gray-100 text-gray-700 border-gray-200';
 
   return (
@@ -306,7 +455,7 @@ function DivisionCard({ division }: { division: any }) {
           </div>
           <div className="flex flex-col items-end gap-1">
             <span className={cn('text-[11px] font-semibold rounded-full px-2.5 py-1 border', colorClass)}>
-              {enabledCount}/{FEATURES.length} features enabled
+              {enabledModulesCount}/{MODULES.length} modules on
             </span>
             {division.budget && (
               <span className="text-[11px] text-muted-foreground">Budget: ₹{(division.budget / 100000).toFixed(1)}L</span>
@@ -318,6 +467,7 @@ function DivisionCard({ division }: { division: any }) {
       {/* Tabs */}
       <div className="flex border-b overflow-x-auto">
         {([
+          { key: 'modules',      label: 'Modules',      icon: LayoutGrid },
           { key: 'features',     label: 'Features',     icon: Zap },
           { key: 'permissions',  label: 'Permissions',  icon: Shield },
           { key: 'workflow',     label: 'Workflow',     icon: Workflow },
@@ -326,7 +476,7 @@ function DivisionCard({ division }: { division: any }) {
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px', activeTab === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
+            className={cn('flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap', activeTab === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
           >
             <Icon className="h-3.5 w-3.5" />{label}
           </button>
@@ -334,6 +484,12 @@ function DivisionCard({ division }: { division: any }) {
       </div>
 
       <CardContent className="pt-4">
+        {activeTab === 'modules' && (
+          <ModuleAccessSection
+            enabledModules={localConfig.enabled_modules || []}
+            onChange={setEnabledModules}
+          />
+        )}
         {activeTab === 'features' && (
           <FeatureToggles divisionId={division.id} features={localConfig.features || {}} onChange={setFeature} />
         )}
@@ -352,7 +508,13 @@ function DivisionCard({ division }: { division: any }) {
             <p className="text-xs text-muted-foreground">Unsaved changes</p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => {
-                setLocalConfig({ features: division.config?.features || {}, roleOverrides: division.config?.roleOverrides || {}, reportAccess: division.config?.reportAccess || {}, workflowTemplate: division.config?.workflowTemplate || null });
+                setLocalConfig({
+                  features:         division.config?.features         || {},
+                  roleOverrides:    division.config?.roleOverrides    || {},
+                  reportAccess:     division.config?.reportAccess     || {},
+                  workflowTemplate: division.config?.workflowTemplate || null,
+                  enabled_modules:  division.config?.enabled_modules  || MODULES.map((m) => m.id),
+                });
                 setDirty(false);
               }}>Discard</Button>
               <Button size="sm" onClick={save} disabled={update.isPending}>

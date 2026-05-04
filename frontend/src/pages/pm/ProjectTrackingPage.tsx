@@ -164,6 +164,23 @@ export function ProjectTrackingPage() {
 
   const divisions = useMemo(() => [...new Set(mockProjects.map((p) => p.division))], []);
 
+  function exportCSV() {
+    const headers = ['Name', 'Key', 'Division', 'PM', 'Completion %', 'Health', 'Total Tasks', 'Completed Tasks', 'Overdue Tasks', 'Budget Allocated', 'Budget Spent', 'Due Date'];
+    const rows = mockProjects.map((p) => [
+      p.name, p.key, p.division, p.pm, p.completion_pct.toFixed(1),
+      ragColors[p.health].label, p.total_tasks, p.completed_tasks, p.overdue_tasks,
+      p.budget_allocated, p.budget_spent, p.due_date,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `portfolio-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const filtered = useMemo(() => {
     let list = mockProjects.filter((p) => {
       if (filterHealth !== 'all' && p.health !== filterHealth) return false;
@@ -207,7 +224,7 @@ export function ProjectTrackingPage() {
           <h1 className="text-2xl font-bold">Project Tracking</h1>
           <p className="text-muted-foreground">{mockProjects.length} active projects &middot; Portfolio overview for leadership</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => alert('Export portfolio report as PDF...')}>
+        <Button variant="outline" size="sm" onClick={exportCSV}>
           <Download className="h-3.5 w-3.5" /> Export Report
         </Button>
       </div>

@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { Download, Calendar, TrendingUp, Clock, PieChartIcon, BarChart3 } from 'lucide-react';
+import { Download, Calendar, TrendingUp, Clock, PieChartIcon, BarChart3, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
+import { useMyDivisions } from '@/api/hooks';
 
 // ─── Mock Chart Data ────────────────────────────────────
 
@@ -67,6 +69,9 @@ type ReportTab = 'burndown' | 'velocity' | 'time' | 'distribution';
 
 export function ReportsPage() {
   const [activeTab, setActiveTab] = useState<ReportTab>('burndown');
+  const { currentDivisionId } = useAuthStore();
+  const { data: myDivisions = [] } = useMyDivisions();
+  const activeDivision = (myDivisions as any[]).find((d: any) => d.divisionId === currentDivisionId);
 
   const tabs: { id: ReportTab; label: string; icon: typeof TrendingUp }[] = [
     { id: 'burndown', label: 'Burndown', icon: TrendingUp },
@@ -76,11 +81,14 @@ export function ReportsPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">Project analytics and team performance insights</p>
+          <p className="text-muted-foreground">
+            Project analytics and team performance insights
+            {activeDivision && <span className="ml-2 text-primary font-medium">· {activeDivision.divisionName}</span>}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <select className="rounded-md border px-3 py-2 text-sm bg-card">
@@ -91,6 +99,15 @@ export function ReportsPage() {
           <Button variant="outline" size="sm"><Download className="h-4 w-4" /> Export</Button>
         </div>
       </div>
+
+      {currentDivisionId && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-sm">
+          <Building2 className="h-4 w-4 text-primary" />
+          <span className="text-muted-foreground">Division:</span>
+          <span className="font-semibold text-primary">{activeDivision?.divisionName ?? 'Selected Division'}</span>
+          <span className="ml-auto text-xs text-muted-foreground">Metrics filtered to this division</span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b">
@@ -111,7 +128,7 @@ export function ReportsPage() {
       {/* Burndown Chart */}
       {activeTab === 'burndown' && (
         <div className="space-y-6">
-          <Card>
+          <Card className="stat-tile card-hover">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Sprint Burndown Chart</CardTitle>
@@ -137,7 +154,7 @@ export function ReportsPage() {
           </Card>
 
           {/* Weekly Activity */}
-          <Card>
+          <Card className="stat-tile card-hover">
             <CardHeader><CardTitle className="text-base">Weekly Activity</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
@@ -159,7 +176,7 @@ export function ReportsPage() {
 
       {/* Velocity Chart */}
       {activeTab === 'velocity' && (
-        <Card>
+        <Card className="stat-tile card-hover">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Team Velocity (Story Points)</CardTitle>
@@ -179,16 +196,16 @@ export function ReportsPage() {
               </BarChart>
             </ResponsiveContainer>
             <div className="flex items-center justify-center gap-6 mt-4 text-sm">
-              <div className="text-center">
+              <div className="text-center stat-tile card-hover rounded-lg p-3">
                 <p className="text-2xl font-bold text-primary">22.5</p>
                 <p className="text-muted-foreground">Avg Velocity</p>
               </div>
-              <div className="text-center">
+              <div className="text-center stat-tile card-hover rounded-lg p-3">
                 <p className="text-2xl font-bold text-green-600">+8%</p>
                 <p className="text-muted-foreground">Trend</p>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">87%</p>
+              <div className="text-center stat-tile card-hover rounded-lg p-3">
+                <p className="text-2xl font-bold text-primary">87%</p>
                 <p className="text-muted-foreground">Completion Rate</p>
               </div>
             </div>
@@ -198,7 +215,7 @@ export function ReportsPage() {
 
       {/* Time Tracking */}
       {activeTab === 'time' && (
-        <Card>
+        <Card className="stat-tile card-hover">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Time Tracking by Team Member</CardTitle>
@@ -222,9 +239,9 @@ export function ReportsPage() {
               </BarChart>
             </ResponsiveContainer>
             <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
-              <div className="text-center"><p className="text-xl font-bold">86h</p><p className="text-xs text-muted-foreground">Total Logged</p></div>
-              <div className="text-center"><p className="text-xl font-bold">106h</p><p className="text-xs text-muted-foreground">Total Estimated</p></div>
-              <div className="text-center"><p className="text-xl font-bold text-orange-600">81%</p><p className="text-xs text-muted-foreground">Utilization</p></div>
+              <div className="text-center stat-tile card-hover rounded-lg p-3"><p className="text-2xl font-bold text-primary">86h</p><p className="text-xs text-muted-foreground">Total Logged</p></div>
+              <div className="text-center stat-tile card-hover rounded-lg p-3"><p className="text-2xl font-bold text-primary">106h</p><p className="text-xs text-muted-foreground">Total Estimated</p></div>
+              <div className="text-center stat-tile card-hover rounded-lg p-3"><p className="text-2xl font-bold text-orange-600">81%</p><p className="text-xs text-muted-foreground">Utilization</p></div>
             </div>
           </CardContent>
         </Card>
@@ -233,7 +250,7 @@ export function ReportsPage() {
       {/* Distribution Charts */}
       {activeTab === 'distribution' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
+          <Card className="stat-tile card-hover">
             <CardHeader><CardTitle className="text-base">Tasks by Status</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={280}>
@@ -255,7 +272,7 @@ export function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="stat-tile card-hover">
             <CardHeader><CardTitle className="text-base">Tasks by Priority</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={280}>

@@ -9,6 +9,16 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useMyDivisions } from '@/api/hooks';
 
+/** Ring color class per role — used on the avatar and as a visual identity cue */
+const ROLE_RING: Record<string, string> = {
+  org_admin:       'ring-rose-400',
+  division_admin:  'ring-sky-400',
+  project_manager: 'ring-blue-400',
+  member:          'ring-emerald-400',
+  executive:       'ring-violet-400',
+  viewer:          'ring-slate-400',
+};
+
 export function Header() {
   const { user, currentRole, currentDivisionId, logout, switchRole, setDivision } = useAuthStore();
   const navigate = useNavigate();
@@ -30,69 +40,101 @@ export function Header() {
     navigate('/dashboard');
   };
 
-  const displayName = user ? `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() : '';
+  const displayName = user
+    ? `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim()
+    : '';
   const currentPersona = STAKEHOLDER_PERSONAS.find((p) => p.role === currentRole);
+  const roleRingColor = ROLE_RING[currentRole || ''] || 'ring-primary';
 
   return (
-    <header className="flex h-14 sm:h-16 items-center justify-between border-b bg-white shadow-sm px-3 sm:px-4 md:px-6 gap-2 sm:gap-4 flex-shrink-0">
-      {/* Search */}
-      <div className="hidden sm:flex flex-1 max-w-xs md:max-w-md">
+    <header className="relative flex h-[60px] items-center justify-between bg-card border-b border-border/60 shadow-header px-4 md:px-6 gap-4 flex-shrink-0 animate-fade-in z-30">
+      {/* QCI brand accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] qci-gradient-h" />
+
+      {/* ── LEFT: Search ── */}
+      <div className="hidden sm:flex flex-1 max-w-sm">
         <SearchTrigger />
       </div>
 
-      {/* Mobile logo */}
+      {/* Mobile logo — only visible when search is hidden */}
       <div className="flex items-center gap-2 sm:hidden flex-shrink-0">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs flex-shrink-0">PF</div>
-        <span className="text-xs sm:text-sm font-semibold truncate">ProjectFlow</span>
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs flex-shrink-0">
+          QF
+        </div>
+        <span className="text-xs font-semibold truncate text-foreground">Q-Flow</span>
       </div>
 
-      <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
-        <div className="hidden lg:block"><ThemeToggle /></div>
+      {/* ── RIGHT: Controls ── */}
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+
+        {/* Theme toggle — desktop only */}
+        <div className="hidden lg:flex items-center">
+          <ThemeToggle />
+        </div>
 
         {/* Division Switcher */}
         {myDivisions.length > 0 && (
           <div className="relative hidden md:block">
             <button
-              onClick={() => { setShowDivisionMenu((o) => !o); setShowUserMenu(false); setShowRoleSwitcher(false); }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 transition-colors border"
+              onClick={() => {
+                setShowDivisionMenu((o) => !o);
+                setShowUserMenu(false);
+                setShowRoleSwitcher(false);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-border/70 bg-card hover:bg-muted hover:border-primary/30 transition-all duration-200 shadow-sm"
             >
-              <Building2 className="h-3 w-3 text-primary" />
-              <span className="text-primary font-semibold truncate max-w-[100px]">
+              {/* Avatar-letter for division */}
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white flex-shrink-0">
+                {(activeDivision?.divisionName ?? 'A').charAt(0).toUpperCase()}
+              </span>
+              <span className="text-foreground font-medium truncate max-w-[90px]">
                 {activeDivision?.divisionName || 'All Divisions'}
               </span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
             </button>
 
             {showDivisionMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowDivisionMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border bg-card shadow-xl z-50 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-60 rounded-xl border bg-card shadow-nav z-50 overflow-hidden">
                   <div className="p-2.5 border-b bg-muted/30">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Switch Division</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                      Switch Division
+                    </p>
                   </div>
-                  <div className="p-1">
+                  <div className="p-1.5 space-y-0.5">
                     <button
                       onClick={() => { setDivision(null); setShowDivisionMenu(false); }}
-                      className={cn('flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent transition-colors', !currentDivisionId && 'bg-accent font-medium')}
+                      className={cn(
+                        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors',
+                        !currentDivisionId && 'bg-primary/10 font-medium'
+                      )}
                     >
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                       <span className="flex-1 text-left">All Divisions</span>
-                      {!currentDivisionId && <Check className="h-4 w-4 text-primary" />}
+                      {!currentDivisionId && <Check className="h-3.5 w-3.5 text-primary" />}
                     </button>
                     {myDivisions.map((div: any) => (
                       <button
                         key={div.divisionId}
                         onClick={() => { setDivision(div.divisionId); setShowDivisionMenu(false); }}
-                        className={cn('flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent transition-colors', currentDivisionId === div.divisionId && 'bg-accent font-medium')}
+                        className={cn(
+                          'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-muted transition-colors',
+                          currentDivisionId === div.divisionId && 'bg-primary/10 font-medium'
+                        )}
                       >
-                        <div className="h-5 w-5 rounded flex items-center justify-center text-[10px] font-bold text-white bg-primary flex-shrink-0">
+                        <div className="h-5 w-5 rounded-md flex items-center justify-center text-[9px] font-bold text-white bg-primary flex-shrink-0">
                           {div.divisionName?.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0 text-left">
                           <p className="text-sm font-medium truncate">{div.divisionName}</p>
-                          <p className="text-[10px] text-muted-foreground capitalize">{div.role?.replace('_', ' ')}</p>
+                          <p className="text-[10px] text-muted-foreground capitalize">
+                            {div.role?.replace('_', ' ')}
+                          </p>
                         </div>
-                        {currentDivisionId === div.divisionId && <Check className="h-4 w-4 text-primary" />}
+                        {currentDivisionId === div.divisionId && (
+                          <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -102,49 +144,60 @@ export function Header() {
           </div>
         )}
 
-        {/* Role Switcher Button */}
+        {/* Role Switcher — pill badge */}
         <div className="relative">
           <button
             onClick={() => { setShowRoleSwitcher(!showRoleSwitcher); setShowUserMenu(false); }}
             className={cn(
-              'hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
-              currentPersona?.color || 'bg-primary/10 text-primary'
+              'hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 hover:shadow-sm',
+              currentPersona?.color || 'bg-primary/10 text-primary border-primary/20'
             )}
           >
-            <Users className="h-3 w-3" />
+            <Users className="h-3 w-3 flex-shrink-0" />
             {currentPersona?.label || currentRole?.replace('_', ' ')}
-            <ChevronDown className="h-3 w-3" />
+            <ChevronDown className="h-3 w-3 flex-shrink-0" />
           </button>
 
           {showRoleSwitcher && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowRoleSwitcher(false)} />
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border bg-card shadow-xl z-50 overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border bg-card shadow-nav z-50 overflow-hidden">
                 <div className="p-3 border-b bg-muted/30">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Switch Stakeholder View</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Preview how the app looks for each role</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                    Switch Stakeholder View
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Preview how the app looks for each role
+                  </p>
                 </div>
-                <div className="p-2 space-y-1">
+                <div className="p-2 space-y-0.5">
                   {STAKEHOLDER_PERSONAS.map((persona) => (
                     <button
                       key={persona.role}
                       onClick={() => handleSwitchRole(persona)}
                       className={cn(
-                        'flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-accent',
-                        currentRole === persona.role && 'bg-accent'
+                        'flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-muted',
+                        currentRole === persona.role && 'bg-muted'
                       )}
                     >
-                      <div className={cn('h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0', persona.color)}>
+                      <div className={cn(
+                        'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0',
+                        persona.color
+                      )}>
                         {persona.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{persona.name}</span>
                           {currentRole === persona.role && (
-                            <span className="text-[10px] rounded-full bg-primary/10 text-primary px-1.5 py-0.5 font-medium">Active</span>
+                            <span className="text-[10px] rounded-full bg-primary/10 text-primary px-1.5 py-0.5 font-medium">
+                              Active
+                            </span>
                           )}
                         </div>
-                        <span className={cn('text-[10px] font-semibold rounded px-1 py-0.5', persona.color)}>{persona.label}</span>
+                        <span className={cn('text-[10px] font-semibold rounded px-1 py-0.5', persona.color)}>
+                          {persona.label}
+                        </span>
                         <p className="text-[11px] text-muted-foreground mt-0.5">{persona.description}</p>
                       </div>
                     </button>
@@ -155,58 +208,78 @@ export function Header() {
           )}
         </div>
 
-        {/* Notifications */}
-        <div className="flex-shrink-0"><NotificationBell /></div>
+        {/* Notification bell */}
+        <div className="flex-shrink-0">
+          <NotificationBell />
+        </div>
 
-        {/* User Menu */}
+        {/* User avatar + menu */}
         <div className="relative flex-shrink-0">
           <button
             onClick={() => { setShowUserMenu(!showUserMenu); setShowRoleSwitcher(false); }}
-            className="flex items-center gap-1 sm:gap-2 rounded-lg p-1.5 hover:bg-accent transition-colors"
+            className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-muted transition-all duration-200 border border-transparent hover:border-border"
             title={displayName}
           >
-            <Avatar name={displayName} src={user?.avatar_url} size="sm" />
-            <span className="hidden md:block text-xs sm:text-sm font-medium truncate max-w-[120px]">{displayName}</span>
+            <div className={cn('ring-2 ring-offset-1 rounded-full', roleRingColor)}>
+              <Avatar name={displayName} src={user?.avatar_url} size="sm" />
+            </div>
+            <span className="hidden md:block text-sm font-medium truncate max-w-[120px]">
+              {displayName}
+            </span>
           </button>
 
           {showUserMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-              <div className="absolute right-0 top-full mt-1 w-56 rounded-md border bg-card shadow-lg z-50">
-                <div className="p-2">
-                  <p className="px-2 py-1 text-sm font-medium truncate">{displayName}</p>
-                  <p className="px-2 py-1 text-xs text-muted-foreground truncate">{user?.email}</p>
-                  <span className={cn('ml-2 text-[10px] font-semibold rounded px-1.5 py-0.5', currentPersona?.color)}>
-                    {currentPersona?.label}
-                  </span>
+              <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl border bg-card shadow-nav z-50 overflow-hidden">
+                {/* User info */}
+                <div className="p-3 border-b bg-muted/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className={cn('ring-2 ring-offset-1 rounded-full flex-shrink-0', roleRingColor)}>
+                      <Avatar name={displayName} src={user?.avatar_url} size="sm" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{displayName}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                  </div>
+                  {currentPersona && (
+                    <span className={cn('mt-2 inline-flex text-[10px] font-semibold rounded-full px-2 py-0.5', currentPersona.color)}>
+                      {currentPersona.label}
+                    </span>
+                  )}
                 </div>
 
                 {/* Mobile role switcher */}
                 <div className="border-t p-2 lg:hidden">
-                  <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Switch View</p>
+                  <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                    Switch View
+                  </p>
                   {STAKEHOLDER_PERSONAS.map((persona) => (
                     <button
                       key={persona.role}
                       onClick={() => handleSwitchRole(persona)}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-accent',
-                        currentRole === persona.role && 'bg-accent font-medium'
+                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted',
+                        currentRole === persona.role && 'bg-muted font-medium'
                       )}
                     >
-                      <span className={cn('h-2 w-2 rounded-full', persona.color.split(' ')[0])} />
+                      <span className={cn('h-2 w-2 rounded-full flex-shrink-0', persona.color.split(' ')[0])} />
                       {persona.label}
                     </button>
                   ))}
                 </div>
 
+                {/* Theme toggle */}
                 <div className="border-t p-2 hidden lg:block">
                   <ThemeToggle />
                 </div>
 
+                {/* Sign out */}
                 <div className="border-t p-1">
                   <button
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                   >
                     <LogOut className="h-4 w-4 flex-shrink-0" />
                     Sign Out

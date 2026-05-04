@@ -81,15 +81,15 @@ function TaskCardMenu({ task, onDelete, onOpen }: { task: Task; onDelete: (id: s
   return (
     <div className="relative" ref={ref}>
       <button
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-accent"
+        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
         <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
       </button>
       {open && (
-        <div className="absolute right-0 top-6 z-50 w-40 rounded-md border bg-popover shadow-lg py-1">
+        <div className="absolute right-0 top-6 z-50 w-40 rounded-md border bg-popover text-popover-foreground shadow-lg py-1">
           <button
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
             onClick={(e) => { e.stopPropagation(); onOpen(task); setOpen(false); }}
           >
             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /> Open Task
@@ -97,7 +97,7 @@ function TaskCardMenu({ task, onDelete, onOpen }: { task: Task; onDelete: (id: s
           <div className="my-1 border-t" />
           {!confirmDelete ? (
             <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-accent"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted"
               onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
             >
               <Trash2 className="h-3.5 w-3.5" /> Delete Task
@@ -184,7 +184,7 @@ function KanbanColumnComponent({ column, onAddTask, onTaskClick, onDeleteTask }:
             {column.tasks.length}
           </span>
         </div>
-        <button onClick={() => onAddTask(column.id)} className="rounded p-1 hover:bg-accent">
+        <button onClick={() => onAddTask(column.id)} className="rounded p-1 hover:bg-muted">
           <Plus className="h-4 w-4 text-muted-foreground" />
         </button>
       </div>

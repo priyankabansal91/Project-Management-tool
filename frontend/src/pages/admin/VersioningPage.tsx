@@ -81,7 +81,7 @@ export function VersioningPage() {
 
       {/* Form */}
       {showForm && (
-        <Card className="p-6 bg-blue-50 border-blue-200">
+        <Card className="p-6 bg-primary/5 border-primary/20">
           <h2 className="text-lg font-semibold mb-4">Create Snapshot</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
@@ -169,7 +169,7 @@ export function VersioningPage() {
       )}
 
       {/* Info Section */}
-      <Card className="p-6 bg-blue-50 border-blue-200">
+      <Card className="p-6 bg-primary/5 border-primary/20">
         <h3 className="font-semibold mb-2">About Versioning</h3>
         <ul className="text-sm text-muted-foreground space-y-1">
           <li>✓ All changes are automatically tracked with version history</li>

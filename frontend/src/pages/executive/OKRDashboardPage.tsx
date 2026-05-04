@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Plus, TrendingUp, AlertCircle, CheckCircle, Loader2, RefreshCw, Target } from 'lucide-react';
+import { Plus, TrendingUp, AlertCircle, CheckCircle, Loader2, RefreshCw, Target, Building2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
-import { useOKRs } from '@/api/hooks';
+import { useOKRs, useMyDivisions, useCreateOKR } from '@/api/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
 
 // ─── Fallback static OKRs (used when API returns empty) ──
 
@@ -119,8 +121,39 @@ function OKRCard({ okr }: { okr: any }) {
 
 export function OKRDashboardPage() {
   const qc = useQueryClient();
+  const { currentDivisionId } = useAuthStore();
+  const { data: myDivisions = [] } = useMyDivisions();
+  const activeDivision = (myDivisions as any[]).find((d: any) => d.divisionId === currentDivisionId);
+  const divisionName = activeDivision?.divisionName ?? null;
+
+  const [showNewOKR, setShowNewOKR] = useState(false);
+  const [form, setForm] = useState({ title: '', level: 'company', quarter: 'Q2', health: 'on_track' });
+  const [formError, setFormError] = useState('');
+  const createOKR = useCreateOKR();
+
+  function handleFormChange(field: string, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === 'title') setFormError('');
+  }
+
+  async function handleCreateOKR() {
+    if (!form.title.trim()) { setFormError('Title is required'); return; }
+    try {
+      await createOKR.mutateAsync({ title: form.title.trim(), level: form.level, quarter: form.quarter, health: form.health, progress: 0, keyResults: [] });
+      setShowNewOKR(false);
+      setForm({ title: '', level: 'company', quarter: 'Q2', health: 'on_track' });
+    } catch {
+      setFormError('Failed to create OKR. Please try again.');
+    }
+  }
+
   const { data: apiOKRs, isLoading } = useOKRs({ quarter: 'Q2' });
-  const okrs: any[] = (apiOKRs && Array.isArray(apiOKRs) && apiOKRs.length > 0) ? apiOKRs : STATIC_OKRS;
+  const allOkrs: any[] = (apiOKRs && Array.isArray(apiOKRs) && apiOKRs.length > 0) ? apiOKRs : STATIC_OKRS;
+
+  // When a division is selected, show company-wide + that division's OKRs
+  const okrs = currentDivisionId
+    ? allOkrs.filter((o) => !o.division || o.division === divisionName)
+    : allOkrs;
 
   const healthCounts = {
     on_track: okrs.filter((o) => o.health === 'on_track').length,
@@ -158,11 +191,21 @@ export function OKRDashboardPage() {
           <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ['okrs'] })}>
             <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={() => setShowNewOKR(true)}>
             <Plus className="w-4 h-4 mr-1" /> New OKR
           </Button>
         </div>
       </div>
+
+      {/* Division filter banner */}
+      {currentDivisionId && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-sm">
+          <Building2 className="h-4 w-4 text-primary" />
+          <span className="text-muted-foreground">Filtered by division:</span>
+          <span className="font-semibold text-primary">{divisionName ?? 'Selected Division'}</span>
+          <span className="ml-auto text-xs text-muted-foreground">Showing company-wide + division OKRs</span>
+        </div>
+      )}
 
       {/* Health + avg progress summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -191,9 +234,21 @@ export function OKRDashboardPage() {
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={progressChart} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={150} />
-              <Tooltip formatter={(v: number) => `${v}%`} />
+              <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${v}%`} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={150} />
+              <Tooltip
+                formatter={(v: number) => [`${v}%`, 'Progress']}
+                contentStyle={{
+                  background: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: 'hsl(var(--popover-foreground))',
+                }}
+                labelStyle={{ color: 'hsl(var(--popover-foreground))', fontWeight: 600 }}
+                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                cursor={{ fill: 'hsl(var(--muted))' }}
+              />
               <Bar dataKey="progress" radius={[0, 4, 4, 0]}>
                 {progressChart.map((d, i) => <Cell key={i} fill={d.color} />)}
               </Bar>
@@ -233,6 +288,87 @@ export function OKRDashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* New OKR modal */}
+      {showNewOKR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card text-card-foreground rounded-xl shadow-xl w-full max-w-md border border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" /> Create New OKR
+              </h2>
+              <button onClick={() => { setShowNewOKR(false); setFormError(''); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {/* Title */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Objective Title <span className="text-red-500">*</span></label>
+                <Input
+                  placeholder="e.g. Increase Customer Satisfaction by 20%"
+                  value={form.title}
+                  onChange={(e) => handleFormChange('title', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateOKR()}
+                />
+                {formError && <p className="text-xs text-red-500">{formError}</p>}
+              </div>
+
+              {/* Level */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Level</label>
+                <select
+                  value={form.level}
+                  onChange={(e) => handleFormChange('level', e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="company">Company</option>
+                  <option value="division">Division</option>
+                  <option value="team">Team</option>
+                </select>
+              </div>
+
+              {/* Quarter + Health side by side */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Quarter</label>
+                  <select
+                    value={form.quarter}
+                    onChange={(e) => handleFormChange('quarter', e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="Q1">Q1</option>
+                    <option value="Q2">Q2</option>
+                    <option value="Q3">Q3</option>
+                    <option value="Q4">Q4</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Health Status</label>
+                  <select
+                    value={form.health}
+                    onChange={(e) => handleFormChange('health', e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="on_track">On Track</option>
+                    <option value="behind">Behind</option>
+                    <option value="at_risk">At Risk</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
+              <Button variant="outline" size="sm" onClick={() => { setShowNewOKR(false); setFormError(''); }}>Cancel</Button>
+              <Button size="sm" onClick={handleCreateOKR} disabled={createOKR.isPending}>
+                {createOKR.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                Create OKR
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

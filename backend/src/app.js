@@ -37,6 +37,8 @@ const notificationsRoutes = require('./routes/notifications');
 const searchRoutes = require('./routes/search');
 const portfolioRoutes = require('./routes/portfolio');
 const sprintRoutes = require('./routes/sprints');
+const auditLogRoutes = require('./routes/auditLog');
+const misRoutes = require('./routes/mis');
 
 const app = express();
 
@@ -144,6 +146,8 @@ app.use('/v1/notifications', notificationsRoutes);
 app.use('/v1/search', searchRoutes);
 app.use('/v1/portfolio', portfolioRoutes);
 app.use('/v1/sprints', sprintRoutes);
+app.use('/v1/audit-logs', auditLogRoutes);
+app.use('/v1/mis', misRoutes);
 
 // ─── 404 ────────────────────────────────────────────────
 

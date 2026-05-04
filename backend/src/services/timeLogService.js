@@ -296,12 +296,18 @@ class TimeLogService {
       t => t.userId === userId && t.orgId === orgId && t.weekStart === monday,
     );
 
+    // Return byDay as Record<string, number> matching the frontend type
+    const byDayHours = {};
+    for (const [label, info] of Object.entries(byDay)) {
+      byDayHours[label] = info.hours;
+    }
+
     return {
       weekStart: monday,
       weekEnd: sunday,
       totalHours,
       targetHours: 40,
-      byDay,
+      byDay: byDayHours,
       byProject: Object.values(projectMap),
       timesheetStatus: ts ? ts.status : null,
     };

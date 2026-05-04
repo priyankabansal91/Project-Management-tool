@@ -306,7 +306,8 @@ export function TimeLoggingPage() {
                 <CardContent>
                   <div className="grid grid-cols-7 gap-2">
                     {DAYS.map((day, idx) => {
-                      const hrs = summary?.byDay?.[day] ?? 0;
+                      const _dayVal = summary?.byDay?.[day];
+                      const hrs: number = typeof _dayVal === 'number' ? _dayVal : ((_dayVal as any)?.hours ?? 0);
                       const dayDate = addDays(weekStart, idx);
                       const isToday = dayDate === today;
                       return (

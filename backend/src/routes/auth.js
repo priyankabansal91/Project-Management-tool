@@ -81,4 +81,16 @@ router.get('/me', authenticate, async (req, res, next) => {
   }
 });
 
+router.post('/accept-invite', async (req, res, next) => {
+  try {
+    const { token, first_name, last_name, password } = req.body;
+    if (!token) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'token is required' } });
+    if (!password || password.length < 6) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Password must be at least 6 characters' } });
+    const result = await authService.acceptInvite({ token, first_name, last_name, password });
+    res.cookie('refresh_token', result.refresh_token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    const { refresh_token, ...response } = result;
+    res.json({ success: true, data: response });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

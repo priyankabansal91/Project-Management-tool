@@ -34,7 +34,7 @@ export function AppShell() {
 
         {/* Main content */}
         <main className="flex-1 overflow-auto">
-          <div className="w-full h-full px-3 sm:px-4 md:px-6 py-4 md:py-6 pb-20 sm:pb-20 md:pb-6">
+          <div className="w-full h-full px-3 sm:px-4 md:px-6 py-4 md:py-6 pb-20 sm:pb-20 md:pb-6 animate-fade-in">
             <Outlet />
           </div>
         </main>

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { X } from 'lucide-react';
+import { WorkflowPicker } from './WorkflowPicker';
 import type { WorkflowConfig } from '@/types';
 
 interface ProjectModalProps {
@@ -127,7 +128,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
       <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">{isEdit ? 'Edit Project' : 'Create New Project'}</h2>
-          <button onClick={() => { onClose(); setSubmitError(''); }} className="text-gray-400 hover:text-gray-600">
+          <button onClick={() => { onClose(); setSubmitError(''); }} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -135,14 +136,14 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Error Message */}
           {(externalError || submitError) && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm dark:bg-red-950/30 dark:border-red-900 dark:text-red-300">
               {externalError || submitError}
             </div>
           )}
 
           {/* Project Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project Name *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Project Name *</label>
             <Input
               type="text"
               value={form.name}
@@ -155,7 +156,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
 
           {/* Project Key */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project Key *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Project Key *</label>
             <Input
               type="text"
               value={form.key}
@@ -169,23 +170,23 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Description</label>
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Project description..."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           {/* Visibility */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Visibility</label>
             <select
               value={form.visibility}
               onChange={(e) => setForm({ ...form, visibility: e.target.value as 'private' | 'org_wide' | 'public' })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {VISIBILITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -197,14 +198,14 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
 
           {/* Color Picker */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+            <label className="block text-sm font-medium text-foreground mb-2">Color</label>
             <div className="flex gap-2 flex-wrap">
               {COLORS.map((color) => (
                 <button
                   key={color}
                   type="button"
                   onClick={() => setForm({ ...form, color })}
-                  className={`w-8 h-8 rounded-full border-2 ${form.color === color ? 'border-gray-800' : 'border-gray-300'}`}
+                  className={`w-8 h-8 rounded-full border-2 ${form.color === color ? 'border-foreground' : 'border-border'}`}
                   style={{ backgroundColor: color }}
                 />
               ))}
@@ -214,24 +215,18 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
           {/* Workflow Config */}
           {workflows.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Workflow</label>
-              <select
-                value={form.workflow_config_id || ''}
-                onChange={(e) => setForm({ ...form, workflow_config_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {workflows.map((wf) => (
-                  <option key={wf.id} value={wf.id}>
-                    {wf.name}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-foreground mb-1">Workflow</label>
+              <WorkflowPicker
+                workflows={workflows}
+                value={form.workflow_config_id || workflows[0]?.id || ''}
+                onChange={(id) => setForm({ ...form, workflow_config_id: id })}
+              />
             </div>
           )}
 
           {/* Start Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Start Date</label>
             <Input
               type="date"
               value={form.start_date}
@@ -241,7 +236,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
 
           {/* Due Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Due Date</label>
             <Input
               type="date"
               value={form.due_date}
