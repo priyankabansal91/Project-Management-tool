@@ -39,6 +39,14 @@ function getMondayDate(weeksFromNow: number): Date {
 }
 
 function formatWeekLabel(date: Date): string {
+  const end = new Date(date);
+  end.setDate(end.getDate() + 6);
+  const startStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const endStr   = end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return `${startStr} – ${endStr}`;
+}
+
+function formatWeekShort(date: Date): string {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
@@ -337,7 +345,13 @@ export function CapacityPlanningPage() {
       : buildMockData(selectedWeeks);
 
   const members = capacityData.members ?? [];
-  const weekLabels = capacityData.weekLabels ?? [];
+
+  // Always derive header labels locally so they stay in sync with selectedWeeks,
+  // regardless of what shape the API returns for weekLabels.
+  const headerWeekLabels = Array.from({ length: selectedWeeks }, (_, i) => ({
+    label: formatWeekLabel(getMondayDate(i)),
+    short: formatWeekShort(getMondayDate(i)),
+  }));
 
   const avgUtilization = members.length
     ? Math.round(members.reduce((sum, m) => sum + getAvgUtilization(m), 0) / members.length)
@@ -455,9 +469,10 @@ export function CapacityPlanningPage() {
               <thead>
                 <tr className="border-b bg-muted/40">
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground w-48">Member</th>
-                  {weekLabels.map((label, i) => (
-                    <th key={i} className="text-center px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">
-                      {label}
+                  {headerWeekLabels.map((wk, i) => (
+                    <th key={i} className="text-center px-3 py-3 font-medium text-muted-foreground">
+                      <div className="text-xs font-semibold">Week {i + 1}</div>
+                      <div className="text-[10px] font-normal whitespace-nowrap">{wk.label}</div>
                     </th>
                   ))}
                   <th className="text-center px-4 py-3 font-medium text-muted-foreground">Avg</th>
