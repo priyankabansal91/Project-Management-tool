@@ -6,7 +6,8 @@ import {
   Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
   Crown, Map, ClipboardCheck, AlertTriangle, DollarSign, Users2,
   LayoutGrid, Lock, Briefcase, Zap, GanttChartSquare, Network, UserCheck,
-  BarChart2,
+  BarChart2, MonitorCheck, ShieldCheck, BookOpen, FilePlus2, TrendingUp,
+  UserCog, ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -28,6 +29,9 @@ const navItems: NavItem[] = [
   { label: 'My Tasks',           path: '/my-tasks',             icon: CheckSquare,      roles: ['org_admin','division_admin','project_manager','member','viewer'], section: 'core' },
   { label: 'Calendar',           path: '/calendar',             icon: Calendar,         roles: ['org_admin','division_admin','project_manager','member','viewer'], section: 'core' },
 
+  // Pre-Project lifecycle — all operational roles
+  { label: 'Pre-Projects',       path: '/preproject',           icon: FilePlus2,        roles: ['org_admin','division_admin','project_manager','executive'], section: 'core' },
+
   // PM — project_manager + division_admin + admin
   { label: 'Sprints',            path: '/sprints',              icon: Target,           roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
   { label: 'Team',               path: '/team',                 icon: Users,            roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
@@ -39,6 +43,8 @@ const navItems: NavItem[] = [
   { label: 'AI Features',        path: '/ai',                   icon: Sparkles,         roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
   { label: 'Gantt Timeline',     path: '/gantt',                icon: GanttChartSquare, roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
   { label: 'Attendance',         path: '/attendance',           icon: UserCheck,        roles: ['org_admin','division_admin','project_manager','member'], section: 'pm' },
+  { label: 'Workflow Monitor',   path: '/workflow/monitor',     icon: MonitorCheck,     roles: ['org_admin','division_admin','project_manager','executive'], section: 'pm' },
+  { label: 'Group Approvals',   path: '/workflow/group-approvals', icon: ListChecks,   roles: ['org_admin','division_admin','project_manager','executive'], section: 'pm' },
 
   // Executive — executive + admin
   { label: 'Executive View',     path: '/executive',            icon: Crown,            roles: ['org_admin','executive'], section: 'executive' },
@@ -72,6 +78,11 @@ const navItems: NavItem[] = [
   { label: 'Feature Flags',      path: '/admin/feature-flags',  icon: Zap,              roles: ['org_admin'], section: 'admin' },
   { label: 'Onboarding Wizard',  path: '/admin/onboarding',     icon: Network,          roles: ['org_admin'], section: 'admin' },
   { label: 'Settings',           path: '/settings',             icon: Settings,         roles: ['org_admin'], section: 'admin' },
+  { label: 'Approval Groups',    path: '/admin/approval-groups',icon: UserCog,          roles: ['org_admin'], section: 'admin' },
+  { label: 'Governance',         path: '/workflow/governance',  icon: ShieldCheck,      roles: ['org_admin','executive'], section: 'admin' },
+  { label: 'Gov. Dashboard',     path: '/governance',           icon: TrendingUp,       roles: ['org_admin','division_admin','executive'], section: 'admin' },
+  { label: 'Project Closure',    path: '/governance/closure',   icon: Lock,             roles: ['org_admin','division_admin','project_manager'], section: 'admin' },
+  { label: 'Training Guide',     path: '/workflow/training',    icon: BookOpen,         roles: ['org_admin','division_admin','project_manager','executive','member'], section: 'admin' },
 ];
 
 const SECTIONS: Record<string, { label: string; roles: OrgRole[] }> = {

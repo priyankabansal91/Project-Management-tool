@@ -145,11 +145,19 @@ export function MyTasksPage() {
   // Real data from API, fall back to mock if empty
   const { data: apiData } = useMyTasks();
   const apiItems = (apiData as any)?.items;
-  const rawTasks = (apiItems && apiItems.length > 0 ? apiItems : mockMyTasks) as (Task & { project?: { id: string; name: string; key: string; color: string } })[];
+  const sourceTasks = (apiItems && apiItems.length > 0 ? apiItems : mockMyTasks) as (Task & { project?: { id: string; name: string; key: string; color: string } })[];
+
+  // Local task state so bulk operations reflect immediately without a round-trip
+  const [localTasks, setLocalTasks] = useState(sourceTasks);
+
+  // Sync if source changes (e.g. API data arrives after initial render)
+  if (sourceTasks !== localTasks && !selectedIds.size) {
+    setLocalTasks(sourceTasks);
+  }
 
   const bulkAction = useBulkTaskAction();
 
-  const filtered = rawTasks.filter((t) => {
+  const filtered = localTasks.filter((t) => {
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (tab === 'open') return !t.completed_at;
     if (tab === 'completed') return !!t.completed_at;
@@ -158,10 +166,10 @@ export function MyTasksPage() {
   });
 
   const tabs: { id: TabFilter; label: string; icon: React.ComponentType<{ className?: string }>; count: number }[] = [
-    { id: 'all', label: 'All Tasks', icon: CheckSquare, count: rawTasks.length },
-    { id: 'open', label: 'Open', icon: Clock, count: rawTasks.filter((t) => !t.completed_at).length },
-    { id: 'overdue', label: 'Overdue', icon: AlertTriangle, count: rawTasks.filter((t) => !!(t.due_date && new Date(t.due_date) < new Date() && !t.completed_at)).length },
-    { id: 'completed', label: 'Completed', icon: CheckCircle2, count: rawTasks.filter((t) => !!t.completed_at).length },
+    { id: 'all', label: 'All Tasks', icon: CheckSquare, count: localTasks.length },
+    { id: 'open', label: 'Open', icon: Clock, count: localTasks.filter((t) => !t.completed_at).length },
+    { id: 'overdue', label: 'Overdue', icon: AlertTriangle, count: localTasks.filter((t) => !!(t.due_date && new Date(t.due_date) < new Date() && !t.completed_at)).length },
+    { id: 'completed', label: 'Completed', icon: CheckCircle2, count: localTasks.filter((t) => !!t.completed_at).length },
   ];
 
   // Selection helpers
@@ -198,6 +206,21 @@ export function MyTasksPage() {
   const handleBulkOperation = (operation: 'status' | 'priority' | 'assignee' | 'delete', value?: string) => {
     const taskIds = Array.from(selectedIds);
     if (taskIds.length === 0) return;
+
+    // Optimistic local update so UI responds immediately
+    setLocalTasks((prev) => {
+      if (operation === 'delete') return prev.filter((t) => !taskIds.includes(t.id));
+      return prev.map((t) => {
+        if (!taskIds.includes(t.id)) return t;
+        if (operation === 'status') {
+          const isDone = value === 'done';
+          return { ...t, status_name: isDone ? 'Done' : (value ?? t.status_name), completed_at: isDone ? new Date().toISOString() : null };
+        }
+        if (operation === 'priority') return { ...t, priority: (value ?? t.priority) as Task['priority'] };
+        return t;
+      });
+    });
+
     bulkAction.mutate({ taskIds, operation, value }, {
       onSuccess: () => clearSelection(),
     });

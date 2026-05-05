@@ -39,6 +39,7 @@ const portfolioRoutes = require('./routes/portfolio');
 const sprintRoutes = require('./routes/sprints');
 const auditLogRoutes = require('./routes/auditLog');
 const misRoutes = require('./routes/mis');
+const approvalGroupsRoutes = require('./routes/approvalGroups');
 
 const app = express();
 
@@ -148,6 +149,7 @@ app.use('/v1/portfolio', portfolioRoutes);
 app.use('/v1/sprints', sprintRoutes);
 app.use('/v1/audit-logs', auditLogRoutes);
 app.use('/v1/mis', misRoutes);
+app.use('/v1/approval-groups', approvalGroupsRoutes);
 
 // ─── 404 ────────────────────────────────────────────────
 
