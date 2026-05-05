@@ -16,7 +16,7 @@ function formatTask(t) {
     title: t.title,
     description: t.description,
     status_id: t.statusId,
-    status_name: t.statusName,
+    status_name: t.statusName ?? (t.completedAt ? 'Done' : 'Backlog'),
     priority: t.priority,
     assignee: fmtUser(t.assignee),
     reporter: fmtUser(t.reporter),

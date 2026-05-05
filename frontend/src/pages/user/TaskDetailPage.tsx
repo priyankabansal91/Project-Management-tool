@@ -202,10 +202,31 @@ export function TaskDetailPage() {
               {/* Status */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</label>
-                <div className="flex items-center gap-2 p-2 rounded-md bg-yellow-50 border border-yellow-200">
-                  <div className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
-                  <span className="text-sm font-medium">{task?.status_name || 'Unknown'}</span>
-                </div>
+                {(() => {
+                  const s = (task?.status_name || (task?.completed_at ? 'Done' : 'Backlog')).toLowerCase();
+                  const style =
+                    s === 'done' || s === 'completed' || s === 'accepted'
+                      ? 'bg-green-50 border-green-200 text-green-700'
+                      : s === 'in progress' || s === 'in review'
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : s === 'blocked'
+                      ? 'bg-red-50 border-red-200 text-red-700'
+                      : 'bg-yellow-50 border-yellow-200 text-yellow-700';
+                  const dot =
+                    s === 'done' || s === 'completed' || s === 'accepted'
+                      ? 'bg-green-500'
+                      : s === 'in progress' || s === 'in review'
+                      ? 'bg-blue-500'
+                      : s === 'blocked'
+                      ? 'bg-red-500'
+                      : 'bg-yellow-500';
+                  return (
+                    <div className={cn('flex items-center gap-2 p-2 rounded-md border', style)}>
+                      <div className={cn('h-2.5 w-2.5 rounded-full', dot)} />
+                      <span className="text-sm font-medium">{task?.status_name || (task?.completed_at ? 'Done' : 'Backlog')}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Priority */}
