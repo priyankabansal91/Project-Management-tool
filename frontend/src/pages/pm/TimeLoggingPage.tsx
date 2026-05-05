@@ -48,7 +48,7 @@ function formatWeek(start: string): string {
   const end = addDays(start, 6);
   const s = new Date(start);
   const e = new Date(end);
-  return `${s.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  return `${s.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 }
 
 function fmtSeconds(s: number): string {
@@ -500,7 +500,7 @@ export function TimeLoggingPage() {
                         <span className="text-sm truncate">{log.description || 'No description'}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(log.loggedDate).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        {new Date(log.loggedDate).toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                       </p>
                     </div>
                     <Badge variant="secondary" className="shrink-0 font-semibold">
@@ -552,7 +552,7 @@ export function TimeLoggingPage() {
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Week of {new Date(ts.weekStart).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} · {ts.totalHours}h total
+                        Week of {new Date(ts.weekStart).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} · {ts.totalHours}h total
                       </p>
                       {ts.reviewNote && (
                         <p className="text-xs text-muted-foreground mt-1 italic">Note: {ts.reviewNote}</p>

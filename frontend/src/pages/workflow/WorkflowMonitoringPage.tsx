@@ -29,7 +29,7 @@ function fmtHours(h: number) {
 }
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // ── mock data ─────────────────────────────────────────────────────────────────
@@ -205,7 +205,7 @@ export function WorkflowMonitoringPage() {
             Workflow Monitor
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Real-time approval pipeline status · Last refreshed {lastRefresh.toLocaleTimeString('en-IN')}
+            Real-time approval pipeline status · Last refreshed {lastRefresh.toLocaleTimeString('en-GB')}
           </p>
         </div>
         <div className="flex items-center gap-2">

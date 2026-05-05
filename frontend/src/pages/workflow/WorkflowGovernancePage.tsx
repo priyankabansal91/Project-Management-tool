@@ -48,7 +48,7 @@ const ACTIVE_DELEGATES = [
 
 function relDate(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function fmtExpiry(iso: string) {
@@ -471,7 +471,7 @@ export function WorkflowGovernancePage() {
                         <span className={cn('font-medium', new Date(d.expires) > new Date() ? 'text-emerald-600' : 'text-red-600')}>
                           {fmtExpiry(d.expires)}
                         </span>
-                        {' — '}{new Date(d.expires).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {' — '}{new Date(d.expires).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                       </p>
                     </div>
                     {isAdmin && (

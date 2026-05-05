@@ -200,8 +200,8 @@ function InstanceCard({ inst }: { inst: WorkflowInstance }) {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{inst.entityType.replace('_', ' ')}</span>
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                Started {new Date(inst.startedAt).toLocaleDateString('en-IN')} by {inst.initiatedBy}
-                {inst.completedAt && ` · Completed ${new Date(inst.completedAt).toLocaleDateString('en-IN')}`}
+                Started {new Date(inst.startedAt).toLocaleDateString('en-GB')} by {inst.initiatedBy}
+                {inst.completedAt && ` · Completed ${new Date(inst.completedAt).toLocaleDateString('en-GB')}`}
               </div>
             </div>
           </div>
@@ -277,7 +277,7 @@ function InstanceCard({ inst }: { inst: WorkflowInstance }) {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{v.name}</span>
                           <span className="text-xs text-gray-400">{v.title}</span>
-                          {v.at && <span className="text-xs text-gray-400">{new Date(v.at).toLocaleDateString('en-IN')}</span>}
+                          {v.at && <span className="text-xs text-gray-400">{new Date(v.at).toLocaleDateString('en-GB')}</span>}
                         </div>
                         {v.comment && <p className="text-xs text-gray-500 italic mt-0.5">"{v.comment}"</p>}
                       </div>

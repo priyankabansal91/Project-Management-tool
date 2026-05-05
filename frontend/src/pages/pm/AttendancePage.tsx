@@ -52,7 +52,7 @@ function addDays(dateStr: string, n: number): string {
 
 function formatTime(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function formatDuration(secs: number): string {
@@ -155,14 +155,14 @@ export function AttendancePage() {
             <Clock className="h-6 w-6 text-primary" /> Attendance
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {now.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {now.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
 
         {/* Live clock */}
         <div className="text-right">
           <p className="text-2xl font-mono font-bold text-primary">
-            {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+            {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
           </p>
           {isClocked && (
             <p className="text-xs text-muted-foreground">Session: {formatDuration(currentSessionSecs)}</p>
@@ -307,8 +307,8 @@ export function AttendancePage() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm font-semibold">
-              {new Date(weekStart).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} –{' '}
-              {new Date(addDays(weekStart, 6)).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+              {new Date(weekStart).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} –{' '}
+              {new Date(addDays(weekStart, 6)).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
             <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))} disabled={weekStart === getMondayOfWeek(today)}>
               <ChevronRight className="h-4 w-4" />
@@ -523,7 +523,7 @@ export function AttendancePage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{cfg.label}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(rec.date).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          {new Date(rec.date).toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                           {rec.leaveReason && ` · ${rec.leaveReason}`}
                         </p>
                       </div>
@@ -542,7 +542,7 @@ export function AttendancePage() {
       {tab === 'team' && isManager && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Team Attendance — {new Date(today).toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
+            <h3 className="font-semibold">Team Attendance — {new Date(today).toLocaleDateString('en-GB', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
           </div>
           <Card className="overflow-hidden">
             <table className="w-full text-sm">

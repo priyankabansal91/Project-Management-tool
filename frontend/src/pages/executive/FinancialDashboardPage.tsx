@@ -263,7 +263,7 @@ export function FinancialDashboardPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Forecasted End Date</span>
-                    <span className="font-semibold">{forecastDate.toLocaleDateString()}</span>
+                    <span className="font-semibold">{forecastDate.toLocaleDateString('en-GB')}</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t">
                     <span className="text-gray-600">Budget Status</span>

@@ -185,7 +185,7 @@ export function ExecutiveDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold">Executive Dashboard</h1>
           <p className="text-muted-foreground text-sm">
-            Cross-division rollup &middot; {new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            Cross-division rollup &middot; {new Date().toLocaleDateString('en-GB', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
         <div className="flex gap-2">

@@ -27,7 +27,7 @@ function relDate(iso: string) {
   const diff = (Date.now() - d.getTime()) / 60000;
   if (diff < 60)   return `${Math.round(diff)}m ago`;
   if (diff < 1440) return `${Math.round(diff / 60)}h ago`;
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function getSla(startedAt: string | null, threshold: number) {
