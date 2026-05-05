@@ -74,7 +74,7 @@ class ProjectService {
       include: { ...TASK_INCLUDE, ...MEMBER_INCLUDE },
     });
     if (!p) throw ApiError.notFound('Project not found');
-    return p;
+    return fmt(p);
   }
 
   async create(orgId, userId, data) {

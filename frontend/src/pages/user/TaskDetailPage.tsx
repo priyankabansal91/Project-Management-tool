@@ -5,11 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Calendar, Clock, Send, Loader } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Send, Loader, CheckCircle2 } from 'lucide-react';
 import { cn, priorityColor, formatDate, timeAgo } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/api/client';
-import { useComments, useCreateComment } from '@/api/hooks';
+import { useComments, useCreateComment, useLogTime } from '@/api/hooks';
 
 const mockComments = [
   {
@@ -29,7 +29,14 @@ const mockActivityLog = [
 
 export function TaskDetailPage() {
   const { taskId } = useParams();
+  const qc = useQueryClient();
   const [newComment, setNewComment] = useState('');
+  const [showLogTime, setShowLogTime] = useState(false);
+  const [logHours, setLogHours] = useState('');
+  const [logDesc, setLogDesc] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
+  const [logSuccess, setLogSuccess] = useState(false);
+  const logTime = useLogTime();
 
   const commentsQuery = useComments(taskId || '');
   const createComment = useCreateComment(taskId || '');
@@ -290,7 +297,69 @@ export function TaskDetailPage() {
                   <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                     <div className="h-full rounded-full bg-primary" style={{ width: `${((task.logged_hours || 0) / task.estimated_hours) * 100}%` }} />
                   </div>
-                  <Button variant="outline" size="sm" className="w-full mt-1"><Clock className="h-3 w-3" /> Log Time</Button>
+                  {!showLogTime ? (
+                    <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => { setShowLogTime(true); setLogSuccess(false); }}>
+                      <Clock className="h-3 w-3 mr-1" /> Log Time
+                    </Button>
+                  ) : (
+                    <div className="mt-2 space-y-2 border rounded-md p-3 bg-secondary/30">
+                      <p className="text-xs font-medium">Log Time</p>
+                      <Input
+                        type="number"
+                        min="0.25"
+                        step="0.25"
+                        placeholder="Hours (e.g. 1.5)"
+                        value={logHours}
+                        onChange={(e) => setLogHours(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        type="date"
+                        value={logDate}
+                        onChange={(e) => setLogDate(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Description (optional)"
+                        value={logDesc}
+                        onChange={(e) => setLogDesc(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      {logSuccess && (
+                        <div className="flex items-center gap-1 text-xs text-green-700">
+                          <CheckCircle2 className="h-3 w-3" /> Time logged successfully
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-7 text-xs"
+                          disabled={!logHours || logTime.isPending}
+                          onClick={() => {
+                            const hours = parseFloat(logHours);
+                            if (!hours || hours <= 0) return;
+                            logTime.mutate(
+                              { taskId: taskId!, hours, description: logDesc || undefined, loggedDate: logDate },
+                              {
+                                onSuccess: () => {
+                                  setLogHours(''); setLogDesc('');
+                                  setLogDate(new Date().toISOString().slice(0, 10));
+                                  setLogSuccess(true);
+                                  setShowLogTime(false);
+                                  qc.invalidateQueries({ queryKey: ['task', taskId] });
+                                },
+                              }
+                            );
+                          }}
+                        >
+                          {logTime.isPending ? <Loader className="h-3 w-3 animate-spin" /> : 'Save'}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowLogTime(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
