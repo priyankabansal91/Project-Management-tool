@@ -95,12 +95,13 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
-// Global rate limit — 100 req/min per IP
+// Global rate limit — 300 req/min per IP (supports ~2000 concurrent users across cluster)
 app.use(rateLimit({
   windowMs: 60 * 1000,
-  max: 100,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
   message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests' } },
 }));
 
