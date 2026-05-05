@@ -245,7 +245,7 @@ export function StatusReportsPage() {
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-3 border-t text-[11px] text-muted-foreground">
                   <span>Sent to: {selectedReport.sent_to.join(', ')}</span>
-                  <span>Generated {new Date(selectedReport.generated_at).toLocaleString()}</span>
+                  <span>Generated {new Date(selectedReport.generated_at).toLocaleDateString('en-GB')}</span>
                 </div>
               </CardContent>
             </Card>

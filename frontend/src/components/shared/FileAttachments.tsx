@@ -156,7 +156,7 @@ export function FileAttachments({ attachments: propAttachments, onUpload, onDele
                     <span>•</span>
                     <span>{att.uploaded_by}</span>
                     <span>•</span>
-                    <span>{new Date(att.uploaded_at).toLocaleDateString()}</span>
+                    <span>{new Date(att.uploaded_at).toLocaleDateString('en-GB')}</span>
                   </div>
                 </div>
 

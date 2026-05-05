@@ -161,7 +161,7 @@ export function OutlookIntegrationPage() {
                   <p className="text-sm font-medium">Connected as</p>
                   <p className="text-sm text-muted-foreground">{status.microsoft_email}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Connected {status.connected_at ? new Date(status.connected_at).toLocaleDateString() : ''}
+                    Connected {status.connected_at ? new Date(status.connected_at).toLocaleDateString('en-GB') : ''}
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleDisconnect} className="text-destructive hover:bg-destructive/10">

@@ -35,9 +35,9 @@ function startOfMonth(date: Date) {
 }
 
 function formatHeader(date: Date, zoom: ZoomLevel) {
-  if (zoom === 'day') return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  if (zoom === 'week') return `W${Math.ceil(date.getDate() / 7)} ${date.toLocaleDateString('en-US', { month: 'short' })}`;
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  if (zoom === 'day') return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  if (zoom === 'week') return `W${Math.ceil(date.getDate() / 7)} ${date.toLocaleDateString('en-GB', { month: 'short' })}`;
+  return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 const ZOOM_COLS: Record<ZoomLevel, { count: number; dayWidth: number; stepDays: number }> = {

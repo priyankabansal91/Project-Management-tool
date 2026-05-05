@@ -676,7 +676,7 @@ function AuditTab() {
               {a.meta && (
                 <div className="mt-1 text-xs text-gray-400 font-mono">{JSON.stringify(a.meta)}</div>
               )}
-              <div className="text-xs text-gray-400 mt-1">{new Date(a.at).toLocaleString('en-IN')}</div>
+              <div className="text-xs text-gray-400 mt-1">{new Date(a.at).toLocaleDateString('en-GB')}</div>
             </div>
           </div>
         );

@@ -25,9 +25,25 @@ export function priorityColor(priority: string) {
   return map[priority] || map.none;
 }
 
-export function formatDate(date: string | null) {
+/** dd/mm/yyyy — used platform-wide */
+export function formatDate(date: string | null | undefined) {
   if (!date) return '—';
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+/** dd/mm/yyyy HH:mm */
+export function fmtDateTime(date: string | null | undefined) {
+  if (!date) return '—';
+  const d = new Date(date);
+  return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+/** Short label: "5 May" or "5 May 2025" */
+export function fmtShortDate(date: string | Date, showYear = false) {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+  if (showYear) opts.year = 'numeric';
+  return d.toLocaleDateString('en-GB', opts);
 }
 
 export function timeAgo(date: string) {

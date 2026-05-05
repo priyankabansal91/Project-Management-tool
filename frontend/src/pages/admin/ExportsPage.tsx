@@ -1,30 +1,89 @@
 import { useState } from 'react';
-import { useExports, useExportTasks, useExportProjects } from '@/api/hooks';
+import { useExports, useExportTasks, useExportProjects, useDeleteExport } from '@/api/hooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Loader, Download, Trash2, FileJson, FileText, Sheet } from 'lucide-react';
+import { Loader, Download, Trash2, FileJson, FileText, Sheet, CheckCircle2 } from 'lucide-react';
+
+function toCSV(rows: Record<string, unknown>[]): string {
+  if (!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const escape = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n')
+      ? `"${s.replace(/"/g, '""')}"`
+      : s;
+  };
+  return [headers.join(','), ...rows.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
+}
+
+function triggerDownload(content: string, filename: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadExportResult(rows: Record<string, unknown>[], fmt: string, type: string) {
+  const date = new Date().toISOString().slice(0, 10);
+  if (fmt === 'json') {
+    triggerDownload(JSON.stringify(rows, null, 2), `${type}-${date}.json`, 'application/json');
+  } else {
+    // csv / xlsx / pdf all fall back to CSV (no third-party lib needed)
+    const ext = fmt === 'json' ? 'json' : 'csv';
+    triggerDownload(toCSV(rows), `${type}-${date}.${ext}`, 'text/csv');
+  }
+}
 
 export function ExportsPage() {
   const [exportType, setExportType] = useState<'tasks' | 'projects'>('tasks');
   const [format, setFormat] = useState('csv');
   const [isExporting, setIsExporting] = useState(false);
+  const [lastSuccess, setLastSuccess] = useState<string | null>(null);
 
-  const { data: exportsData, isLoading } = useExports();
+  const { data: exportsData, isLoading, refetch } = useExports();
   const exportTasks = useExportTasks();
   const exportProjects = useExportProjects();
+  const deleteExport = useDeleteExport();
 
   const handleExport = async () => {
     setIsExporting(true);
+    setLastSuccess(null);
     try {
-      if (exportType === 'tasks') {
-        await exportTasks.mutateAsync({ format });
+      const result = exportType === 'tasks'
+        ? await exportTasks.mutateAsync({ format })
+        : await exportProjects.mutateAsync({ format });
+
+      const rows: Record<string, unknown>[] = result?.data ?? [];
+      if (rows.length > 0) {
+        downloadExportResult(rows, format, exportType);
+        setLastSuccess(`Downloaded ${rows.length} ${exportType} as ${format.toUpperCase()}`);
       } else {
-        await exportProjects.mutateAsync({ format });
+        setLastSuccess('Export completed — no records matched.');
       }
+      refetch();
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleReExport = async (exp: { export_type: string; format: string }) => {
+    setIsExporting(true);
+    try {
+      const type = exp.export_type as 'tasks' | 'projects';
+      const result = type === 'tasks'
+        ? await exportTasks.mutateAsync({ format: exp.format })
+        : await exportProjects.mutateAsync({ format: exp.format });
+
+      const rows: Record<string, unknown>[] = result?.data ?? [];
+      if (rows.length > 0) downloadExportResult(rows, exp.format, type);
+    } catch (error) {
+      console.error('Re-export failed:', error);
     } finally {
       setIsExporting(false);
     }
@@ -45,35 +104,22 @@ export function ExportsPage() {
     processing: exports.filter((e: any) => e.status === 'processing').length,
   };
 
-  const getFormatIcon = (format: string) => {
-    switch (format) {
-      case 'csv':
-        return <FileText className="h-4 w-4" />;
-      case 'json':
-        return <FileJson className="h-4 w-4" />;
-      case 'xlsx':
-        return <Sheet className="h-4 w-4" />;
-      default:
-        return <Download className="h-4 w-4" />;
-    }
+  const getFormatIcon = (fmt: string) => {
+    if (fmt === 'csv') return <FileText className="h-4 w-4" />;
+    if (fmt === 'json') return <FileJson className="h-4 w-4" />;
+    if (fmt === 'xlsx') return <Sheet className="h-4 w-4" />;
+    return <Download className="h-4 w-4" />;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'default';
-      case 'processing':
-        return 'secondary';
-      case 'failed':
-        return 'destructive';
-      default:
-        return 'outline';
-    }
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    if (status === 'completed') return 'default';
+    if (status === 'processing') return 'secondary';
+    if (status === 'failed') return 'destructive';
+    return 'outline';
   };
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Exports</h1>
         <p className="text-muted-foreground">Export data in multiple formats</p>
@@ -120,19 +166,27 @@ export function ExportsPage() {
               >
                 <option value="csv">CSV</option>
                 <option value="json">JSON</option>
-                <option value="xlsx">Excel (XLSX)</option>
-                <option value="pdf">PDF</option>
+                <option value="xlsx">Excel (downloads as CSV)</option>
+                <option value="pdf">PDF (downloads as CSV)</option>
               </select>
             </div>
           </div>
+
           <Button
             onClick={handleExport}
             disabled={isExporting || exportTasks.isPending || exportProjects.isPending}
             className="w-full"
           >
             <Download className="h-4 w-4 mr-2" />
-            {isExporting ? 'Exporting...' : 'Start Export'}
+            {isExporting ? 'Exporting…' : 'Export & Download'}
           </Button>
+
+          {lastSuccess && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              {lastSuccess}
+            </div>
+          )}
         </div>
       </Card>
 
@@ -152,24 +206,13 @@ export function ExportsPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Details */}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                  <Badge variant={getStatusColor(exp.status)}>
-                    {exp.status}
-                  </Badge>
+                  <Badge variant={getStatusVariant(exp.status)}>{exp.status}</Badge>
                   <span>Type: {exp.export_type}</span>
                   <span>Format: {exp.format.toUpperCase()}</span>
-                  {exp.record_count !== null && (
-                    <span>Records: {exp.record_count}</span>
-                  )}
-                  {exp.file_size && (
-                    <span>Size: {(exp.file_size / 1024).toFixed(2)} KB</span>
-                  )}
-                  <span>Created: {new Date(exp.created_at).toLocaleString()}</span>
+                  {exp.record_count !== null && <span>Records: {exp.record_count}</span>}
+                  <span>Created: {new Date(exp.created_at).toLocaleDateString('en-GB')}</span>
                 </div>
-
-                {/* Error Message */}
                 {exp.error_message && (
                   <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                     {exp.error_message}
@@ -177,38 +220,44 @@ export function ExportsPage() {
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-2">
-                {exp.status === 'completed' && exp.file_url && (
-                  <Button size="sm" variant="outline">
+              <div className="flex gap-2 ml-4 shrink-0">
+                {exp.status === 'completed' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isExporting}
+                    onClick={() => handleReExport(exp)}
+                  >
                     <Download className="h-4 w-4 mr-1" />
                     Download
                   </Button>
                 )}
-                <Button size="sm" variant="destructive">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={deleteExport.isPending}
+                  onClick={() => deleteExport.mutate(exp.id)}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </Card>
         ))}
+        {exports.length === 0 && (
+          <Card className="p-12 text-center">
+            <p className="text-muted-foreground text-lg">No exports yet</p>
+            <p className="text-sm text-muted-foreground mt-2">Create your first export to get started</p>
+          </Card>
+        )}
       </div>
 
-      {exports.length === 0 && (
-        <Card className="p-12 text-center">
-          <p className="text-muted-foreground text-lg">No exports yet</p>
-          <p className="text-sm text-muted-foreground mt-2">Create your first export to get started</p>
-        </Card>
-      )}
-
-      {/* Info Section */}
       <Card className="p-6 bg-blue-50 border-blue-200">
         <h3 className="font-semibold mb-2">Export Features</h3>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>✓ Export tasks and projects in multiple formats</li>
-          <li>✓ Support for CSV, JSON, XLSX, and PDF</li>
-          <li>✓ Custom column selection</li>
-          <li>✓ Advanced filtering options</li>
+          <li>✓ Export tasks and projects — file downloads instantly in your browser</li>
+          <li>✓ CSV and JSON formats with full data fidelity</li>
+          <li>✓ Re-download any previous export from the history list</li>
           <li>✓ Automatic expiration after 7 days</li>
           <li>✓ Track export history</li>
         </ul>

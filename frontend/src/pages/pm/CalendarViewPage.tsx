@@ -96,7 +96,7 @@ export function CalendarViewPage() {
   const createTaskMutation = useCreateTask(selectedProjectId || '');
 
   const today = dateKey(new Date());
-  const monthLabel = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
   const toggleProject = (pid: string) => {
     setVisibleProjects((prev) => {
@@ -304,7 +304,7 @@ export function CalendarViewPage() {
                     <Badge className={cn('text-[10px]', priorityColor(task.priority))}>{task.priority}</Badge>
                     <Badge variant="outline" className="text-xs">{task.status_name}</Badge>
                     {task.assignee && <Avatar name={task.assignee.name} size="sm" />}
-                    <span className="text-xs text-muted-foreground">{new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
                   </div>
                 ))}
               {monthTasks.filter((t) => selectedProjectFilter === 'all' || t.project.id === selectedProjectFilter).length === 0 && (

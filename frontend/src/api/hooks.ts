@@ -797,6 +797,16 @@ export function useExportProjects() {
   });
 }
 
+export function useDeleteExport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (exportId: string) => {
+      await api.delete(`/exports/${exportId}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exports'] }),
+  });
+}
+
 // ─── Division Config ─────────────────────────────────────
 
 export function useMyDivisions() {

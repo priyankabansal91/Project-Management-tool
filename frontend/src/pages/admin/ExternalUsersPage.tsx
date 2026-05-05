@@ -188,7 +188,7 @@ export function ExternalUsersPage() {
                   )}
                   {user.expires_at && (
                     <div className="text-xs text-muted-foreground">
-                      Expires: {new Date(user.expires_at).toLocaleDateString()}
+                      Expires: {new Date(user.expires_at).toLocaleDateString('en-GB')}
                     </div>
                   )}
                 </div>

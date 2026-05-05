@@ -3,9 +3,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, Download, ChevronDown, Activity, User, FolderKanban, CheckSquare, MessageSquare, Settings } from 'lucide-react';
+import { Search, Download, ChevronDown, Activity, User, FolderKanban, CheckSquare, MessageSquare, Settings, Loader2 } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import { useAuditLogs, type AuditLogEntry } from '@/api/hooks';
+import api from '@/api/client';
 
 const actionColors: Record<string, string> = {
   created:        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
@@ -24,6 +25,16 @@ const entityIcons: Record<string, typeof Activity> = {
   member: User, config: Settings,
 };
 
+function toCSV(rows: Record<string, unknown>[]): string {
+  if (!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const esc = (v: unknown) => {
+    const s = v == null ? '' : String(v);
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\n');
+}
+
 export function AuditLogPage() {
   const [search, setSearch] = useState('');
   const [filterEntity, setFilterEntity] = useState('');
@@ -31,6 +42,7 @@ export function AuditLogPage() {
   const [startDate, setStartDate] = useState('');
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading, isError } = useAuditLogs({
     page,
@@ -65,6 +77,45 @@ export function AuditLogPage() {
   function handleActionChange(val: string) { setFilterAction(val); setPage(1); }
   function handleDateChange(val: string)   { setStartDate(val); setPage(1); }
 
+  async function handleExportCSV() {
+    setExporting(true);
+    try {
+      const params: Record<string, unknown> = { page: 1, page_size: 1000 };
+      if (filterEntity) params.entity_type = filterEntity;
+      if (filterAction) params.action = filterAction;
+      if (search)       params.search = search;
+      if (startDate)    params.start_date = startDate;
+
+      const { data } = await api.get('/audit-logs', { params });
+      const items: AuditLogEntry[] = data?.data?.items ?? [];
+
+      const rows = items.map((l) => ({
+        timestamp:   new Date(l.created_at).toISOString(),
+        actor_name:  l.actor?.name ?? 'System',
+        actor_email: l.actor?.email ?? '',
+        action:      l.action,
+        entity_type: l.entity_type,
+        entity_id:   l.entity_id,
+        ip_address:  l.ip_address ?? '',
+        old_value:   l.old_value != null ? JSON.stringify(l.old_value) : '',
+        new_value:   l.new_value != null ? JSON.stringify(l.new_value) : '',
+      }));
+
+      const csv = toCSV(rows);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Audit log export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -72,7 +123,10 @@ export function AuditLogPage() {
           <h1 className="text-2xl font-bold">Audit Log</h1>
           <p className="text-muted-foreground">Immutable record of all actions in your organization</p>
         </div>
-        <Button variant="outline"><Download className="h-4 w-4 mr-1" /> Export CSV</Button>
+        <Button variant="outline" onClick={handleExportCSV} disabled={exporting}>
+          {exporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+          {exporting ? 'Exporting…' : 'Export CSV'}
+        </Button>
       </div>
 
       {/* Filters */}

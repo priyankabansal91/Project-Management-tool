@@ -141,7 +141,7 @@ export function VersioningPage() {
                   <p className="text-sm text-muted-foreground mb-2">{snapshot.description}</p>
                 )}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>Created: {new Date(snapshot.created_at).toLocaleString()}</span>
+                  <span>Created: {new Date(snapshot.created_at).toLocaleDateString('en-GB')}</span>
                   <span>Size: {Math.round(JSON.stringify(snapshot.data).length / 1024)} KB</span>
                 </div>
               </div>

@@ -161,7 +161,7 @@ function TaskCardContent({ task, onClick, dragListeners, onDelete }: { task: Tas
           )}
           {task.due_date && (
             <span className={cn('flex items-center gap-0.5 text-xs', isOverdue ? 'text-red-600 font-medium' : 'text-muted-foreground')}>
-              <Calendar className="h-3 w-3" />{new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              <Calendar className="h-3 w-3" />{new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
             </span>
           )}
         </div>

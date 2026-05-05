@@ -39,7 +39,7 @@ function getMondayDate(weeksFromNow: number): Date {
 }
 
 function formatWeekLabel(date: Date): string {
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 function buildMockData(numWeeks: number): CapacityData {
