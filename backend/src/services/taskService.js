@@ -165,6 +165,8 @@ class TaskService {
         ...(data.tags             !== undefined && { tags: data.tags }),
         ...(data.custom_fields    !== undefined && { customFields: data.custom_fields }),
         ...(data.status_id        !== undefined && { statusId: data.status_id, statusName: data.status_name || null }),
+        ...(data.status_id        === undefined && data.status_name !== undefined && { statusName: data.status_name }),
+        ...(data.completed_at     !== undefined && { completedAt: data.completed_at ? new Date(data.completed_at) : null }),
       },
       include: TASK_INCLUDE,
     });

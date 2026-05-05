@@ -68,7 +68,14 @@ router.patch('/bulk', async (req, res, next) => {
     }
 
     const updateData = {};
-    if (operation === 'status')   updateData.status_id = value;
+    if (operation === 'status') {
+      if (value === 'done') {
+        updateData.status_name = 'Done';
+        updateData.completed_at = new Date().toISOString();
+      } else {
+        updateData.status_id = value;
+      }
+    }
     if (operation === 'priority') updateData.priority = value;
     if (operation === 'assignee') updateData.assignee_id = value;
 

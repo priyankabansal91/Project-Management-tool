@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -149,11 +149,16 @@ export function MyTasksPage() {
 
   // Local task state so bulk operations reflect immediately without a round-trip
   const [localTasks, setLocalTasks] = useState(sourceTasks);
+  const lastSourceRef = useRef(sourceTasks);
 
-  // Sync if source changes (e.g. API data arrives after initial render)
-  if (sourceTasks !== localTasks && !selectedIds.size) {
-    setLocalTasks(sourceTasks);
-  }
+  // Sync when API data changes (e.g. initial load, or after refetch)
+  // Using useEffect avoids reverting optimistic updates when selection is cleared
+  useEffect(() => {
+    if (sourceTasks !== lastSourceRef.current) {
+      lastSourceRef.current = sourceTasks;
+      setLocalTasks(sourceTasks);
+    }
+  }, [sourceTasks]);
 
   const bulkAction = useBulkTaskAction();
 
@@ -221,8 +226,10 @@ export function MyTasksPage() {
       });
     });
 
+    const snapshot = localTasks;
     bulkAction.mutate({ taskIds, operation, value }, {
       onSuccess: () => clearSelection(),
+      onError: () => { setLocalTasks(snapshot); clearSelection(); },
     });
   };
 
