@@ -9,7 +9,7 @@ import { ArrowLeft, Calendar, Clock, Send, Loader, CheckCircle2 } from 'lucide-r
 import { cn, priorityColor, formatDate, timeAgo } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/api/client';
-import { useComments, useCreateComment, useLogTime } from '@/api/hooks';
+import { useComments, useCreateComment, useLogTime, useUpdateTask, useProject } from '@/api/hooks';
 
 const mockComments = [
   {
@@ -38,6 +38,7 @@ export function TaskDetailPage() {
   const [logSuccess, setLogSuccess] = useState(false);
   const logTime = useLogTime();
 
+  const updateTask = useUpdateTask();
   const commentsQuery = useComments(taskId || '');
   const createComment = useCreateComment(taskId || '');
 
@@ -57,6 +58,8 @@ export function TaskDetailPage() {
     },
     enabled: !!taskId,
   });
+
+  const { data: projectData } = useProject(task?.project?.id || '');
 
   if (isLoading) {
     return (
@@ -206,34 +209,18 @@ export function TaskDetailPage() {
         <div className="space-y-4">
           <Card>
             <CardContent className="p-4 space-y-4">
-              {/* Status */}
+              {/* Status — editable dropdown */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</label>
-                {(() => {
-                  const s = (task?.status_name || (task?.completed_at ? 'Done' : 'Backlog')).toLowerCase();
-                  const style =
-                    s === 'done' || s === 'completed' || s === 'accepted'
-                      ? 'bg-green-50 border-green-200 text-green-700'
-                      : s === 'in progress' || s === 'in review'
-                      ? 'bg-blue-50 border-blue-200 text-blue-700'
-                      : s === 'blocked'
-                      ? 'bg-red-50 border-red-200 text-red-700'
-                      : 'bg-yellow-50 border-yellow-200 text-yellow-700';
-                  const dot =
-                    s === 'done' || s === 'completed' || s === 'accepted'
-                      ? 'bg-green-500'
-                      : s === 'in progress' || s === 'in review'
-                      ? 'bg-blue-500'
-                      : s === 'blocked'
-                      ? 'bg-red-500'
-                      : 'bg-yellow-500';
-                  return (
-                    <div className={cn('flex items-center gap-2 p-2 rounded-md border', style)}>
-                      <div className={cn('h-2.5 w-2.5 rounded-full', dot)} />
-                      <span className="text-sm font-medium">{task?.status_name || (task?.completed_at ? 'Done' : 'Backlog')}</span>
-                    </div>
-                  );
-                })()}
+                <StatusSelect
+                  currentStatusId={task?.status_id}
+                  currentStatusName={task?.status_name || (task?.completed_at ? 'Done' : 'Backlog')}
+                  workflowStatuses={(projectData as any)?.workflow_statuses}
+                  updating={updateTask.isPending}
+                  onSelect={(statusId, statusName) => {
+                    updateTask.mutate({ taskId: taskId!, status_id: statusId, status_name: statusName });
+                  }}
+                />
               </div>
 
               {/* Priority */}
@@ -287,21 +274,22 @@ export function TaskDetailPage() {
               )}
 
               {/* Time Tracking */}
-              {task?.estimated_hours && (
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Tracking</label>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{task.logged_hours || 0}h / {task.estimated_hours}h</span>
-                  </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Tracking</label>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>{task?.logged_hours || 0}h logged{task?.estimated_hours ? ` / ${task.estimated_hours}h est.` : ''}</span>
+                </div>
+                {task?.estimated_hours && (
                   <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${((task.logged_hours || 0) / task.estimated_hours) * 100}%` }} />
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(((task.logged_hours || 0) / task.estimated_hours) * 100, 100)}%` }} />
                   </div>
-                  {!showLogTime ? (
-                    <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => { setShowLogTime(true); setLogSuccess(false); }}>
-                      <Clock className="h-3 w-3 mr-1" /> Log Time
-                    </Button>
-                  ) : (
+                )}
+                {!showLogTime ? (
+                  <Button variant="outline" size="sm" className="w-full mt-1" onClick={() => { setShowLogTime(true); setLogSuccess(false); }}>
+                    <Clock className="h-3 w-3 mr-1" /> Log Time
+                  </Button>
+                ) : (
                     <div className="mt-2 space-y-2 border rounded-md p-3 bg-secondary/30">
                       <p className="text-xs font-medium">Log Time</p>
                       <Input
@@ -361,7 +349,6 @@ export function TaskDetailPage() {
                     </div>
                   )}
                 </div>
-              )}
 
               {/* Tags */}
               {task?.tags && task.tags.length > 0 && (
@@ -384,6 +371,60 @@ export function TaskDetailPage() {
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+const DEFAULT_STATUSES = [
+  { id: 'backlog',     name: 'Backlog',     color: '#6B7280' },
+  { id: 'todo',        name: 'To Do',        color: '#3B82F6' },
+  { id: 'in_progress', name: 'In Progress',  color: '#F59E0B' },
+  { id: 'in_review',   name: 'In Review',    color: '#8B5CF6' },
+  { id: 'done',        name: 'Done',          color: '#10B981' },
+];
+
+function StatusSelect({
+  currentStatusId, currentStatusName, workflowStatuses, updating, onSelect,
+}: {
+  currentStatusId?: string | null;
+  currentStatusName: string;
+  workflowStatuses?: Array<{ id: string; name: string; color?: string }> | null;
+  updating: boolean;
+  onSelect: (id: string, name: string) => void;
+}) {
+  const statuses = workflowStatuses?.length ? workflowStatuses : DEFAULT_STATUSES;
+  const current = statuses.find(s => s.id === currentStatusId) ?? { id: currentStatusId ?? '', name: currentStatusName, color: '#6B7280' };
+  const sl = currentStatusName.toLowerCase();
+  const dotColor =
+    sl.includes('done') || sl.includes('complet') ? '#10B981'
+    : sl.includes('progress') || sl.includes('review') ? '#3B82F6'
+    : sl.includes('blocked') ? '#EF4444'
+    : current.color ?? '#6B7280';
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
+        <span className="text-sm font-medium">{currentStatusName}</span>
+        {updating && <Loader className="h-3 w-3 animate-spin text-muted-foreground" />}
+      </div>
+      <select
+        className="w-full text-sm border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+        value={currentStatusId ?? ''}
+        onChange={(e) => {
+          const chosen = statuses.find(s => s.id === e.target.value);
+          if (chosen) onSelect(chosen.id, chosen.name);
+        }}
+        disabled={updating}
+      >
+        {/* If current status isn't in the list, show it as a placeholder option */}
+        {!statuses.find(s => s.id === currentStatusId) && (
+          <option value={currentStatusId ?? ''} disabled>{currentStatusName}</option>
+        )}
+        {statuses.map(s => (
+          <option key={s.id} value={s.id}>{s.name}</option>
+        ))}
+      </select>
     </div>
   );
 }

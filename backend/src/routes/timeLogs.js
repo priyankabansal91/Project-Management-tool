@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { authenticate } = require('../middleware/auth');
 const timeLogService = require('../services/timeLogService');
+const prisma = require('../config/prisma');
 
 const router = express.Router();
 
@@ -17,6 +18,7 @@ const paginationSchema = z.object({
 const weekStartSchema = z.string().regex(DATE_RE, 'weekStart must be YYYY-MM-DD').optional();
 
 const logBodySchema = z.object({
+  taskId:       z.string().max(100).optional(),
   taskKey:      z.string().max(50).optional(),
   taskTitle:    z.string().max(255).optional(),
   projectId:    z.string().max(100).optional(),
@@ -222,9 +224,20 @@ router.patch('/timesheets/:timesheetId/reject', (req, res) => {
 // body { taskKey, taskTitle?, projectId?, projectKey?, projectColor?,
 //        divisionId?, hours, description?, loggedDate? }
 // ---------------------------------------------------------------------------
-router.post('/', validate(logBodySchema, 'body'), (req, res) => {
+router.post('/', validate(logBodySchema, 'body'), async (req, res) => {
   try {
     const data = timeLogService.logTime(req.user.id, req.user.orgId, req.body);
+
+    // Update task loggedHours in DB when a taskId is provided
+    if (req.body.taskId && req.body.hours) {
+      try {
+        await prisma.task.updateMany({
+          where: { id: req.body.taskId, orgId: req.user.orgId, deletedAt: null },
+          data: { loggedHours: { increment: req.body.hours } },
+        });
+      } catch (_) { /* non-fatal — log entry is still saved */ }
+    }
+
     return res.status(201).json({ success: true, data });
   } catch (err) {
     const st = err.status || 500;

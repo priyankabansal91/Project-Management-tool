@@ -24,6 +24,9 @@ function fmt(p) {
       avatar_url: m.user.avatarUrl || null,
       role: m.role,
     })),
+    workflow_statuses: Array.isArray(p.workflowConfig?.statuses) && p.workflowConfig.statuses.length > 0
+      ? p.workflowConfig.statuses
+      : null,
     created_at: p.createdAt,
     updated_at: p.updatedAt,
   };
@@ -35,6 +38,10 @@ const TASK_INCLUDE = {
 
 const MEMBER_INCLUDE = {
   members: { include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } } },
+};
+
+const WORKFLOW_INCLUDE = {
+  workflowConfig: { select: { statuses: true } },
 };
 
 class ProjectService {
@@ -71,7 +78,7 @@ class ProjectService {
   async getById(orgId, projectId) {
     const p = await prisma.project.findFirst({
       where: { id: projectId, orgId, deletedAt: null },
-      include: { ...TASK_INCLUDE, ...MEMBER_INCLUDE },
+      include: { ...TASK_INCLUDE, ...MEMBER_INCLUDE, ...WORKFLOW_INCLUDE },
     });
     if (!p) throw ApiError.notFound('Project not found');
     return fmt(p);

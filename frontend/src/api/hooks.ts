@@ -1087,9 +1087,12 @@ export function useLogTime() {
       const { data } = await api.post('/time-logs', body);
       return data.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['myTimeLogs'] });
       qc.invalidateQueries({ queryKey: ['weeklySummary'] });
+      if (variables.taskId) {
+        qc.invalidateQueries({ queryKey: ['task', variables.taskId] });
+      }
     },
   });
 }
