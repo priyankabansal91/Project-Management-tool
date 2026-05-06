@@ -240,18 +240,20 @@ export function Sidebar() {
 
       {/* ── User info strip ── */}
       {!collapsed && (
-        <div
-          style={{
-            background: 'hsl(215 60% 11%)',
+        <NavLink
+          to="/profile"
+          style={({ isActive }) => ({
+            background: isActive ? 'hsl(215 60% 15%)' : 'hsl(215 60% 11%)',
             borderTopColor: dividerColor,
-          }}
-          className="border-t px-3 py-2.5 flex-shrink-0"
+          })}
+          className="border-t px-3 py-2.5 flex-shrink-0 block hover:opacity-90 transition-opacity"
+          title="View my profile"
         >
           <p className="text-xs font-semibold text-white/80 truncate">{displayName}</p>
           <p style={{ color: sectionLabel }} className="text-[10px] capitalize truncate">
             {currentRole?.replace(/_/g, ' ')}
           </p>
-        </div>
+        </NavLink>
       )}
 
       {/* ── Collapse toggle ── */}

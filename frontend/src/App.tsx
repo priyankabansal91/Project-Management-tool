@@ -11,6 +11,7 @@ import { ProjectListPage } from '@/pages/pm/ProjectListPage';
 import { KanbanBoardPage } from '@/pages/pm/KanbanBoardPage';
 import { MyTasksPage } from '@/pages/user/MyTasksPage';
 import { TaskDetailPage } from '@/pages/user/TaskDetailPage';
+import { ProfilePage } from '@/pages/user/ProfilePage';
 import { UserManagementPage } from '@/pages/admin/UserManagementPage';
 import { WorkflowsPage } from '@/pages/admin/WorkflowsPage';
 import { CustomFieldsPage } from '@/pages/admin/CustomFieldsPage';
@@ -109,6 +110,7 @@ export default function App() {
         <Route path="/my-tasks" element={<MyTasksPage />} />
         <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         {/* PM Views */}
         <Route path="/sprints" element={<SprintManagementPage />} />

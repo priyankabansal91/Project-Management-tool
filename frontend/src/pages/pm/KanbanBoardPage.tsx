@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
-import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask } from '@/api/hooks';
+import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask, useMembers } from '@/api/hooks';
 import type { Task, KanbanColumn, WorkflowStatus } from '@/types';
 
 // ─── Fallback mock data (used when API is unavailable) ──
@@ -214,6 +214,7 @@ export function KanbanBoardPage() {
   // API hooks (fallback to mock data if API unavailable)
   const kanbanQuery = useKanbanTasks(projectId || '');
   const projectQuery = useProject(projectId || '');
+  const membersQuery = useMembers();
   const createTask = useCreateTask(projectId || '');
   const moveTask = useMoveTask();
   const deleteTask = useDeleteTask();
@@ -242,12 +243,21 @@ export function KanbanBoardPage() {
       }))
     : fallbackStatuses;
 
-  // Real project members mapped to the shape TaskModal expects
-  const modalMembers = projectData?.members?.map((m: { id: string; name: string; avatar_url: string | null }) => ({
-    id: m.id,
-    name: m.name,
-    avatar_url: m.avatar_url,
-  })) ?? fallbackMembers;
+  // Org members for the assignee dropdown — all active org members can be assigned tasks
+  const orgMembers = membersQuery.data?.items ?? [];
+  const modalMembers = orgMembers.length > 0
+    ? orgMembers
+        .filter((m: any) => m.status === 'active')
+        .map((m: any) => ({
+          id: m.id,
+          name: `${m.first_name} ${m.last_name}`.trim(),
+          avatar_url: m.avatar_url,
+        }))
+    : (projectData?.members?.map((m: { id: string; name: string; avatar_url: string | null }) => ({
+        id: m.id,
+        name: m.name,
+        avatar_url: m.avatar_url,
+      })) ?? fallbackMembers);
 
   // Sync API data into local columns so drag-and-drop stays consistent
   useEffect(() => {
