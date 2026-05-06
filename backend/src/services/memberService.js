@@ -40,7 +40,7 @@ class MemberService {
       prisma.orgMember.count({ where }),
       prisma.orgMember.findMany({
         where,
-        include: { user: true },
+        include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true } } },
         orderBy: { joinedAt: 'asc' },
         skip: (page - 1) * page_size,
         take: page_size,
@@ -112,30 +112,30 @@ class MemberService {
   }
 
   async updateRole(orgId, userId, role) {
-    const member = await prisma.orgMember.findFirst({ where: { orgId, userId }, include: { user: true } });
+    const member = await prisma.orgMember.findFirst({ where: { orgId, userId }, include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true } } } });
     if (!member) throw ApiError.notFound('Member not found');
     if (member.isOwner) throw ApiError.badRequest('Cannot change role of organization owner');
 
     const updated = await prisma.orgMember.update({
       where: { orgId_userId: { orgId, userId } },
       data: { role },
-      include: { user: true },
+      include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true } } },
     });
     return fmtMember(updated);
   }
 
   async updateStatus(orgId, userId, status) {
-    const member = await prisma.orgMember.findFirst({ where: { orgId, userId }, include: { user: true } });
+    const member = await prisma.orgMember.findFirst({ where: { orgId, userId }, include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true } } } });
     if (!member) throw ApiError.notFound('Member not found');
 
     await prisma.user.update({ where: { id: userId }, data: { status } });
-    const refreshed = await prisma.orgMember.findUnique({ where: { orgId_userId: { orgId, userId } }, include: { user: true } });
+    const refreshed = await prisma.orgMember.findUnique({ where: { orgId_userId: { orgId, userId } }, include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true } } } });
     return fmtMember(refreshed);
   }
 
   async remove(orgId, requesterId, userId) {
     if (requesterId === userId) throw ApiError.badRequest('Cannot remove yourself');
-    const member = await prisma.orgMember.findFirst({ where: { orgId, userId }, include: { user: true } });
+    const member = await prisma.orgMember.findFirst({ where: { orgId, userId }, include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true } } } });
     if (!member) throw ApiError.notFound('Member not found');
     if (member.isOwner) throw ApiError.badRequest('Cannot remove the organization owner');
     await prisma.orgMember.delete({ where: { orgId_userId: { orgId, userId } } });
@@ -149,7 +149,7 @@ class MemberService {
       // If user exists, just add to org if not already a member
       const member = await prisma.orgMember.findFirst({ where: { orgId, userId: existing.id } });
       if (member) throw ApiError.badRequest('User with this email is already a member');
-      const om = await prisma.orgMember.create({ data: { orgId, userId: existing.id, role: role || 'member' }, include: { user: true } });
+      const om = await prisma.orgMember.create({ data: { orgId, userId: existing.id, role: role || 'member' }, include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true } } } });
       return fmtMember(om);
     }
     const passwordHash = await bcrypt.hash(password, 12);
@@ -159,7 +159,7 @@ class MemberService {
       });
       const om = await tx.orgMember.create({
         data: { orgId, userId: user.id, role: role || 'member' },
-        include: { user: true },
+        include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, status: true, lastLoginAt: true } } },
       });
       return om;
     });

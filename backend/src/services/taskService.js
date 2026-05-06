@@ -66,11 +66,43 @@ class TaskService {
     const mapped = tasks.map(formatTask);
 
     if (view === 'kanban') {
-      const columns = {};
-      mapped.forEach((t) => {
-        if (!columns[t.status_id]) columns[t.status_id] = { id: t.status_id, name: t.status_name, tasks: [] };
-        columns[t.status_id].tasks.push(t);
+      // Build columns from workflow statuses so all columns appear even when empty
+      const DEFAULT_STATUSES = [
+        { id: 'backlog',     name: 'Backlog',     color: '#6B7280', order: 1 },
+        { id: 'todo',        name: 'To Do',        color: '#3B82F6', order: 2 },
+        { id: 'in_progress', name: 'In Progress',  color: '#F59E0B', order: 3 },
+        { id: 'in_review',   name: 'In Review',    color: '#8B5CF6', order: 4 },
+        { id: 'done',        name: 'Done',          color: '#10B981', order: 5 },
+      ];
+
+      // Fetch project workflow statuses
+      let workflowStatuses = null;
+      const proj = await prisma.project.findFirst({
+        where: { id: projectId, orgId },
+        include: { workflowConfig: { select: { statuses: true } } },
       });
+      if (proj?.workflowConfig?.statuses && Array.isArray(proj.workflowConfig.statuses) && proj.workflowConfig.statuses.length > 0) {
+        workflowStatuses = proj.workflowConfig.statuses;
+      } else {
+        const defWf = await prisma.workflowConfig.findFirst({ where: { orgId, isDefault: true }, select: { statuses: true } });
+        if (defWf?.statuses && Array.isArray(defWf.statuses) && defWf.statuses.length > 0) {
+          workflowStatuses = defWf.statuses;
+        }
+      }
+      const statusDefs = workflowStatuses ?? DEFAULT_STATUSES;
+      const sorted = [...statusDefs].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+      // Initialise all columns
+      const columns = {};
+      sorted.forEach((s) => { columns[s.id] = { id: s.id, name: s.name, color: s.color || '#6B7280', tasks: [] }; });
+
+      // Place tasks — fall back to first column if status_id is missing/unknown
+      const firstColId = sorted[0]?.id;
+      mapped.forEach((t) => {
+        const colId = t.status_id && columns[t.status_id] ? t.status_id : firstColId;
+        if (colId) columns[colId].tasks.push(t);
+      });
+
       return { columns: Object.values(columns), pagination: { page, page_size, total, total_pages: Math.ceil(total / page_size) } };
     }
 

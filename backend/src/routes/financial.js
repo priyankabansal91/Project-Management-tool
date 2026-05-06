@@ -4,7 +4,10 @@
 
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/auth');
 const FinancialService = require('../services/financialService');
+
+router.use(authenticate);
 
 /**
  * GET /v1/financial/budgets - List budgets

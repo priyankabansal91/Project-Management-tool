@@ -21,9 +21,9 @@ test.describe('Approval Group Configuration', () => {
   test('Groups tab shows pre-seeded groups', async ({ page }) => {
     await page.goto('/admin/approval-groups');
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText('Core Team')).toBeVisible();
-    await expect(page.getByText('CFO Group')).toBeVisible();
-    await expect(page.getByText('Division Head')).toBeVisible();
+    await expect(page.getByText('Core Team').first()).toBeVisible();
+    await expect(page.getByText('CFO Group').first()).toBeVisible();
+    await expect(page.getByText('Division Head').first()).toBeVisible();
   });
 
   test('Approval type badges visible (ANY, ALL, QUORUM)', async ({ page }) => {
@@ -38,8 +38,8 @@ test.describe('Approval Group Configuration', () => {
     await page.goto('/admin/approval-groups');
     await page.waitForLoadState('networkidle');
     // Core Team is expanded by default — members should be visible
-    await expect(page.getByText('Division Head')).toBeVisible();
-    await expect(page.getByText('Senior Engineer')).toBeVisible();
+    await expect(page.getByText('Division Head').first()).toBeVisible();
+    await expect(page.getByText('Senior Engineer').first()).toBeVisible();
   });
 
   test('"New Group" button opens modal', async ({ page }) => {
@@ -54,9 +54,9 @@ test.describe('Approval Group Configuration', () => {
     await page.goto('/admin/approval-groups');
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /new group/i }).click();
-    await expect(page.getByText('ANY')).toBeVisible();
-    await expect(page.getByText('ALL')).toBeVisible();
-    await expect(page.getByText('QUORUM')).toBeVisible();
+    await expect(page.getByText('ANY').first()).toBeVisible();
+    await expect(page.getByText('ALL').first()).toBeVisible();
+    await expect(page.getByText('QUORUM').first()).toBeVisible();
   });
 
   test('QUORUM selection reveals quorum count input', async ({ page }) => {
@@ -65,7 +65,7 @@ test.describe('Approval Group Configuration', () => {
     await page.getByRole('button', { name: /new group/i }).click();
     // Click QUORUM type
     await page.getByText('QUORUM').last().click();
-    await expect(page.getByText('Quorum Count')).toBeVisible();
+    await expect(page.getByText('Quorum Count').first()).toBeVisible();
   });
 
   test('Save disabled when name is empty', async ({ page }) => {
@@ -119,8 +119,8 @@ test.describe('Workflow Steps Configuration', () => {
   });
 
   test('Shows pipeline visual with step names', async ({ page }) => {
-    await expect(page.getByText('Core Team Review')).toBeVisible();
-    await expect(page.getByText('CFO Final Approval')).toBeVisible();
+    await expect(page.getByText('Core Team Review').first()).toBeVisible();
+    await expect(page.getByText('CFO Final Approval').first()).toBeVisible();
   });
 
   test('Steps table shows group assignment', async ({ page }) => {
@@ -149,8 +149,8 @@ test.describe('Workflow Steps Configuration', () => {
 
   test('Escalation section visible in step modal', async ({ page }) => {
     await page.getByRole('button', { name: /add step/i }).click();
-    await expect(page.getByText('Escalation')).toBeVisible();
-    await expect(page.getByText('Escalate after')).toBeVisible();
+    await expect(page.getByText('Escalation').first()).toBeVisible();
+    await expect(page.getByText('Escalate after').first()).toBeVisible();
   });
 });
 
@@ -170,15 +170,15 @@ test.describe('Group Approval Dashboard', () => {
   });
 
   test('KPI cards visible', async ({ page }) => {
-    await expect(page.getByText('In Progress')).toBeVisible();
-    await expect(page.getByText('SLA Overdue')).toBeVisible();
-    await expect(page.getByText('Completed')).toBeVisible();
+    await expect(page.getByText('In Progress').first()).toBeVisible();
+    await expect(page.getByText('SLA Overdue').first()).toBeVisible();
+    await expect(page.getByText('Completed').first()).toBeVisible();
   });
 
   test('Group summary cards visible', async ({ page }) => {
-    await expect(page.getByText('Core Team')).toBeVisible();
-    await expect(page.getByText('CFO Group')).toBeVisible();
-    await expect(page.getByText('Division Head')).toBeVisible();
+    await expect(page.getByText('Core Team').first()).toBeVisible();
+    await expect(page.getByText('CFO Group').first()).toBeVisible();
+    await expect(page.getByText('Division Head').first()).toBeVisible();
   });
 
   test('Workflow instances listed', async ({ page }) => {
@@ -201,8 +201,8 @@ test.describe('Group Approval Dashboard', () => {
   test('Expand card reveals step detail with votes', async ({ page }) => {
     // Click the first card to expand
     await page.locator('div.border-l-4').first().click();
-    await expect(page.getByText('Core Team Review')).toBeVisible();
-    await expect(page.getByText('Rajesh Kumar')).toBeVisible();
+    await expect(page.getByText('Core Team Review').first()).toBeVisible();
+    await expect(page.getByText('Rajesh Kumar').first()).toBeVisible();
   });
 
   test('Quorum progress bar visible on expanded card', async ({ page }) => {
@@ -227,7 +227,7 @@ test.describe('Group Approval Dashboard', () => {
     await page.goto('/admin/approval-groups');
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: /config audit/i }).click();
-    await expect(page.getByText('GROUP_CREATED')).toBeVisible();
-    await expect(page.getByText('MEMBER_ADDED')).toBeVisible();
+    await expect(page.getByText('GROUP_CREATED').first()).toBeVisible();
+    await expect(page.getByText('MEMBER_ADDED').first()).toBeVisible();
   });
 });

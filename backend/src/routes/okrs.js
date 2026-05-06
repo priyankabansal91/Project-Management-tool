@@ -4,7 +4,10 @@
 
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../middleware/auth');
 const OKRService = require('../services/okrService');
+
+router.use(authenticate);
 
 /**
  * GET /v1/okrs - List all OKRs

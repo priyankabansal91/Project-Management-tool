@@ -94,7 +94,7 @@ test.describe('Pre-Project Form (multi-step)', () => {
 
     await page.locator('input[placeholder*="TDR"]').fill('TDR/2026/TEST/001');
     await page.locator('input[placeholder*="Highway"]').fill('Test Project Title');
-    await page.locator('input[placeholder*="MPRDC"]').fill('Test Client');
+    await page.locator('input[placeholder*="MPRDC"]').first().fill('Test Client');
     // select.nth(0)=Priority, nth(1)=Division, nth(2)=AssignedPM
     await page.locator('select').nth(1).selectOption('Infrastructure');
     await page.locator('textarea').first().fill('This is a test project description that is long enough.');
@@ -113,7 +113,7 @@ test.describe('Pre-Project Form (multi-step)', () => {
     // Fill step 1
     await page.locator('input[placeholder*="TDR"]').fill('TDR/2026/TEST/002');
     await page.locator('input[placeholder*="Highway"]').fill('Another Project');
-    await page.locator('input[placeholder*="MPRDC"]').fill('Client Name');
+    await page.locator('input[placeholder*="MPRDC"]').first().fill('Client Name');
     await page.locator('select').nth(1).selectOption('Education');
     await page.locator('textarea').first().fill('Sufficient description text for validation.');
     await page.getByRole('button', { name: /next/i }).click();
@@ -325,7 +325,7 @@ test.describe('Workflow Governance', () => {
     await page.getByRole('button', { name: 'SLA Policy' }).click();
     await expect(page.getByText('Core Team Review')).toBeVisible();
     await expect(page.getByText('CFO Approval')).toBeVisible();
-    await expect(page.getByText('Warn after (hours)')).toBeVisible();
+    await expect(page.getByText('Warn after (hours)').first()).toBeVisible();
   });
 
   test('Escalation Chain tab shows chain', async ({ page }) => {
@@ -369,9 +369,9 @@ test.describe('Workflow Training Guide', () => {
     await injectDevAuth(page);
     await page.goto('/workflow/training');
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText('Project Manager')).toBeVisible();
-    await expect(page.getByText('Division Head')).toBeVisible();
-    await expect(page.getByText('CFO / Executive')).toBeVisible();
+    await expect(page.getByText('Project Manager').first()).toBeVisible();
+    await expect(page.getByText('Division Head').first()).toBeVisible();
+    await expect(page.getByText('CFO / Executive').first()).toBeVisible();
     await expect(page.getByText('Org Admin').first()).toBeVisible();
   });
 
@@ -379,7 +379,7 @@ test.describe('Workflow Training Guide', () => {
     await injectDevAuth(page);
     await page.goto('/workflow/training');
     await page.waitForLoadState('networkidle');
-    await page.getByText('Division Head').click();
+    await page.locator('button').filter({ hasText: /^Division Head/ }).first().click();
     await expect(page.getByText("Don't approve without reading").first()).toBeVisible();
   });
 
