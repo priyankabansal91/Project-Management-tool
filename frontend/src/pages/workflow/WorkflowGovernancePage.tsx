@@ -16,22 +16,22 @@ const OVERRIDE_HISTORY = [
   {
     id: 'ov-001', projectKey: 'RD-009', projectName: 'Road Repair NH-47 Bypass',
     overriddenBy: 'Alice Admin', overrideRole: 'Org Admin',
-    fromStatus: 'PENDING_CFO_APPROVAL', toStatus: 'ACTIVE',
-    justification: 'Flood emergency — road required for relief vehicles. Verbal CFO approval obtained. Written order pending.',
+    fromStatus: 'ON_HOLD', toStatus: 'ACTIVE',
+    justification: 'Flood emergency — road required for relief vehicles. Government directive received. Restarting immediately.',
     at: new Date(Date.now() - 3 * 86400000).toISOString(), emergency: true,
   },
   {
     id: 'ov-002', projectKey: 'SCH-002', projectName: 'School Boundary Wall Construction',
     overriddenBy: 'Alice Admin', overrideRole: 'Org Admin',
-    fromStatus: 'PENDING_CORE_REVIEW', toStatus: 'DRAFT',
-    justification: 'Submitted in error — wrong project attached. Returned to draft for correction.',
+    fromStatus: 'ACTIVE', toStatus: 'DRAFT',
+    justification: 'Submitted in error — wrong project scope attached. Returned to draft for correction before re-submission.',
     at: new Date(Date.now() - 12 * 86400000).toISOString(), emergency: false,
   },
 ];
 
 const ESCALATION_CHAIN = [
-  { step: 'Core Team Review', primary: 'Division Admin', escalateTo: 'Org Admin', afterHours: 48 },
-  { step: 'CFO Approval', primary: 'Executive', escalateTo: 'Org Admin', afterHours: 72 },
+  { step: 'Timesheet Approval', primary: 'Project Manager', escalateTo: 'Division Admin', afterHours: 48 },
+  { step: 'Project Milestone Approval', primary: 'Division Admin', escalateTo: 'Org Admin', afterHours: 72 },
 ];
 
 const ACTIVE_DELEGATES = [
@@ -67,7 +67,7 @@ function OverrideModal({ onClose }: { onClose: () => void }) {
   const [emergency, setEmergency] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
-  const statuses = ['DRAFT', 'PENDING_CORE_REVIEW', 'PENDING_CFO_APPROVAL', 'ACTIVE', 'ON_HOLD', 'REJECTED'];
+  const statuses = ['DRAFT', 'ACTIVE', 'ON_HOLD', 'REJECTED', 'CLOSED'];
 
   if (confirmed) {
     return (
@@ -79,7 +79,7 @@ function OverrideModal({ onClose }: { onClose: () => void }) {
           </div>
           <h3 className="font-semibold text-lg mb-1">Override Applied</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Status change logged to immutable audit trail. CFO and Division Admin notified.
+            Status change logged to immutable audit trail. All relevant stakeholders notified.
           </p>
           <Button onClick={onClose}>Done</Button>
         </div>
@@ -140,7 +140,7 @@ function OverrideModal({ onClose }: { onClose: () => void }) {
 
         <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300">
           <p className="font-semibold flex items-center gap-1.5 mb-1"><FileWarning className="h-3.5 w-3.5" /> Compliance Notice</p>
-          <p>All overrides are subject to the QCI Governance Audit. Emergency overrides trigger a mandatory compliance review within 72 hours. The CFO and Division Head will be immediately notified.</p>
+          <p>All overrides are subject to the QCI Governance Audit. Emergency overrides trigger a mandatory compliance review within 72 hours. All relevant stakeholders will be immediately notified.</p>
         </div>
 
         <div className="flex gap-2 mt-4">
@@ -162,8 +162,9 @@ function OverrideModal({ onClose }: { onClose: () => void }) {
 
 function SlaPolicySection() {
   const [policies, setPolicies] = useState([
-    { step: 'Core Team Review', warnHours: 36, escalateHours: 48, autoEscalate: true },
-    { step: 'CFO Approval', warnHours: 48, escalateHours: 72, autoEscalate: true },
+    { step: 'Timesheet Approval', warnHours: 36, escalateHours: 48, autoEscalate: true },
+    { step: 'Milestone Approval', warnHours: 48, escalateHours: 72, autoEscalate: true },
+    { step: 'Project Closure Review', warnHours: 72, escalateHours: 96, autoEscalate: true },
   ]);
   const [saved, setSaved] = useState(false);
 
@@ -361,16 +362,16 @@ export function WorkflowGovernancePage() {
                   </thead>
                   <tbody className="divide-y">
                     {[
-                      { action: 'Submit project for approval', pm: true, div: true, exec: false, admin: true },
-                      { action: 'Core Team Review (Step 1)', pm: false, div: true, exec: false, admin: true },
-                      { action: 'CFO Approval (Step 2)', pm: false, div: false, exec: true, admin: true },
-                      { action: 'Send Back to previous step', pm: false, div: true, exec: true, admin: true },
-                      { action: 'Reject project', pm: false, div: true, exec: true, admin: true },
-                      { action: 'Delegate approval', pm: false, div: true, exec: false, admin: true },
-                      { action: 'Override approval pipeline', pm: false, div: false, exec: false, admin: true },
-                      { action: 'Configure SLA policies', pm: false, div: false, exec: false, admin: true },
-                      { action: 'View audit trail', pm: false, div: true, exec: true, admin: true },
-                      { action: 'View monitoring dashboard', pm: true, div: true, exec: true, admin: true },
+                      { action: 'Create & manage projects',      pm: true,  div: true,  exec: false, admin: true },
+                      { action: 'Approve timesheets',            pm: true,  div: true,  exec: false, admin: true },
+                      { action: 'Reject / request revision',     pm: true,  div: true,  exec: false, admin: true },
+                      { action: 'Approve milestone sign-off',    pm: false, div: true,  exec: true,  admin: true },
+                      { action: 'Delegate approval authority',   pm: false, div: true,  exec: false, admin: true },
+                      { action: 'Override workflow pipeline',    pm: false, div: false, exec: false, admin: true },
+                      { action: 'Configure SLA policies',       pm: false, div: false, exec: false, admin: true },
+                      { action: 'Manage users & roles',         pm: false, div: false, exec: false, admin: true },
+                      { action: 'View audit trail',             pm: false, div: true,  exec: true,  admin: true },
+                      { action: 'View monitoring dashboard',    pm: true,  div: true,  exec: true,  admin: true },
                     ].map(({ action, pm, div, exec, admin }) => (
                       <tr key={action}>
                         <td className="py-2 pr-4 text-foreground">{action}</td>

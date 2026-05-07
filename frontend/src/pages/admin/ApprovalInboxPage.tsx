@@ -45,54 +45,54 @@ const ALL_APPROVALS = [
   {
     id: 'wfi-001', projectKey: 'HWY-002',
     projectName: 'Highway Widening Phase II',
-    description: 'Phase II widening of NH-46 — 45km stretch from Bhopal to Sehore. Includes service roads, drainage, and street lighting.',
+    description: 'Budget revision request: additional ₹40 Lac for soil stabilisation works discovered during ground survey. PM seeking approval before issuing work order amendment.',
     division: 'Infrastructure', submittedBy: 'Bob Kumar', submittedByRole: 'PM',
-    currentStep: 1, currentStepName: 'Core Team Review', requiredRole: 'division_admin',
+    currentStep: 1, currentStepName: 'Division Review', requiredRole: 'division_admin',
     totalSteps: 2, stepStartedAt: hoursAgo(30), slaThreshold: 48, priority: 'high',
     budget: '₹4.2 Cr', timeline: '18 months',
     previousActions: [
-      { actor: 'Bob Kumar', role: 'Project Manager', action: 'SUBMITTED', comment: 'All DPR documents attached. Ready for Core Review.', at: hoursAgo(30) },
+      { actor: 'Bob Kumar', role: 'Project Manager', action: 'SUBMITTED', comment: 'Revised cost estimate attached. Soil report justifies the additional scope.', at: hoursAgo(30) },
     ],
     canDelegate: true, delegatedTo: null,
   },
   {
     id: 'wfi-002', projectKey: 'BDG-001',
     projectName: 'Bridge Rehabilitation — Narmada Crossing',
-    description: 'Structural rehabilitation of Narmada bridge at km 67. Load capacity upgrade from 16T to 40T. Critical for freight corridor.',
+    description: 'Milestone sign-off request: Phase 1 structural works complete. Requesting executive approval to release next tranche of funds per financial schedule.',
     division: 'Infrastructure', submittedBy: 'Priya Singh', submittedByRole: 'PM',
-    currentStep: 2, currentStepName: 'CFO Approval', requiredRole: 'executive',
+    currentStep: 2, currentStepName: 'Executive Approval', requiredRole: 'executive',
     totalSteps: 2, stepStartedAt: hoursAgo(78), slaThreshold: 72, priority: 'critical',
     budget: '₹12.8 Cr', timeline: '24 months',
     previousActions: [
-      { actor: 'Priya Singh', role: 'PM', action: 'SUBMITTED', comment: 'Urgent — bridge load limit causing freight detour.', at: hoursAgo(80) },
-      { actor: 'Ravi Sharma', role: 'Division Head', action: 'APPROVED', comment: 'Scope verified. Budget within division allocation. Recommending CFO approval.', at: hoursAgo(78) },
+      { actor: 'Priya Singh', role: 'PM', action: 'SUBMITTED', comment: 'Phase 1 completion report and inspection certificate attached.', at: hoursAgo(80) },
+      { actor: 'Ravi Sharma', role: 'Division Head', action: 'APPROVED', comment: 'Site verified. Quality report satisfactory. Forwarded for executive release.', at: hoursAgo(78) },
     ],
     canDelegate: false, delegatedTo: null,
   },
   {
     id: 'wfi-003', projectKey: 'SCH-005',
     projectName: 'District School Renovation Block C',
-    description: 'Renovation of 3 classroom blocks, WASH facilities, and boundary wall. UDISE code: 23040201201.',
+    description: 'Scope change approval: additional WASH block required as per new state government directive. Cost impact ₹8 Lac. Seeking Division Head sign-off.',
     division: 'Education', submittedBy: 'Anita Joshi', submittedByRole: 'PM',
-    currentStep: 1, currentStepName: 'Core Team Review', requiredRole: 'division_admin',
+    currentStep: 1, currentStepName: 'Division Review', requiredRole: 'division_admin',
     totalSteps: 2, stepStartedAt: hoursAgo(12), slaThreshold: 48, priority: 'medium',
     budget: '₹85 Lac', timeline: '6 months',
     previousActions: [
-      { actor: 'Anita Joshi', role: 'PM', action: 'SUBMITTED', comment: 'Pre-monsoon window critical. Requested priority review.', at: hoursAgo(12) },
+      { actor: 'Anita Joshi', role: 'PM', action: 'SUBMITTED', comment: 'State directive reference attached. Pre-monsoon deadline at risk if delayed.', at: hoursAgo(12) },
     ],
     canDelegate: true, delegatedTo: null,
   },
   {
     id: 'wfi-004', projectKey: 'WTR-010',
     projectName: 'Rural Water Supply Pipeline Extension',
-    description: 'Extension of 32km pipeline to cover 14 unserved villages in Mandla district. Jal Jeevan Mission scheme.',
+    description: 'Vendor change approval: original contractor abandoned site. PM requesting emergency approval to engage alternate vendor from approved panel.',
     division: 'Water Resources', submittedBy: 'Deepak Nair', submittedByRole: 'PM',
-    currentStep: 2, currentStepName: 'CFO Approval', requiredRole: 'executive',
+    currentStep: 2, currentStepName: 'Executive Approval', requiredRole: 'executive',
     totalSteps: 2, stepStartedAt: hoursAgo(40), slaThreshold: 72, priority: 'high',
     budget: '₹6.4 Cr', timeline: '12 months',
     previousActions: [
-      { actor: 'Deepak Nair', role: 'PM', action: 'SUBMITTED', comment: 'FHTC coverage target mandates activation before Q2.', at: hoursAgo(100) },
-      { actor: 'Meera Patel', role: 'Division Head', action: 'APPROVED', comment: 'Technical feasibility confirmed. State matching funds secured.', at: hoursAgo(40) },
+      { actor: 'Deepak Nair', role: 'PM', action: 'SUBMITTED', comment: 'Contractor abandonment notice attached. Alternate vendor quote ready.', at: hoursAgo(100) },
+      { actor: 'Meera Patel', role: 'Division Head', action: 'APPROVED', comment: 'Alternate vendor verified on approved panel. Recommending executive clearance.', at: hoursAgo(40) },
     ],
     canDelegate: false, delegatedTo: null,
   },
@@ -560,9 +560,9 @@ export function ApprovalInboxPage() {
       {/* Info strip */}
       <div className="rounded-xl bg-muted/50 border px-4 py-3 text-xs text-muted-foreground space-y-1">
         <p className="font-medium text-foreground">How this works</p>
-        <p>• <span className="font-medium">Core Team Review</span> requires Division Admin (step 1 of 2)</p>
-        <p>• <span className="font-medium">CFO Approval</span> requires Executive role (step 2 of 2)</p>
-        <p>• All actions are permanently recorded in the audit trail. Rejections return project to <span className="font-medium">DRAFT</span>. Send Back returns to the previous step.</p>
+        <p>• <span className="font-medium">Division Review</span> (step 1) is handled by Division Admin. Covers budget revisions, scope changes, and milestone sign-offs.</p>
+        <p>• <span className="font-medium">Executive Approval</span> (step 2) is required for high-value or cross-division items and fund release decisions.</p>
+        <p>• All actions are permanently recorded in the audit trail. Rejections return the request to <span className="font-medium">DRAFT</span>. Send Back returns to the previous step.</p>
         <p>• SLA: 48h per step. Red = overdue, Amber = &lt;25% time left, Green = on track.</p>
       </div>
     </div>

@@ -1,5 +1,7 @@
 const { Router } = require('express');
+const { z } = require('zod');
 const authService = require('../services/authService');
+const otpService = require('../services/otpService');
 const { registerSchema, loginSchema } = require('../validators/auth');
 const { authenticate } = require('../middleware/auth');
 
@@ -61,7 +63,7 @@ router.get('/me', authenticate, async (req, res, next) => {
     const prisma = require('../config/prisma');
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true, timezone: true, preferences: true },
+      select: { id: true, email: true, emailVerifiedAt: true, firstName: true, lastName: true, avatarUrl: true, timezone: true, status: true, preferences: true },
     });
     const memberships = await prisma.orgMember.findMany({
       where: { userId: req.user.id },
@@ -76,6 +78,37 @@ router.get('/me', authenticate, async (req, res, next) => {
         organizations: memberships.map((m) => ({ ...m.organization, role: m.role })),
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /auth/send-otp ──────────────────────────────────────────────────────
+router.post('/send-otp', async (req, res, next) => {
+  try {
+    const { email, purpose } = z.object({
+      email:   z.string().email(),
+      purpose: z.enum(['verify_email', 'change_email', 'password_reset']),
+    }).parse(req.body);
+
+    const result = await otpService.sendOtp(email, purpose);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /auth/verify-otp ────────────────────────────────────────────────────
+router.post('/verify-otp', async (req, res, next) => {
+  try {
+    const { email, code, purpose } = z.object({
+      email:   z.string().email(),
+      code:    z.string().length(6).regex(/^\d{6}$/),
+      purpose: z.enum(['verify_email', 'change_email', 'password_reset']),
+    }).parse(req.body);
+
+    const result = await otpService.verifyOtp(email, code, purpose);
+    res.json({ success: true, data: result });
   } catch (err) {
     next(err);
   }

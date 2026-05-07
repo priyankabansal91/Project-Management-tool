@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── ENUMS ───────────────────────────────────────────────
@@ -736,4 +737,19 @@ model UserIntegration {
 
   @@unique([userId, provider])
   @@map("user_integrations")
+}
+
+// ─── EMAIL OTP ────────────────────────────────────────────
+
+model EmailOtp {
+  id        String    @id @default(uuid())
+  email     String
+  codeHash  String    @map("code_hash")
+  purpose   String    // verify_email | change_email | password_reset
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([email, purpose])
+  @@map("email_otps")
 }

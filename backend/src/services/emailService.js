@@ -77,4 +77,40 @@ async function sendInviteEmail({ to, inviterName, role, inviteLink, orgName, exp
   return sendMail({ to, subject, html, text });
 }
 
-module.exports = { sendMail, sendInviteEmail };
+async function sendOtpEmail({ to, code, purpose, expiresMinutes }) {
+  const purposeLabel = {
+    verify_email: 'Email Verification',
+    change_email: 'Email Change Confirmation',
+    password_reset: 'Password Reset',
+  }[purpose] || 'Verification';
+
+  const subject = `Your Q-Flow ${purposeLabel} Code: ${code}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f9fafb;margin:0;padding:32px;">
+  <div style="max-width:440px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+    <div style="background:#3b82f6;padding:28px 32px 20px;">
+      <h1 style="color:#fff;margin:0;font-size:20px;font-weight:700;">Q-Flow ${purposeLabel}</h1>
+    </div>
+    <div style="padding:32px;">
+      <p style="margin:0 0 8px;color:#374151;font-size:15px;">Use this one-time code to verify your email address:</p>
+      <div style="margin:20px 0;text-align:center;">
+        <span style="display:inline-block;font-size:36px;font-weight:800;letter-spacing:10px;color:#1d4ed8;background:#eff6ff;padding:16px 28px;border-radius:10px;font-family:monospace;">${code}</span>
+      </div>
+      <p style="margin:0 0 16px;color:#6b7280;font-size:13px;">
+        This code expires in <strong>${expiresMinutes} minutes</strong>.<br>
+        If you didn't request this, you can safely ignore this email.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const text = `Your Q-Flow ${purposeLabel} code is: ${code}\n\nExpires in ${expiresMinutes} minutes.`;
+  return sendMail({ to, subject, html, text });
+}
+
+module.exports = { sendMail, sendInviteEmail, sendOtpEmail };

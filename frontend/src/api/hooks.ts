@@ -270,6 +270,24 @@ export function useAcceptInvite() {
   });
 }
 
+export function useSendOtp() {
+  return useMutation({
+    mutationFn: async (body: { email: string; purpose: 'verify_email' | 'change_email' | 'password_reset' }) => {
+      const { data } = await publicApi.post('/auth/send-otp', body);
+      return data.data as { sent: boolean; expiresAt: string };
+    },
+  });
+}
+
+export function useVerifyOtp() {
+  return useMutation({
+    mutationFn: async (body: { email: string; code: string; purpose: 'verify_email' | 'change_email' | 'password_reset' }) => {
+      const { data } = await publicApi.post('/auth/verify-otp', body);
+      return data.data as { verified: boolean; email: string; purpose: string };
+    },
+  });
+}
+
 export function useUpdateMemberStatus() {
   const qc = useQueryClient();
   return useMutation({

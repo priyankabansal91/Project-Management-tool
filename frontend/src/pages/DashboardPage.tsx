@@ -31,6 +31,22 @@ const mockTeamWorkload = [
   { user_id: '3', name: 'Bob Martinez', role: 'project_manager', open_tasks: 3, high_priority: 1, overdue_tasks: 1, estimated_hours: 12 },
 ];
 
+function safeDetail(detail: unknown): string {
+  if (detail == null) return '';
+  if (typeof detail === 'string') return detail;
+  if (typeof detail === 'number' || typeof detail === 'boolean') return String(detail);
+  if (typeof detail === 'object') {
+    const d = detail as Record<string, unknown>;
+    if (d.from !== undefined && d.to !== undefined) return `${d.from} → ${d.to}`;
+    if (d.value !== undefined) return String(d.value);
+    if (d.name) return `assigned to ${d.name}`;
+    if (d.status) return String(d.status);
+    if (d.title) return String(d.title);
+    return Object.entries(d).map(([k, v]) => `${k}: ${v}`).join(', ');
+  }
+  return '';
+}
+
 export function DashboardPage() {
   const { user, currentRole } = useAuthStore();
   const firstName = user?.first_name || user?.firstName || 'User';
@@ -97,9 +113,9 @@ export function DashboardPage() {
                 <div key={i} className="flex gap-3 row-hover transition-colors rounded px-2 py-1 -mx-2">
                   <Avatar name={a.actor} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm"><span className="font-medium">{a.actor}</span> {String((a as { detail?: unknown }).detail ?? '')}</p>
+                    <p className="text-sm"><span className="font-medium">{a.actor}</span> {safeDetail((a as any).detail)}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="outline" className="text-xs">{(a as { entity?: string; entity_id?: string }).entity ?? (a as { entity_id?: string }).entity_id ?? ''}</Badge>
+                      <Badge variant="outline" className="text-xs">{(a as any).entity ?? (a as any).entity_id ?? ''}</Badge>
                       <span className="text-xs text-muted-foreground">{timeAgo(a.at)}</span>
                     </div>
                   </div>

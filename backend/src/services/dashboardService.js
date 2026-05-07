@@ -1,5 +1,44 @@
 const prisma = require('../config/prisma');
 
+function formatActivityDetail(action, newValue) {
+  if (!newValue) {
+    const labels = {
+      created: 'created this item',
+      deleted: 'deleted this item',
+      commented: 'added a comment',
+      assigned: 'was assigned',
+      approved: 'approved',
+      rejected: 'rejected',
+    };
+    return labels[action] || action;
+  }
+
+  // newValue is already a plain string
+  if (typeof newValue === 'string') return newValue;
+
+  // Object with from/to → "changed X from A → B"
+  if (newValue.from !== undefined && newValue.to !== undefined) {
+    return `${newValue.from} → ${newValue.to}`;
+  }
+
+  // Object with a single "value" key
+  if (newValue.value !== undefined) return String(newValue.value);
+
+  // Object with a "name" key (e.g. assigned to user)
+  if (newValue.name) return `assigned to ${newValue.name}`;
+
+  // Object with "status"
+  if (newValue.status) return `status set to ${newValue.status}`;
+
+  // Object with "title"
+  if (newValue.title) return newValue.title;
+
+  // Last resort: flatten key-value pairs into readable text
+  return Object.entries(newValue)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(', ');
+}
+
 class DashboardService {
   async getOverview(orgId, userId, role) {
     const [projects, totalTasks, completedTasks, overdueTasks, myOpenTasks] = await Promise.all([
@@ -82,7 +121,7 @@ class DashboardService {
         action: a.action,
         entity_type: a.entityType,
         entity_id: a.entityId,
-        detail: a.newValue,
+        detail: formatActivityDetail(a.action, a.newValue),
         at: a.createdAt,
       })),
       team_workload: teamWorkload,

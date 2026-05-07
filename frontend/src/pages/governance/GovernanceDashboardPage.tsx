@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import {
   IndianRupee, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
-  BarChart3, Flag, Clock, Target, Layers, ChevronRight, Building2,
+  BarChart3, Flag, Clock, Target, ChevronRight, Building2,
   Calendar, Filter,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -197,7 +197,6 @@ function MilestoneRow({ m }: { m: typeof MILESTONES[0] }) {
 type GovTab = 'budget' | 'milestones';
 
 export function GovernanceDashboardPage() {
-  const navigate = useNavigate();
   const [tab, setTab] = useState<GovTab>('budget');
   const [divFilter, setDivFilter] = useState('all');
 
@@ -220,9 +219,6 @@ export function GovernanceDashboardPage() {
             Budget tracking, milestone approvals, and project compliance
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => navigate('/preproject')}>
-          <Layers className="h-3.5 w-3.5 mr-1.5" /> Pre-Projects
-        </Button>
       </div>
 
       {/* KPIs */}

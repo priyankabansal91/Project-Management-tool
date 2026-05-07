@@ -5,6 +5,7 @@ import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/auth/ForgotPasswordPage';
 import { InviteAcceptPage } from '@/pages/auth/InviteAcceptPage';
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage';
 import { MicrosoftCallbackPage } from '@/pages/auth/MicrosoftCallbackPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { ProjectListPage } from '@/pages/pm/ProjectListPage';
@@ -55,13 +56,8 @@ import { NotificationsPage } from '@/pages/user/NotificationsPage';
 import { WorkflowMonitoringPage } from '@/pages/workflow/WorkflowMonitoringPage';
 import { WorkflowGovernancePage } from '@/pages/workflow/WorkflowGovernancePage';
 import { WorkflowTrainingPage } from '@/pages/workflow/WorkflowTrainingPage';
-import { PreProjectListPage } from '@/pages/preproject/PreProjectListPage';
-import { PreProjectDetailPage } from '@/pages/preproject/PreProjectDetailPage';
-import { PreProjectFormPage } from '@/pages/preproject/PreProjectFormPage';
 import { GovernanceDashboardPage } from '@/pages/governance/GovernanceDashboardPage';
 import { ProjectClosurePage } from '@/pages/governance/ProjectClosurePage';
-import { ApprovalGroupsPage } from '@/pages/admin/ApprovalGroupsPage';
-import { GroupApprovalDashboardPage } from '@/pages/workflow/GroupApprovalDashboardPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -88,6 +84,7 @@ export default function App() {
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/invite" element={<InviteAcceptPage />} />
       <Route path="/accept-invite" element={<AcceptInviteRedirect />} />
       <Route path="/auth/microsoft-callback" element={<MicrosoftCallbackPage />} />
@@ -164,18 +161,10 @@ export default function App() {
         <Route path="/workflow/governance" element={<WorkflowGovernancePage />} />
         <Route path="/workflow/training" element={<WorkflowTrainingPage />} />
 
-        {/* Pre-Project lifecycle */}
-        <Route path="/preproject" element={<PreProjectListPage />} />
-        <Route path="/preproject/new" element={<PreProjectFormPage />} />
-        <Route path="/preproject/:id" element={<PreProjectDetailPage />} />
-
         {/* Governance */}
         <Route path="/governance" element={<GovernanceDashboardPage />} />
         <Route path="/governance/closure" element={<ProjectClosurePage />} />
 
-        {/* Group-based approvals */}
-        <Route path="/admin/approval-groups" element={<ApprovalGroupsPage />} />
-        <Route path="/workflow/group-approvals" element={<GroupApprovalDashboardPage />} />
       </Route>
 
       {/* Default redirect */}

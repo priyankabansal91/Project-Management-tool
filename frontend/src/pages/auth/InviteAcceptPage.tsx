@@ -6,7 +6,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAuthStore } from '@/store/authStore';
 import { useAcceptInvite } from '@/api/hooks';
 import type { OrgRole } from '@/types';
-import { Users, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Users, Check, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+
+function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+  if (!pw) return { score: 0, label: '', color: '' };
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (score <= 1) return { score, label: 'Weak', color: 'bg-red-500' };
+  if (score === 2) return { score, label: 'Fair', color: 'bg-orange-400' };
+  if (score === 3) return { score, label: 'Good', color: 'bg-yellow-400' };
+  if (score === 4) return { score, label: 'Strong', color: 'bg-green-500' };
+  return { score, label: 'Very Strong', color: 'bg-emerald-500' };
+}
 
 export function InviteAcceptPage() {
   const [params] = useSearchParams();
@@ -18,7 +33,12 @@ export function InviteAcceptPage() {
 
   const [step, setStep] = useState<'info' | 'register' | 'done'>('info');
   const [form, setForm] = useState({ first_name: '', last_name: '', password: '', confirm_password: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
+
+  const strength = getPasswordStrength(form.password);
+  const passwordMismatch = form.confirm_password.length > 0 && form.password !== form.confirm_password;
 
   if (!token) {
     return (
@@ -130,27 +150,79 @@ export function InviteAcceptPage() {
                   />
                 </div>
               </div>
+
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Password *</label>
-                <Input
-                  type="password"
-                  placeholder="Min 6 characters"
-                  value={form.password}
-                  onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Min 6 characters"
+                    value={form.password}
+                    onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                {form.password.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 flex-1 rounded-full transition-colors ${i <= strength.score ? strength.color : 'bg-muted'}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">Uppercase, numbers &amp; symbols help</p>
+                      {strength.label && (
+                        <span className={`text-xs font-medium ${
+                          strength.score <= 1 ? 'text-red-500' :
+                          strength.score === 2 ? 'text-orange-400' :
+                          strength.score === 3 ? 'text-yellow-500' :
+                          'text-green-600'
+                        }`}>{strength.label}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Confirm Password *</label>
-                <Input
-                  type="password"
-                  placeholder="Repeat password"
-                  value={form.confirm_password}
-                  onChange={(e) => setForm((p) => ({ ...p, confirm_password: e.target.value }))}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    type={showConfirm ? 'text' : 'password'}
+                    placeholder="Repeat password"
+                    value={form.confirm_password}
+                    onChange={(e) => setForm((p) => ({ ...p, confirm_password: e.target.value }))}
+                    required
+                    className={`pr-10 ${passwordMismatch ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {passwordMismatch && (
+                  <p className="text-xs text-destructive">Passwords do not match</p>
+                )}
               </div>
-              <Button type="submit" className="w-full" disabled={acceptInvite.isPending}>
+
+              <Button type="submit" className="w-full" disabled={acceptInvite.isPending || passwordMismatch}>
                 {acceptInvite.isPending
                   ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating account...</>
                   : 'Create Account & Join'}

@@ -22,8 +22,7 @@ class AuthService {
           firstName: first_name,
           lastName: last_name,
           passwordHash,
-          status: 'active',
-          emailVerifiedAt: new Date(),
+          status: 'pending_verification',
         },
       });
 

@@ -41,7 +41,7 @@ const MOCK_INSTANCES = [
   {
     id: 'wfi-001', projectKey: 'HWY-002', projectName: 'Highway Widening Phase II',
     division: 'Infrastructure', submittedBy: 'Bob Kumar (PM)',
-    currentStep: 1, currentStepName: 'Core Team Review', totalSteps: 2,
+    currentStep: 1, currentStepName: 'Division Review', totalSteps: 2,
     submittedAt: hoursAgo(30), stepStartedAt: hoursAgo(30),
     slaThresholdHours: 48, status: 'IN_PROGRESS', priority: 'high',
     previousActions: [{ actor: 'Bob Kumar', role: 'PM', action: 'Submitted', at: hoursAgo(30) }],
@@ -49,18 +49,18 @@ const MOCK_INSTANCES = [
   {
     id: 'wfi-002', projectKey: 'BDG-001', projectName: 'Bridge Rehabilitation - Narmada Crossing',
     division: 'Infrastructure', submittedBy: 'Priya Singh (PM)',
-    currentStep: 2, currentStepName: 'CFO Approval', totalSteps: 2,
+    currentStep: 2, currentStepName: 'Final Approval', totalSteps: 2,
     submittedAt: hoursAgo(80), stepStartedAt: hoursAgo(78),
     slaThresholdHours: 72, status: 'IN_PROGRESS', priority: 'critical',
     previousActions: [
       { actor: 'Priya Singh', role: 'PM', action: 'Submitted', at: hoursAgo(80) },
-      { actor: 'Ravi Sharma', role: 'Division Head', action: 'Approved — Core Review', at: hoursAgo(78) },
+      { actor: 'Ravi Sharma', role: 'Division Head', action: 'Approved — Division Review', at: hoursAgo(78) },
     ],
   },
   {
     id: 'wfi-003', projectKey: 'SCH-005', projectName: 'District School Renovation Block C',
     division: 'Education', submittedBy: 'Anita Joshi (PM)',
-    currentStep: 1, currentStepName: 'Core Team Review', totalSteps: 2,
+    currentStep: 1, currentStepName: 'Division Review', totalSteps: 2,
     submittedAt: hoursAgo(12), stepStartedAt: hoursAgo(12),
     slaThresholdHours: 48, status: 'IN_PROGRESS', priority: 'medium',
     previousActions: [{ actor: 'Anita Joshi', role: 'PM', action: 'Submitted', at: hoursAgo(12) }],
@@ -68,18 +68,18 @@ const MOCK_INSTANCES = [
   {
     id: 'wfi-004', projectKey: 'WTR-010', projectName: 'Rural Water Supply Pipeline Extension',
     division: 'Water Resources', submittedBy: 'Deepak Nair (PM)',
-    currentStep: 2, currentStepName: 'CFO Approval', totalSteps: 2,
+    currentStep: 2, currentStepName: 'Final Approval', totalSteps: 2,
     submittedAt: hoursAgo(100), stepStartedAt: hoursAgo(40),
     slaThresholdHours: 72, status: 'IN_PROGRESS', priority: 'high',
     previousActions: [
       { actor: 'Deepak Nair', role: 'PM', action: 'Submitted', at: hoursAgo(100) },
-      { actor: 'Meera Patel', role: 'Division Head', action: 'Approved — Core Review', at: hoursAgo(40) },
+      { actor: 'Meera Patel', role: 'Division Head', action: 'Approved — Division Review', at: hoursAgo(40) },
     ],
   },
   {
     id: 'wfi-005', projectKey: 'HLT-003', projectName: 'Primary Health Centre Upgrade',
     division: 'Health', submittedBy: 'Suresh Dev (PM)',
-    currentStep: 1, currentStepName: 'Core Team Review', totalSteps: 2,
+    currentStep: 1, currentStepName: 'Division Review', totalSteps: 2,
     submittedAt: hoursAgo(5), stepStartedAt: hoursAgo(5),
     slaThresholdHours: 48, status: 'IN_PROGRESS', priority: 'medium',
     previousActions: [{ actor: 'Suresh Dev', role: 'PM', action: 'Submitted', at: hoursAgo(5) }],

@@ -3,7 +3,22 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Mail, Check } from 'lucide-react';
+import { ArrowLeft, Mail, Check, Eye, EyeOff } from 'lucide-react';
+
+function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+  if (!pw) return { score: 0, label: '', color: '' };
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (score <= 1) return { score, label: 'Weak', color: 'bg-red-500' };
+  if (score === 2) return { score, label: 'Fair', color: 'bg-orange-400' };
+  if (score === 3) return { score, label: 'Good', color: 'bg-yellow-400' };
+  if (score === 4) return { score, label: 'Strong', color: 'bg-green-500' };
+  return { score, label: 'Very Strong', color: 'bg-emerald-500' };
+}
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -22,7 +37,7 @@ export function ForgotPasswordPage() {
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg">PF</div>
           <CardTitle className="text-2xl">{sent ? 'Check your email' : 'Reset password'}</CardTitle>
-          <CardDescription>{sent ? `We sent a reset link to ${email}` : 'Enter your email and we\'ll send you a reset link'}</CardDescription>
+          <CardDescription>{sent ? `We sent a reset link to ${email}` : "Enter your email and we'll send you a reset link"}</CardDescription>
         </CardHeader>
         <CardContent>
           {sent ? (
@@ -56,9 +71,14 @@ export function ForgotPasswordPage() {
 export function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const strength = getPasswordStrength(password);
+  const passwordMismatch = confirm.length > 0 && password !== confirm;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,15 +106,81 @@ export function ResetPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">New Password</label>
-                <Input type="password" placeholder="Min 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Min 8 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+
+                {password.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 flex-1 rounded-full transition-colors ${i <= strength.score ? strength.color : 'bg-muted'}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">Use 8+ chars, uppercase, numbers &amp; symbols</p>
+                      {strength.label && (
+                        <span className={`text-xs font-medium ${
+                          strength.score <= 1 ? 'text-red-500' :
+                          strength.score === 2 ? 'text-orange-400' :
+                          strength.score === 3 ? 'text-yellow-500' :
+                          'text-green-600'
+                        }`}>{strength.label}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Confirm Password</label>
-                <Input type="password" placeholder="Confirm your password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+                <div className="relative">
+                  <Input
+                    type={showConfirm ? 'text' : 'password'}
+                    placeholder="Repeat your password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    required
+                    className={`pr-10 ${passwordMismatch ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {passwordMismatch && (
+                  <p className="text-xs text-destructive">Passwords do not match</p>
+                )}
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Resetting...' : 'Reset Password'}</Button>
+
+              <Button type="submit" className="w-full" disabled={loading || passwordMismatch}>
+                {loading ? 'Resetting...' : 'Reset Password'}
+              </Button>
             </form>
           )}
         </CardContent>

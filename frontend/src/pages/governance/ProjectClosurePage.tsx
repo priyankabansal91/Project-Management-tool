@@ -182,7 +182,7 @@ export function ProjectClosurePage() {
         <h2 className="text-xl font-bold">Project Closed</h2>
         <p className="text-sm text-muted-foreground">
           <span className="font-medium">{selectedProject?.name}</span> has been formally closed.
-          Closure report saved to document repository. Team released. Division Head and CFO notified.
+          Closure report saved to document repository. Team released. Division Head notified.
         </p>
         <div className="rounded-xl bg-muted/50 border px-4 py-3 text-xs text-muted-foreground text-left space-y-1">
           <p className="font-medium text-foreground">What happened:</p>
