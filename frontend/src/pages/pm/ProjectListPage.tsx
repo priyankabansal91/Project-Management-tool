@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Plus, Search, LayoutGrid, List, Calendar, MoreHorizontal, Trash2, ExternalLink } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { ProjectModal, type ProjectFormData } from '@/components/shared/ProjectModal';
+import { PermissionGate } from '@/components/shared/PermissionGate';
 import { useProjects, useCreateProject, useDeleteProject, useWorkflows } from '@/api/hooks';
 import type { Project } from '@/types';
 
@@ -120,9 +121,11 @@ export function ProjectListPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Projects</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">{projects.length} projects total</p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4" /> New Project
-        </Button>
+        <PermissionGate roles={['org_admin', 'division_admin', 'project_manager']} silent>
+          <Button onClick={() => setModalOpen(true)} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4" /> New Project
+          </Button>
+        </PermissionGate>
       </div>
 
       <ProjectModal
