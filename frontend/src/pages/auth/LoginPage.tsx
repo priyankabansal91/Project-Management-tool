@@ -39,6 +39,7 @@ export function LoginPage() {
     { role: 'Project Lead',        email: 'pm@example.local',        color: 'bg-green-100 text-green-700 border-green-200' },
     { role: 'Project Team Member', email: 'member@example.local',    color: 'bg-amber-100 text-amber-700 border-amber-200' },
     { role: 'Leadership',          email: 'executive@example.local', color: 'bg-rose-100 text-rose-700 border-rose-200' },
+    { role: 'Others',              email: 'viewer@example.local',    color: 'bg-gray-100 text-gray-700 border-gray-200' },
   ];
 
   return (

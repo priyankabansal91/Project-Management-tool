@@ -136,6 +136,10 @@ export function ReportsAdvancedPage() {
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleFrequency, setScheduleFrequency] = useState('Weekly (Monday 9am UTC)');
+  const [scheduleRecipients, setScheduleRecipients] = useState('');
+  const [scheduleFormat, setScheduleFormat] = useState('PDF attachment');
+  const [scheduleSuccess, setScheduleSuccess] = useState(false);
   const [dateRange, setDateRange] = useState('30d');
   const [dashboardName, setDashboardName] = useState('Team Alpha — Flow Metrics');
   const [mcTarget, setMcTarget] = useState(40);
@@ -174,8 +178,11 @@ export function ReportsAdvancedPage() {
   };
 
   const handleScheduleEmail = () => {
-    alert(`Email subscription created!\n\nDashboard "${dashboardName}" will be emailed weekly (Monday 9am UTC) as PDF attachment.`);
-    setShowSchedule(false);
+    setScheduleSuccess(true);
+    setTimeout(() => {
+      setScheduleSuccess(false);
+      setShowSchedule(false);
+    }, 2000);
   };
 
   return (
@@ -340,39 +347,90 @@ export function ReportsAdvancedPage() {
           <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Schedule Email Report</CardTitle>
-                <button onClick={() => setShowSchedule(false)}><X className="h-5 w-5" /></button>
+                <CardTitle className="text-base">Schedule Email Report</CardTitle>
+                <button onClick={() => setShowSchedule(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
+              <p className="text-xs text-muted-foreground">"{dashboardName}" will be sent automatically</p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Frequency</label>
-                <select className="w-full rounded-md border bg-background px-3 py-2 text-sm">
-                  <option>Daily (9am UTC)</option>
-                  <option>Weekly (Monday 9am UTC)</option>
-                  <option>Bi-weekly (Monday 9am UTC)</option>
-                  <option>Monthly (1st of month, 9am UTC)</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Recipients (comma-separated emails)</label>
-                <Input defaultValue="team@acme.com, exec@acme.com" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Format</label>
-                <div className="flex gap-2">
-                  {['PDF attachment', 'Inline HTML', 'Both'].map((opt) => (
-                    <button key={opt} className="flex-1 rounded-md border px-3 py-1.5 text-xs hover:bg-accent">{opt}</button>
-                  ))}
+
+              {scheduleSuccess ? (
+                <div className="flex flex-col items-center gap-3 py-6 text-center">
+                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <Mail className="h-6 w-6 text-green-600" />
+                  </div>
+                  <p className="font-medium text-green-700">Subscription created!</p>
+                  <p className="text-xs text-muted-foreground">
+                    Report will be sent as <strong>{scheduleFormat}</strong> · {scheduleFrequency.split('(')[0].trim()}
+                  </p>
                 </div>
-              </div>
-              <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 text-xs text-blue-900 dark:text-blue-200">
-                Next send: <strong>Monday, 9:00 AM UTC</strong>
-              </div>
-              <div className="flex justify-end gap-2 pt-2 border-t">
-                <Button variant="outline" onClick={() => setShowSchedule(false)}>Cancel</Button>
-                <Button onClick={handleScheduleEmail}><Mail className="h-3.5 w-3.5" /> Subscribe</Button>
-              </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Frequency</label>
+                    <select
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={scheduleFrequency}
+                      onChange={(e) => setScheduleFrequency(e.target.value)}
+                    >
+                      <option>Daily (9am UTC)</option>
+                      <option>Weekly (Monday 9am UTC)</option>
+                      <option>Bi-weekly (Monday 9am UTC)</option>
+                      <option>Monthly (1st of month, 9am UTC)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Recipients</label>
+                    <Input
+                      placeholder="email1@org.in, email2@org.in"
+                      value={scheduleRecipients}
+                      onChange={(e) => setScheduleRecipients(e.target.value)}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Separate multiple emails with commas</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Format</label>
+                    <div className="flex gap-2">
+                      {(['PDF attachment', 'Inline HTML', 'Both'] as const).map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setScheduleFormat(opt)}
+                          className={cn(
+                            'flex-1 rounded-md border px-3 py-2 text-xs font-medium transition-colors',
+                            scheduleFormat === opt
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'hover:bg-accent border-input'
+                          )}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 p-3 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                    <p><strong>Summary</strong></p>
+                    <p>· Frequency: {scheduleFrequency}</p>
+                    <p>· Format: {scheduleFormat}</p>
+                    <p>· Recipients: {scheduleRecipients.trim() || '—'}</p>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t">
+                    <Button variant="outline" onClick={() => setShowSchedule(false)}>Cancel</Button>
+                    <Button
+                      onClick={handleScheduleEmail}
+                      disabled={!scheduleRecipients.trim()}
+                    >
+                      <Mail className="h-3.5 w-3.5" /> Subscribe
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
