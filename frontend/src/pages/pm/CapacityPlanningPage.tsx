@@ -70,7 +70,7 @@ function buildMockData(numWeeks: number): CapacityData {
     {
       id: '2',
       name: 'Bob Martinez',
-      role: 'Project Manager',
+      role: 'Project Lead',
       division: 'Product',
       capacityHours: 40,
       weeks: weekDates.map((d, i) => ({

@@ -90,9 +90,9 @@ const MODULES = [
 ];
 
 const ROLE_OVERRIDES = [
-  { role: 'project_manager', label: 'Project Manager', actions: ['task_delete', 'project_create', 'project_delete', 'member_invite', 'report_download', 'export_data'] },
-  { role: 'member',          label: 'Team Member',     actions: ['task_delete', 'task_assign', 'comment_delete', 'time_edit', 'report_view', 'report_download'] },
-  { role: 'viewer',          label: 'Viewer',          actions: ['report_download', 'export_data', 'comment_add'] },
+  { role: 'project_manager', label: 'Project Lead',         actions: ['task_delete', 'project_create', 'project_delete', 'member_invite', 'report_download', 'export_data'] },
+  { role: 'member',          label: 'Project Team Member',  actions: ['task_delete', 'task_assign', 'comment_delete', 'time_edit', 'report_view', 'report_download'] },
+  { role: 'viewer',          label: 'Others',               actions: ['report_download', 'export_data', 'comment_add'] },
 ];
 
 const ACTION_LABELS: Record<string, string> = {
@@ -225,9 +225,9 @@ function DivisionMembersSection({ divisionId }: { divisionId: string }) {
             {DEV_USERS.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}
           </select>
           <select value={newRole} onChange={(e) => setNewRole(e.target.value)} className="text-sm border rounded px-2 py-1.5 bg-background">
-            <option value="project_manager">Project Manager</option>
-            <option value="member">Member</option>
-            <option value="viewer">Viewer</option>
+            <option value="project_manager">Project Lead</option>
+            <option value="member">Project Team Member</option>
+            <option value="viewer">Others</option>
             <option value="division_admin">Division Admin</option>
           </select>
           <Button size="sm" disabled={!newUserId || addMember.isPending} onClick={async () => {

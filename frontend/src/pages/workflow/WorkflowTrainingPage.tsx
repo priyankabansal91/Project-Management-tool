@@ -12,10 +12,10 @@ import { cn } from '@/lib/utils';
 type RoleKey = 'member' | 'project_manager' | 'division_admin' | 'org_admin';
 
 const ROLES: { key: RoleKey; label: string; icon: React.ComponentType<{ className?: string }>; color: string; desc: string }[] = [
-  { key: 'member',          label: 'Team Member',      icon: CheckSquare,     color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',     desc: 'Executes tasks, logs time, updates status' },
-  { key: 'project_manager', label: 'Project Manager',  icon: Briefcase,       color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300', desc: 'Manages projects, sprints, and team workload' },
-  { key: 'division_admin',  label: 'Division Head',    icon: Users,           color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',  desc: 'Oversees division projects, approves timesheets' },
-  { key: 'org_admin',       label: 'Org Admin',        icon: Shield,          color: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',      desc: 'Full system control, users, roles, workflows' },
+  { key: 'member',          label: 'Project Team Member', icon: CheckSquare, color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',     desc: 'Executes tasks, logs time, updates status' },
+  { key: 'project_manager', label: 'Project Lead',        icon: Briefcase,   color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300', desc: 'Manages projects, sprints, and team workload' },
+  { key: 'division_admin',  label: 'Division Head',       icon: Users,       color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',  desc: 'Oversees division projects, approves timesheets' },
+  { key: 'org_admin',       label: 'System Admin',        icon: Shield,      color: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',      desc: 'Full system control, users, roles, workflows' },
 ];
 
 const GUIDES: Record<RoleKey, {

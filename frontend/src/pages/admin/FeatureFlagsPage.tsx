@@ -11,12 +11,12 @@ import {
 import { cn } from '@/lib/utils';
 
 const ROLES: { key: OrgRole; label: string; color: string; bg: string }[] = [
-  { key: 'org_admin',       label: 'Org Admin',       color: 'text-red-600',    bg: 'bg-red-50'    },
+  { key: 'org_admin',       label: 'System Admin',    color: 'text-red-600',    bg: 'bg-red-50'    },
   { key: 'division_admin',  label: 'Div Admin',       color: 'text-orange-600', bg: 'bg-orange-50' },
-  { key: 'project_manager', label: 'PM',              color: 'text-blue-600',   bg: 'bg-blue-50'   },
-  { key: 'member',          label: 'Member',          color: 'text-green-600',  bg: 'bg-green-50'  },
-  { key: 'executive',       label: 'Executive',       color: 'text-purple-600', bg: 'bg-purple-50' },
-  { key: 'viewer',          label: 'Viewer',          color: 'text-gray-600',   bg: 'bg-gray-50'   },
+  { key: 'project_manager', label: 'Project Lead',    color: 'text-blue-600',   bg: 'bg-blue-50'   },
+  { key: 'member',          label: 'Team Member',     color: 'text-green-600',  bg: 'bg-green-50'  },
+  { key: 'executive',       label: 'Leadership',      color: 'text-purple-600', bg: 'bg-purple-50' },
+  { key: 'viewer',          label: 'Others',          color: 'text-gray-600',   bg: 'bg-gray-50'   },
 ];
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -104,7 +104,7 @@ export function FeatureFlagsPage() {
       <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900 p-4 text-sm text-blue-800 dark:text-blue-300">
         <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
         <div className="space-y-1">
-          <p><span className="font-medium">Org Admin</span> always has full access to all features — that column cannot be changed.</p>
+          <p><span className="font-medium">System Admin</span> always has full access to all features — that column cannot be changed.</p>
           <p>Core features <Lock className="h-3 w-3 inline mx-1" aria-hidden /> cannot be disabled for any role.</p>
           <p className="font-medium">To change access: click any colored circle to toggle on/off, or use the <span className="text-emerald-700 dark:text-emerald-400">All On</span> / <span className="text-red-700 dark:text-red-400">All Off</span> buttons in each role column header.</p>
           <p className="text-xs opacity-75">Changes are auto-saved instantly. Use "Reset to Defaults" to restore original settings.</p>
@@ -196,7 +196,7 @@ export function FeatureFlagsPage() {
                               ? 'bg-primary border-primary text-white shadow-sm'
                               : 'bg-card border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/50'
                           )}
-                          title={isOrgAdmin ? 'Org Admin always has access' : isLocked ? 'Core feature — cannot be changed' : isEnabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
+                          title={isOrgAdmin ? 'System Admin always has access' : isLocked ? 'Core feature — cannot be changed' : isEnabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
                         >
                           {isEnabled ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
                         </button>

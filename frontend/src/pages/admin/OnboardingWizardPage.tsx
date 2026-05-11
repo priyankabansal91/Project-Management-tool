@@ -39,10 +39,10 @@ interface MemberEntry { email: string; role: OrgRole }
 interface TaskEntry   { title: string; priority: 'low' | 'medium' | 'high'; assigneeEmail: string }
 
 const ROLE_OPTIONS: { value: OrgRole; label: string; desc: string; color: string }[] = [
-  { value: 'division_admin',  label: 'Division Admin',  desc: 'Full control within division', color: 'text-purple-600' },
-  { value: 'project_manager', label: 'Project Manager', desc: 'Manage projects & sprints',    color: 'text-blue-600'   },
-  { value: 'member',          label: 'Team Member',     desc: 'Work on tasks & log time',     color: 'text-green-600'  },
-  { value: 'viewer',          label: 'Viewer',          desc: 'Read-only access',             color: 'text-gray-500'   },
+  { value: 'division_admin',  label: 'Division Admin',      desc: 'Full control within division', color: 'text-purple-600' },
+  { value: 'project_manager', label: 'Project Lead',         desc: 'Manage projects & sprints',    color: 'text-blue-600'   },
+  { value: 'member',          label: 'Project Team Member',  desc: 'Work on tasks & log time',     color: 'text-green-600'  },
+  { value: 'viewer',          label: 'Others',               desc: 'Read-only access',             color: 'text-gray-500'   },
 ];
 
 const COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#EF4444','#10B981','#06B6D4','#EC4899','#6366F1'];

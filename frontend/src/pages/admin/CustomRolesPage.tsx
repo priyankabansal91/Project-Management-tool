@@ -18,10 +18,10 @@ import { cn } from '@/lib/utils';
 // ─── Constants ──────────────────────────────────────────
 
 const SYSTEM_ROLES = [
-  { key: 'org_admin',       label: 'Org Admin',         icon: Crown,     color: 'text-red-600',    bg: 'bg-red-50',    badge: 'bg-red-100 text-red-700',    description: 'Full access to all features' },
-  { key: 'project_manager', label: 'Project Manager',   icon: Briefcase, color: 'text-blue-600',   bg: 'bg-blue-50',   badge: 'bg-blue-100 text-blue-700',   description: 'Manage projects, sprints & team' },
-  { key: 'member',          label: 'Team Member',       icon: UserCheck, color: 'text-green-600',  bg: 'bg-green-50',  badge: 'bg-green-100 text-green-700', description: 'Work on tasks & log time' },
-  { key: 'viewer',          label: 'Executive / Viewer',icon: Eye,       color: 'text-purple-600', bg: 'bg-purple-50', badge: 'bg-purple-100 text-purple-700',description: 'Read-only dashboards & reports' },
+  { key: 'org_admin',       label: 'System Admin',       icon: Crown,     color: 'text-red-600',    bg: 'bg-red-50',    badge: 'bg-red-100 text-red-700',    description: 'Full access to all features' },
+  { key: 'project_manager', label: 'Project Lead',       icon: Briefcase, color: 'text-blue-600',   bg: 'bg-blue-50',   badge: 'bg-blue-100 text-blue-700',   description: 'Manage projects, sprints & team' },
+  { key: 'member',          label: 'Project Team Member',icon: UserCheck, color: 'text-green-600',  bg: 'bg-green-50',  badge: 'bg-green-100 text-green-700', description: 'Work on tasks & log time' },
+  { key: 'viewer',          label: 'Others',             icon: Eye,       color: 'text-purple-600', bg: 'bg-purple-50', badge: 'bg-purple-100 text-purple-700',description: 'Read-only dashboards & reports' },
 ];
 
 function getRoleStyle(role: string) {

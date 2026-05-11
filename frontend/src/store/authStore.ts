@@ -31,7 +31,7 @@ export interface StakeholderPersona {
 export const STAKEHOLDER_PERSONAS: StakeholderPersona[] = [
   {
     role: 'org_admin',
-    label: 'Org Admin',
+    label: 'System Admin',
     name: 'Demo Admin',
     email: 'admin@example.local',
     description: 'Full access — all divisions, all settings',
@@ -51,7 +51,7 @@ export const STAKEHOLDER_PERSONAS: StakeholderPersona[] = [
   },
   {
     role: 'project_manager',
-    label: 'Project Manager',
+    label: 'Project Lead',
     name: 'Demo PM',
     email: 'pm@example.local',
     description: 'Manage projects & sprints in Engineering',
@@ -61,7 +61,7 @@ export const STAKEHOLDER_PERSONAS: StakeholderPersona[] = [
   },
   {
     role: 'member',
-    label: 'Team Member',
+    label: 'Project Team Member',
     name: 'Demo Member',
     email: 'member@example.local',
     description: 'Work on tasks in Engineering division',
@@ -71,7 +71,7 @@ export const STAKEHOLDER_PERSONAS: StakeholderPersona[] = [
   },
   {
     role: 'executive',
-    label: 'C-Level / Executive',
+    label: 'Leadership',
     name: 'Demo Executive',
     email: 'executive@example.local',
     description: 'Cross-division reports — read-only all divisions',
@@ -81,7 +81,7 @@ export const STAKEHOLDER_PERSONAS: StakeholderPersona[] = [
   },
   {
     role: 'viewer',
-    label: 'Stakeholder / Viewer',
+    label: 'Others',
     name: 'Demo Viewer',
     email: 'viewer@example.local',
     description: 'Read-only access to assigned projects',

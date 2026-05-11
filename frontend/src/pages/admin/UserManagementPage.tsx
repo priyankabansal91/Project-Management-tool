@@ -560,12 +560,12 @@ export function UserManagementPage() {
                         <label className="text-sm font-medium">Role</label>
                         <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}
                           className="w-full rounded-md border border-input bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                          <option value="member">Member</option>
-                          <option value="project_manager">Project Manager</option>
+                          <option value="member">Project Team Member</option>
+                          <option value="project_manager">Project Lead</option>
                           <option value="division_admin">Division Admin</option>
-                          <option value="org_admin">Org Admin</option>
-                          <option value="executive">Executive</option>
-                          <option value="viewer">Viewer</option>
+                          <option value="org_admin">System Admin</option>
+                          <option value="executive">Leadership</option>
+                          <option value="viewer">Others</option>
                         </select>
                       </div>
                       <div className="flex justify-end gap-2 pt-1">
@@ -612,12 +612,12 @@ export function UserManagementPage() {
                         <label className="text-sm font-medium">Role</label>
                         <select value={directForm.role} onChange={(e) => setDirectForm((p) => ({ ...p, role: e.target.value }))}
                           className="w-full rounded-md border border-input bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                          <option value="member">Member</option>
-                          <option value="project_manager">Project Manager</option>
+                          <option value="member">Project Team Member</option>
+                          <option value="project_manager">Project Lead</option>
                           <option value="division_admin">Division Admin</option>
-                          <option value="org_admin">Org Admin</option>
-                          <option value="executive">Executive</option>
-                          <option value="viewer">Viewer</option>
+                          <option value="org_admin">System Admin</option>
+                          <option value="executive">Leadership</option>
+                          <option value="viewer">Others</option>
                         </select>
                       </div>
                       <div className="flex justify-end gap-2 pt-1">

@@ -13,12 +13,12 @@ import {
 } from 'lucide-react';
 
 const ROLE_LABEL: Record<string, string> = {
-  org_admin: 'Org Admin',
+  org_admin: 'System Admin',
   division_admin: 'Division Admin',
-  project_manager: 'Project Manager',
-  member: 'Member',
-  viewer: 'Viewer',
-  executive: 'Executive',
+  project_manager: 'Project Lead',
+  member: 'Project Team Member',
+  viewer: 'Others',
+  executive: 'Leadership',
 };
 
 const ROLE_STYLE: Record<string, string> = {
