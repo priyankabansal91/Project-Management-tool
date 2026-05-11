@@ -63,7 +63,7 @@ function seedDemoRecords(): AttendanceRecord[] {
   const records: AttendanceRecord[] = [];
   const today = new Date();
 
-  for (let daysAgo = 30; daysAgo >= 0; daysAgo--) {
+  for (let daysAgo = 30; daysAgo >= 1; daysAgo--) {
     const d = new Date(today);
     d.setDate(d.getDate() - daysAgo);
     const dateStr = d.toISOString().split('T')[0];
@@ -233,7 +233,7 @@ export const useAttendanceStore = create<AttendanceState>()(
       },
     }),
     {
-      name: 'pm-attendance',
+      name: 'pm-attendance-v2',
       partialize: (state) => ({
         records: state.records.filter((r) => {
           // Keep only last 90 days
