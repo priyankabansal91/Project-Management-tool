@@ -129,6 +129,6 @@ export const useAuthStore = create<AuthState>()(
 
       setDivision: (divisionId) => set({ currentDivisionId: divisionId }),
     }),
-    { name: 'pm-auth' }
+    { name: 'pm-auth-v2' }
   )
 );
