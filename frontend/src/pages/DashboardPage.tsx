@@ -1,4 +1,5 @@
-import { FolderKanban, CheckSquare, AlertTriangle, ListTodo, Users, Clock, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FolderKanban, CheckSquare, AlertTriangle, ListTodo, Clock } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,29 +8,34 @@ import { useAuthStore } from '@/store/authStore';
 import { cn, timeAgo, priorityColor } from '@/lib/utils';
 import { useDashboard } from '@/api/hooks';
 
-// Fallback mock data (used when API is unavailable)
 const mockStats = {
   total_projects: 5, active_projects: 3, total_tasks: 47, completed_tasks: 18, overdue_tasks: 3, my_open_tasks: 8,
 };
 
 const mockProjectProgress = [
   { project_id: '1', name: 'Customer Portal Redesign', key: 'CPR', color: '#3B82F6', total_tasks: 15, completed_tasks: 7, completion_pct: 46.7 },
-  { project_id: '2', name: 'API Gateway Migration', key: 'AGM', color: '#8B5CF6', total_tasks: 12, completed_tasks: 3, completion_pct: 25.0 },
-  { project_id: '3', name: 'Mobile App v2', key: 'MAV2', color: '#F59E0B', total_tasks: 20, completed_tasks: 8, completion_pct: 40.0 },
+  { project_id: '2', name: 'API Gateway Migration',    key: 'AGM', color: '#8B5CF6', total_tasks: 12, completed_tasks: 3, completion_pct: 25.0 },
+  { project_id: '3', name: 'Mobile App v2',            key: 'MAV2',color: '#F59E0B', total_tasks: 20, completed_tasks: 8, completion_pct: 40.0 },
 ];
 
 const mockActivity = [
   { actor: 'Carol Johnson', action: 'status_changed', entity: 'CPR-1', detail: 'In Progress → In Review', at: new Date(Date.now() - 3600000).toISOString() },
-  { actor: 'David Park', action: 'created', entity: 'AGM-5', detail: 'Created new task', at: new Date(Date.now() - 7200000).toISOString() },
-  { actor: 'Bob Martinez', action: 'commented', entity: 'CPR-3', detail: 'Left a comment', at: new Date(Date.now() - 14400000).toISOString() },
-  { actor: 'Alice Chen', action: 'assigned', entity: 'MAV2-2', detail: 'Assigned to Carol', at: new Date(Date.now() - 28800000).toISOString() },
+  { actor: 'David Park',    action: 'created',        entity: 'AGM-5', detail: 'Created new task',        at: new Date(Date.now() - 7200000).toISOString() },
+  { actor: 'Bob Martinez',  action: 'commented',      entity: 'CPR-3', detail: 'Left a comment',          at: new Date(Date.now() - 14400000).toISOString() },
+  { actor: 'Alice Chen',    action: 'assigned',        entity: 'MAV2-2',detail: 'Assigned to Carol',      at: new Date(Date.now() - 28800000).toISOString() },
 ];
 
 const mockTeamWorkload = [
-  { user_id: '1', name: 'Carol Johnson', role: 'member', open_tasks: 6, high_priority: 2, overdue_tasks: 1, estimated_hours: 24 },
-  { user_id: '2', name: 'David Park', role: 'member', open_tasks: 5, high_priority: 1, overdue_tasks: 0, estimated_hours: 18 },
-  { user_id: '3', name: 'Bob Martinez', role: 'project_manager', open_tasks: 3, high_priority: 1, overdue_tasks: 1, estimated_hours: 12 },
+  { user_id: '1', name: 'Carol Johnson', role: 'member',          open_tasks: 6, high_priority: 2, overdue_tasks: 1, estimated_hours: 24 },
+  { user_id: '2', name: 'David Park',    role: 'member',          open_tasks: 5, high_priority: 1, overdue_tasks: 0, estimated_hours: 18 },
+  { user_id: '3', name: 'Bob Martinez',  role: 'project_manager', open_tasks: 3, high_priority: 1, overdue_tasks: 1, estimated_hours: 12 },
 ];
+
+const ROLE_LABEL: Record<string, string> = {
+  org_admin: 'System Admin', division_admin: 'Division Admin',
+  project_manager: 'Project Lead', member: 'Project Team Member',
+  executive: 'Leadership', viewer: 'Others',
+};
 
 function safeDetail(detail: unknown): string {
   if (detail == null) return '';
@@ -49,14 +55,14 @@ function safeDetail(detail: unknown): string {
 
 export function DashboardPage() {
   const { user, currentRole } = useAuthStore();
+  const navigate = useNavigate();
   const firstName = user?.first_name || user?.firstName || 'User';
   const dashboardQuery = useDashboard();
 
-  // Use API data when available, fallback to mock
-  const stats = dashboardQuery.data?.stats || mockStats;
+  const stats           = dashboardQuery.data?.stats            || mockStats;
   const projectProgress = dashboardQuery.data?.project_progress || mockProjectProgress;
-  const recentActivity = dashboardQuery.data?.recent_activity || mockActivity;
-  const teamWorkload = dashboardQuery.data?.team_workload || mockTeamWorkload;
+  const recentActivity  = dashboardQuery.data?.recent_activity  || mockActivity;
+  const teamWorkload    = dashboardQuery.data?.team_workload     || mockTeamWorkload;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -66,54 +72,136 @@ export function DashboardPage() {
         <p className="text-muted-foreground">Here's what's happening across your projects</p>
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — all clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children animate-fade-in-up">
-        <StatCard title="Active Projects" value={stats.active_projects} icon={FolderKanban} trend={{ value: 12, label: 'vs last month' }} className="stat-tile card-hover" />
-        <StatCard title="Total Tasks" value={stats.total_tasks} icon={ListTodo} subtitle={`${stats.completed_tasks} completed`} className="stat-tile card-hover" />
-        <StatCard title="My Open Tasks" value={stats.my_open_tasks} icon={CheckSquare} iconColor="text-blue-600" className="stat-tile card-hover" />
-        <StatCard title="Overdue" value={stats.overdue_tasks} icon={AlertTriangle} iconColor="text-red-600" className={cn('stat-tile card-hover', stats.overdue_tasks > 0 ? 'border-red-200' : '')} />
+        <div
+          className="cursor-pointer group"
+          onClick={() => navigate('/projects')}
+          title="Go to Projects"
+        >
+          <StatCard
+            title="Active Projects"
+            value={stats.active_projects}
+            icon={FolderKanban}
+            trend={{ value: 12, label: 'vs last month' }}
+            className="stat-tile card-hover group-hover:border-primary/40 transition-colors"
+          />
+        </div>
+
+        <div
+          className="cursor-pointer group"
+          onClick={() => navigate('/my-tasks')}
+          title="Go to My Tasks"
+        >
+          <StatCard
+            title="Total Tasks"
+            value={stats.total_tasks}
+            icon={ListTodo}
+            subtitle={`${stats.completed_tasks} completed`}
+            className="stat-tile card-hover group-hover:border-primary/40 transition-colors"
+          />
+        </div>
+
+        <div
+          className="cursor-pointer group"
+          onClick={() => navigate('/my-tasks')}
+          title="View my open tasks"
+        >
+          <StatCard
+            title="My Open Tasks"
+            value={stats.my_open_tasks}
+            icon={CheckSquare}
+            iconColor="text-blue-600"
+            className="stat-tile card-hover group-hover:border-blue-300 transition-colors"
+          />
+        </div>
+
+        <div
+          className="cursor-pointer group"
+          onClick={() => navigate('/my-tasks')}
+          title="View overdue tasks"
+        >
+          <StatCard
+            title="Overdue"
+            value={stats.overdue_tasks}
+            icon={AlertTriangle}
+            iconColor="text-red-600"
+            className={cn(
+              'stat-tile card-hover group-hover:border-red-300 transition-colors',
+              stats.overdue_tasks > 0 ? 'border-red-200' : ''
+            )}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Project Progress */}
+        {/* Project Progress — rows are clickable */}
         <Card className="lg:col-span-2 card-hover">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">Project Progress</CardTitle>
+            <button
+              onClick={() => navigate('/projects')}
+              className="text-xs text-primary hover:underline font-medium"
+            >
+              View all →
+            </button>
           </CardHeader>
           <CardContent className="space-y-4">
             {projectProgress.map((p) => (
-              <div key={p.project_id} className="space-y-2 row-hover transition-colors rounded px-2 py-1 -mx-2">
+              <div
+                key={p.project_id}
+                className="space-y-2 rounded-lg px-3 py-2 -mx-1 cursor-pointer hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50"
+                onClick={() => navigate(`/projects/${p.project_id}/board`)}
+                title={`Open ${p.name} board`}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
+                    <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
                     <span className="text-sm font-medium">{p.name}</span>
                     <Badge variant="outline" className="text-xs">{p.key}</Badge>
                   </div>
-                  <span className="text-sm text-muted-foreground">{p.completion_pct}%</span>
+                  <span className="text-sm text-muted-foreground font-medium">{p.completion_pct}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${p.completion_pct}%`, backgroundColor: p.color }} />
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${p.completion_pct}%`, backgroundColor: p.color }}
+                  />
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{p.completed_tasks} of {p.total_tasks} tasks</span>
+                  <span>{p.completed_tasks} of {p.total_tasks} tasks completed</span>
                 </div>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
+        {/* Recent Activity — rows navigate to My Tasks */}
         <Card className="card-hover">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">Recent Activity</CardTitle>
+            <button
+              onClick={() => navigate('/my-tasks')}
+              className="text-xs text-primary hover:underline font-medium"
+            >
+              My Tasks →
+            </button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {recentActivity.map((a, i) => (
-                <div key={i} className="flex gap-3 row-hover transition-colors rounded px-2 py-1 -mx-2">
+                <div
+                  key={i}
+                  className="flex gap-3 rounded-lg px-2 py-2 -mx-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => navigate('/my-tasks')}
+                  title="View task"
+                >
                   <Avatar name={a.actor} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm"><span className="font-medium">{a.actor}</span> {safeDetail((a as any).detail)}</p>
+                    <p className="text-sm">
+                      <span className="font-medium">{a.actor}</span>{' '}
+                      <span className="text-muted-foreground">{safeDetail((a as any).detail)}</span>
+                    </p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge variant="outline" className="text-xs">{(a as any).entity ?? (a as any).entity_id ?? ''}</Badge>
                       <span className="text-xs text-muted-foreground">{timeAgo(a.at)}</span>
@@ -126,11 +214,17 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* Team Workload (Admin / PM only) */}
+      {/* Team Workload — rows navigate to members page */}
       {(currentRole === 'org_admin' || currentRole === 'project_manager') && (
         <Card className="card-hover">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">Team Workload</CardTitle>
+            <button
+              onClick={() => navigate('/admin/users')}
+              className="text-xs text-primary hover:underline font-medium"
+            >
+              Manage team →
+            </button>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -147,7 +241,12 @@ export function DashboardPage() {
                 </thead>
                 <tbody>
                   {teamWorkload.map((m) => (
-                    <tr key={m.user_id} className="border-b last:border-0 row-hover transition-colors">
+                    <tr
+                      key={m.user_id}
+                      className="border-b last:border-0 cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={() => navigate('/my-tasks')}
+                      title={`View ${m.name}'s tasks`}
+                    >
                       <td className="py-3">
                         <div className="flex items-center gap-2">
                           <Avatar name={m.name} size="sm" />
@@ -155,16 +254,29 @@ export function DashboardPage() {
                         </div>
                       </td>
                       <td className="py-3">
-                        <Badge variant="secondary" className="text-xs">{m.role.replace('_', ' ')}</Badge>
-                      </td>
-                      <td className="py-3 text-center"><span className="text-2xl font-bold text-primary">{m.open_tasks}</span></td>
-                      <td className="py-3 text-center">
-                        <span className={cn('text-2xl font-bold', m.high_priority > 0 ? 'text-orange-600' : 'text-primary')}>{m.high_priority}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {ROLE_LABEL[m.role] || m.role.replace('_', ' ')}
+                        </Badge>
                       </td>
                       <td className="py-3 text-center">
-                        <span className={cn('text-2xl font-bold', m.overdue_tasks > 0 ? 'text-red-600' : 'text-primary')}>{m.overdue_tasks}</span>
+                        <span className="text-2xl font-bold text-primary">{m.open_tasks}</span>
                       </td>
-                      <td className="py-3 text-right">{m.estimated_hours}h</td>
+                      <td className="py-3 text-center">
+                        <span className={cn('text-2xl font-bold', m.high_priority > 0 ? 'text-orange-600' : 'text-primary')}>
+                          {m.high_priority}
+                        </span>
+                      </td>
+                      <td className="py-3 text-center">
+                        <span className={cn('text-2xl font-bold', m.overdue_tasks > 0 ? 'text-red-600' : 'text-primary')}>
+                          {m.overdue_tasks}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right">
+                        <div className="flex items-center justify-end gap-1 text-muted-foreground">
+                          <Clock className="h-3.5 w-3.5" />
+                          {m.estimated_hours}h
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
