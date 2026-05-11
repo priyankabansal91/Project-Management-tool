@@ -8,6 +8,9 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useMyDivisions } from '@/api/hooks';
+import api from '@/api/client';
+
+const IS_DEV = (import.meta as any).env?.DEV === true;
 
 /** Ring color class per role — used on the avatar and as a visual identity cue */
 const ROLE_RING: Record<string, string> = {
@@ -20,7 +23,7 @@ const ROLE_RING: Record<string, string> = {
 };
 
 export function Header() {
-  const { user, currentRole, currentDivisionId, logout, switchRole, setDivision } = useAuthStore();
+  const { user, currentRole, currentDivisionId, logout, login, switchRole, setDivision } = useAuthStore();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
@@ -33,8 +36,21 @@ export function Header() {
     navigate('/login');
   };
 
-  const handleSwitchRole = (persona: typeof STAKEHOLDER_PERSONAS[0]) => {
-    switchRole(persona.role, persona);
+  const handleSwitchRole = async (persona: typeof STAKEHOLDER_PERSONAS[0]) => {
+    if (IS_DEV) {
+      // Dev mode: change local state only — backend picks up x-dev-user-id header
+      switchRole(persona.role, persona);
+    } else {
+      // Production: actually log in as the demo account so the JWT matches the UI role
+      try {
+        const { data } = await api.post('/auth/login', { email: persona.email, password: 'password123' });
+        const result = data.data;
+        login(result.access_token, result.user, result.organizations?.[0]?.role || persona.role);
+      } catch {
+        // Fallback: UI-only switch (permissions may not match)
+        switchRole(persona.role, persona);
+      }
+    }
     setShowRoleSwitcher(false);
     setShowUserMenu(false);
     navigate('/dashboard');
