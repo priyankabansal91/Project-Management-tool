@@ -72,7 +72,7 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS — validate origin against explicit whitelist
+// CORS — validate origin against explicit whitelist + Vercel preview domains
 const ALLOWED_ORIGINS = new Set(
   [config.frontendUrl, process.env.FRONTEND_URL_ALT].filter(Boolean)
 );
@@ -81,6 +81,8 @@ app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true); // same-origin / curl
     if (ALLOWED_ORIGINS.has(origin)) return cb(null, true);
+    // Allow all Vercel deployments (preview + production URLs shared for testing)
+    if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return cb(null, true);
     // In development allow any localhost port (Vite picks 5173, 5174, etc.)
     if (IS_DEV && /^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
@@ -166,9 +168,11 @@ app.use(errorHandler);
 
 // ─── START SERVER ───────────────────────────────────────
 
-const PORT = config.port;
-app.listen(PORT, () => {
-  logger.info(`API server running on port ${PORT} [${config.nodeEnv}]`);
-});
+if (!process.env.VERCEL) {
+  const PORT = config.port;
+  app.listen(PORT, () => {
+    logger.info(`API server running on port ${PORT} [${config.nodeEnv}]`);
+  });
+}
 
 module.exports = app;

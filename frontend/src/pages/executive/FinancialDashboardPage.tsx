@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, AlertCircle, PieChart, Building2 } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, PieChart, Building2, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/authStore';
 import { useMyDivisions } from '@/api/hooks';
 
@@ -16,12 +17,18 @@ interface Budget {
   burnRate: number;
 }
 
+const EMPTY_FORM = { entityName: '', totalBudget: '', revenue: '', burnRate: '' };
+
 export function FinancialDashboardPage() {
   const { currentDivisionId } = useAuthStore();
   const { data: myDivisions = [] } = useMyDivisions();
   const activeDivision = (myDivisions as any[]).find((d: any) => d.divisionId === currentDivisionId);
 
-  const [budgets] = useState<Budget[]>([
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState('');
+
+  const [budgets, setBudgets] = useState<Budget[]>([
     {
       id: 'budget_1',
       entityName: 'Project Alpha',
@@ -58,6 +65,28 @@ export function FinancialDashboardPage() {
     other: 25000,
   };
 
+  const handleAddBudget = () => {
+    if (!form.entityName.trim()) { setFormError('Entity name is required.'); return; }
+    const total = parseFloat(form.totalBudget);
+    if (!total || total <= 0) { setFormError('Enter a valid total budget.'); return; }
+    const revenue = parseFloat(form.revenue) || 0;
+    const burnRate = parseFloat(form.burnRate) || 0;
+    const newBudget: Budget = {
+      id: `budget_${Date.now()}`,
+      entityName: form.entityName.trim(),
+      totalBudget: total,
+      spent: 0,
+      remaining: total,
+      revenue,
+      roi: revenue > 0 ? ((revenue - total) / total) * 100 : 0,
+      burnRate,
+    };
+    setBudgets((prev) => [...prev, newBudget]);
+    setShowModal(false);
+    setForm(EMPTY_FORM);
+    setFormError('');
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -74,7 +103,7 @@ export function FinancialDashboardPage() {
           <h1 className="text-3xl font-bold">Financial Dashboard</h1>
           <p className="text-gray-600 mt-1">Budget tracking, ROI analysis, and financial forecasting</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => { setForm(EMPTY_FORM); setFormError(''); setShowModal(true); }}>
           <DollarSign className="w-4 h-4" />
           New Budget
         </Button>
@@ -305,6 +334,73 @@ export function FinancialDashboardPage() {
           </div>
         </div>
       </Card>
+
+      {/* New Budget Modal */}
+      {showModal && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-xl border bg-card shadow-xl">
+              <div className="flex items-center justify-between border-b px-5 py-4">
+                <h2 className="text-base font-semibold">New Budget</h2>
+                <button onClick={() => setShowModal(false)} className="rounded-md p-1 hover:bg-muted">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="space-y-4 p-5">
+                {formError && (
+                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{formError}</div>
+                )}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Entity / Project Name <span className="text-destructive">*</span></label>
+                  <Input
+                    placeholder="e.g. Project Gamma"
+                    value={form.entityName}
+                    onChange={(e) => setForm((f) => ({ ...f, entityName: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Total Budget (USD) <span className="text-destructive">*</span></label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 500000"
+                    value={form.totalBudget}
+                    onChange={(e) => setForm((f) => ({ ...f, totalBudget: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Expected Revenue (USD)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 600000"
+                    value={form.revenue}
+                    onChange={(e) => setForm((f) => ({ ...f, revenue: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Daily Burn Rate (USD/day)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 15000"
+                    value={form.burnRate}
+                    onChange={(e) => setForm((f) => ({ ...f, burnRate: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 border-t px-5 py-3">
+                <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+                <Button onClick={handleAddBudget}>
+                  <DollarSign className="h-4 w-4" />
+                  Create Budget
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

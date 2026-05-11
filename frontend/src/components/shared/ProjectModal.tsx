@@ -98,9 +98,9 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
     const newErrors: Record<string, string> = {};
 
     if (!form.name.trim()) newErrors.name = 'Project name is required';
-    if (!form.key.trim()) newErrors.key = 'Project key is required';
-    if (form.key.length < 2 || form.key.length > 10) newErrors.key = 'Key must be 2-10 characters';
-    if (!/^[A-Z0-9]+$/.test(form.key.toUpperCase())) newErrors.key = 'Key must contain only letters and numbers';
+    if (!form.key.trim()) newErrors.key = 'Project code is required';
+    if (form.key.length < 2 || form.key.length > 10) newErrors.key = 'Code must be 2-10 characters';
+    if (!/^[A-Z0-9]+$/.test(form.key.toUpperCase())) newErrors.key = 'Code must contain only letters and numbers';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -154,9 +154,9 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
             {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
           </div>
 
-          {/* Project Key */}
+          {/* Project Code */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Project Key *</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Project Code *</label>
             <Input
               type="text"
               value={form.key}
