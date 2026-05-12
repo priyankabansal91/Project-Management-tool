@@ -1,12 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { cn, priorityColor } from '@/lib/utils';
-import { X, Bold, Italic, List, Link2, Eye, Code, ChevronDown } from 'lucide-react';
+import { X, Bold, Italic, List, Link2, Eye, Code, ChevronDown, Paperclip, FileText, FileSpreadsheet, Image, File, Upload } from 'lucide-react';
 import type { Task, WorkflowStatus } from '@/types';
+
+const ACCEPTED_TYPES = '.doc,.docx,.xls,.xlsx,.csv,.pdf,.jpg,.jpeg,.png,.gif,.webp';
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+interface StagedFile {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+  type: string;
+}
+
+function fileIcon(type: string) {
+  if (type.startsWith('image/')) return Image;
+  if (type.includes('spreadsheet') || type.includes('excel') || type.includes('csv')) return FileSpreadsheet;
+  if (type.includes('word') || type.includes('document')) return FileText;
+  return File;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface TaskModalProps {
   open: boolean;
@@ -31,6 +55,7 @@ export interface TaskFormData {
   estimated_hours: string;
   tags: string[];
   custom_fields: Record<string, unknown>;
+  attachments: StagedFile[];
 }
 
 const PRIORITIES = ['critical', 'high', 'medium', 'low', 'none'] as const;
@@ -50,11 +75,15 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
     estimated_hours: '',
     tags: [],
     custom_fields: {},
+    attachments: [],
   });
 
   const [tagInput, setTagInput] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Populate form when editing
   useEffect(() => {
@@ -71,6 +100,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
         estimated_hours: task.estimated_hours?.toString() || '',
         tags: task.tags || [],
         custom_fields: task.custom_fields || {},
+        attachments: [],
       });
     } else {
       // Default for new task
@@ -87,9 +117,38 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
         estimated_hours: '',
         tags: [],
         custom_fields: {},
+        attachments: [],
       });
     }
   }, [task, statuses]);
+
+  const handleFiles = (files: File[]) => {
+    setFileError('');
+    const valid: StagedFile[] = [];
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        setFileError(`"${file.name}" exceeds 10 MB limit`);
+        continue;
+      }
+      valid.push({ id: `f_${Date.now()}_${Math.random()}`, file, name: file.name, size: file.size, type: file.type });
+    }
+    if (valid.length) updateField('attachments', [...form.attachments, ...valid]);
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFiles(Array.from(e.target.files || []));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFiles(Array.from(e.dataTransfer.files));
+  };
+
+  const removeAttachment = (id: string) => {
+    updateField('attachments', form.attachments.filter((a) => a.id !== id));
+  };
 
   const updateField = (field: keyof TaskFormData, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -255,6 +314,71 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
                     className="flex-1 min-w-[100px] text-sm bg-transparent outline-none"
                   />
                 </div>
+              </div>
+              {/* Attachments */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <Paperclip className="h-3.5 w-3.5" /> Attachments
+                    {form.attachments.length > 0 && (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">{form.attachments.length}</Badge>
+                    )}
+                  </label>
+                  <span className="text-xs text-muted-foreground">Docs, Excel, Images · max 10 MB each</span>
+                </div>
+
+                {/* Drop zone */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 cursor-pointer transition-colors',
+                    dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/30'
+                  )}
+                >
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground text-center">
+                    <span className="font-medium text-primary">Click to upload</span> or drag and drop<br />
+                    .doc .docx .xls .xlsx .csv .pdf .jpg .png .gif
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept={ACCEPTED_TYPES}
+                    onChange={handleFileInput}
+                    className="hidden"
+                  />
+                </div>
+
+                {fileError && <p className="text-xs text-destructive">{fileError}</p>}
+
+                {/* Staged files list */}
+                {form.attachments.length > 0 && (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                    {form.attachments.map((a) => {
+                      const Icon = fileIcon(a.type);
+                      return (
+                        <div key={a.id} className="flex items-center gap-2 rounded-md border bg-secondary/30 px-3 py-2">
+                          <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{a.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{formatBytes(a.size)}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeAttachment(a.id); }}
+                            className="flex-shrink-0 p-0.5 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 

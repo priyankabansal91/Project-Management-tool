@@ -6,10 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import {
   Network, Plus, Edit2, Trash2, Users, FolderKanban, X,
-  ChevronDown, Search, Building2, UserCheck,
+  ChevronDown, Search, Building2, UserCheck, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
+import { useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical } from '@/api/hooks';
 
 // ─── Seed Data ───────────────────────────────────────────
 
@@ -338,7 +339,17 @@ function VerticalModal({ editingId, initialData, onSave, onClose }: {
 export function VerticalsPage() {
   const { user } = useAuthStore();
 
-  const [verticals, setVerticals] = useState<Vertical[]>(SEED_VERTICALS);
+  const { data: apiData, isLoading } = useVerticals();
+  const rawApiItems = (apiData as any)?.items ?? (Array.isArray(apiData) ? apiData : []);
+  const apiVerticals: Vertical[] = rawApiItems as Vertical[];
+  const createMutation = useCreateVertical();
+  const updateMutation = useUpdateVertical();
+  const deleteMutation = useDeleteVertical();
+
+  // Fall back to seed data if API returns nothing
+  const [localVerticals, setLocalVerticals] = useState<Vertical[]>(SEED_VERTICALS);
+  const verticals: Vertical[] = apiVerticals.length > 0 ? apiVerticals : localVerticals;
+
   const [showModal, setShowModal] = useState(false);
   const [editingVertical, setEditingVertical] = useState<Vertical | null>(null);
 
@@ -373,29 +384,43 @@ export function VerticalsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Delete this vertical? This action cannot be undone.')) {
-      setVerticals((prev) => prev.filter((v) => v.id !== id));
+    if (!confirm('Delete this vertical? This action cannot be undone.')) return;
+    if (apiVerticals.length > 0) {
+      deleteMutation.mutate(id);
+    } else {
+      setLocalVerticals((prev) => prev.filter((v) => v.id !== id));
     }
   };
 
   const handleSave = (id: string | null, data: VerticalFormData) => {
+    const payload = {
+      name: data.name,
+      description: data.description,
+      division: data.division,
+      division_id: `div_${data.division.toLowerCase().replace(/\s+/g, '_')}`,
+      head_name: data.head_name,
+      color: data.color,
+      status: data.status,
+    };
+
     if (id) {
-      setVerticals((prev) =>
-        prev.map((v) =>
-          v.id === id
-            ? { ...v, ...data }
-            : v,
-        ),
-      );
+      if (apiVerticals.length > 0) {
+        updateMutation.mutate({ id, ...payload });
+      } else {
+        setLocalVerticals((prev) => prev.map((v) => v.id === id ? { ...v, ...payload } : v));
+      }
     } else {
       const newVertical: Vertical = {
-        id: `v${Date.now()}`,
-        ...data,
-        division_id: `div_${data.division.toLowerCase().replace(/\s+/g, '_')}`,
+        ...payload,
+        id: 'v_' + Date.now(),
         member_count: 0,
         project_count: 0,
       };
-      setVerticals((prev) => [newVertical, ...prev]);
+      if (apiVerticals.length > 0) {
+        createMutation.mutate(payload);
+      } else {
+        setLocalVerticals((prev) => [newVertical, ...prev]);
+      }
     }
     setShowModal(false);
     setEditingVertical(null);
@@ -411,6 +436,12 @@ export function VerticalsPage() {
         status: editingVertical.status,
       }
     : EMPTY_FORM;
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
 
   return (
     <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">

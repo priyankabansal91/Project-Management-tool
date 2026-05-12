@@ -1460,3 +1460,70 @@ export function useDivisionOverviewMIS() {
   });
 }
 
+// ─── Milestones ─────────────────────────────────────────────────────────────
+
+export function useMilestones(projectId: string) {
+  return useQuery({
+    queryKey: ['milestones', projectId],
+    queryFn: () => api.get(`/projects/${projectId}/milestones`).then((r) => r.data.data),
+    enabled: !!projectId,
+  });
+}
+
+export function useCreateMilestone(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => api.post(`/projects/${projectId}/milestones`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['milestones', projectId] }),
+  });
+}
+
+export function useUpdateMilestone(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, unknown>) =>
+      api.patch(`/projects/${projectId}/milestones/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['milestones', projectId] }),
+  });
+}
+
+export function useDeleteMilestone(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/projects/${projectId}/milestones/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['milestones', projectId] }),
+  });
+}
+
+// ─── Verticals ───────────────────────────────────────────────────────────────
+
+export function useVerticals(params?: { divisionId?: string }) {
+  return useQuery({
+    queryKey: ['verticals', params],
+    queryFn: () => api.get('/verticals', { params }).then((r) => r.data.data),
+  });
+}
+
+export function useCreateVertical() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => api.post('/verticals', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['verticals'] }),
+  });
+}
+
+export function useUpdateVertical() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, unknown>) => api.patch(`/verticals/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['verticals'] }),
+  });
+}
+
+export function useDeleteVertical() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/verticals/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['verticals'] }),
+  });
+}

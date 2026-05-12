@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink, Flag } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
 import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask, useMembers } from '@/api/hooks';
@@ -442,6 +442,34 @@ export function KanbanBoardPage() {
             <Plus className="h-3.5 w-3.5" /> Add Task
           </Button>
         </div>
+      </div>
+
+      {/* Project nav tabs */}
+      <div className="flex items-center gap-1 px-6 border-b bg-card overflow-x-auto">
+        <Link
+          to={`/projects/${projectId}/board`}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 border-primary text-primary whitespace-nowrap"
+        >
+          Board
+        </Link>
+        <Link
+          to={`/projects/${projectId}/gantt`}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+        >
+          Timeline
+        </Link>
+        <Link
+          to={`/projects/${projectId}/calendar`}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+        >
+          Calendar
+        </Link>
+        <Link
+          to={`/projects/${projectId}/milestones`}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+        >
+          <Flag className="h-3.5 w-3.5" /> Milestones
+        </Link>
       </div>
 
       {/* Kanban Columns with DnD */}
