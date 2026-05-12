@@ -23,31 +23,31 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   // Core — all roles
-  { label: 'Dashboard',          path: '/dashboard',            icon: LayoutDashboard,  roles: ['org_admin','division_admin','project_manager','member','viewer','executive'], section: 'core' },
-  { label: 'Projects',           path: '/projects',             icon: FolderKanban,     roles: ['org_admin','division_admin','project_manager','member','viewer','executive'], section: 'core' },
-  { label: 'My Tasks',           path: '/my-tasks',             icon: CheckSquare,      roles: ['org_admin','division_admin','project_manager','member','viewer'], section: 'core' },
-  { label: 'Calendar',           path: '/calendar',             icon: Calendar,         roles: ['org_admin','division_admin','project_manager','member','viewer'], section: 'core' },
+  { label: 'Dashboard',          path: '/dashboard',            icon: LayoutDashboard,  roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member','viewer','executive'], section: 'core' },
+  { label: 'Projects',           path: '/projects',             icon: FolderKanban,     roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member','viewer','executive'], section: 'core' },
+  { label: 'My Tasks',           path: '/my-tasks',             icon: CheckSquare,      roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member','viewer'], section: 'core' },
+  { label: 'Calendar',           path: '/calendar',             icon: Calendar,         roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member','viewer'], section: 'core' },
 
   // PM — project_manager + division_admin + admin
-  { label: 'Sprints',            path: '/sprints',              icon: Target,           roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
-  { label: 'Team',               path: '/team',                 icon: Users,            roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
-  { label: 'Time Tracking',      path: '/time-tracking',        icon: Clock,            roles: ['org_admin','division_admin','project_manager','member'], section: 'pm' },
-  { label: 'Reports',            path: '/reports',              icon: BarChart3,        roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
+  { label: 'Sprints',            path: '/sprints',              icon: Target,           roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead'], section: 'pm' },
+  { label: 'Team',               path: '/team',                 icon: Users,            roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead'], section: 'pm' },
+  { label: 'Time Tracking',      path: '/time-tracking',        icon: Clock,            roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member'], section: 'pm' },
+  { label: 'Reports',            path: '/reports',              icon: BarChart3,        roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead'], section: 'pm' },
   { label: 'Advanced Reports',   path: '/reports/advanced',     icon: PieChart,         roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
-  { label: 'Capacity Planning',  path: '/capacity',             icon: Users2,           roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
-  { label: 'Project Tracking',   path: '/project-tracking',     icon: Gauge,            roles: ['org_admin','division_admin','project_manager','executive','viewer'], section: 'pm' },
+  { label: 'Capacity Planning',  path: '/capacity',             icon: Users2,           roles: ['org_admin','division_admin','vertical_head','project_manager'], section: 'pm' },
+  { label: 'Project Tracking',   path: '/project-tracking',     icon: Gauge,            roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive','viewer'], section: 'pm' },
   { label: 'AI Features',        path: '/ai',                   icon: Sparkles,         roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
-  { label: 'Gantt Timeline',     path: '/gantt',                icon: GanttChartSquare, roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
-  { label: 'Attendance',         path: '/attendance',           icon: UserCheck,        roles: ['org_admin','division_admin','project_manager','member'], section: 'pm' },
-  { label: 'Workflow Monitor',   path: '/workflow/monitor',     icon: MonitorCheck,     roles: ['org_admin','division_admin','project_manager','executive'], section: 'pm' },
+  { label: 'Gantt Timeline',     path: '/gantt',                icon: GanttChartSquare, roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead'], section: 'pm' },
+  { label: 'Attendance',         path: '/attendance',           icon: UserCheck,        roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member'], section: 'pm' },
+  { label: 'Workflow Monitor',   path: '/workflow/monitor',     icon: MonitorCheck,     roles: ['org_admin','division_admin','vertical_head','project_manager','executive'], section: 'pm' },
   // Executive — executive + admin
   { label: 'Executive View',     path: '/executive',            icon: Crown,            roles: ['org_admin','executive'], section: 'executive' },
   { label: 'OKR & Goals',        path: '/executive/okrs',       icon: Target,           roles: ['org_admin','executive'], section: 'executive' },
   { label: 'Financial Dashboard',path: '/executive/financial',  icon: DollarSign,       roles: ['org_admin','executive'], section: 'executive' },
   { label: 'Resource Dashboard', path: '/executive/resources',  icon: Users2,           roles: ['org_admin','executive'], section: 'executive' },
-  { label: 'Roadmap',            path: '/roadmap',              icon: Map,              roles: ['org_admin','division_admin','project_manager','executive','viewer'], section: 'executive' },
-  { label: 'Status Reports',     path: '/status-reports',       icon: ClipboardCheck,   roles: ['org_admin','division_admin','project_manager','executive'], section: 'executive' },
-  { label: 'Risk Register',      path: '/risk-register',        icon: AlertTriangle,    roles: ['org_admin','division_admin','project_manager','executive'], section: 'executive' },
+  { label: 'Roadmap',            path: '/roadmap',              icon: Map,              roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive','viewer'], section: 'executive' },
+  { label: 'Status Reports',     path: '/status-reports',       icon: ClipboardCheck,   roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive'], section: 'executive' },
+  { label: 'Risk Register',      path: '/risk-register',        icon: AlertTriangle,    roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive'], section: 'executive' },
   { label: 'Portfolio',          path: '/portfolio',            icon: Briefcase,        roles: ['org_admin','executive'], section: 'executive' },
 
   // Admin — org_admin + division_admin (scoped)
@@ -59,15 +59,17 @@ const navItems: NavItem[] = [
   { label: 'User Management',    path: '/admin/users',          icon: Shield,           roles: ['org_admin'], section: 'admin' },
   { label: 'Workflows',          path: '/admin/workflows',      icon: Workflow,         roles: ['org_admin'], section: 'admin' },
   { label: 'Issue Types',        path: '/admin/issue-types',    icon: Layers,           roles: ['org_admin'], section: 'admin' },
-  { label: 'Task Templates',     path: '/admin/templates',      icon: ClipboardList,    roles: ['org_admin','division_admin','project_manager'], section: 'admin' },
+  { label: 'Task Templates',     path: '/admin/templates',      icon: ClipboardList,    roles: ['org_admin','division_admin','project_manager','team_lead'], section: 'admin' },
   { label: 'Custom Fields',      path: '/admin/custom-fields',  icon: FormInput,        roles: ['org_admin'], section: 'admin' },
   { label: 'Divisions',          path: '/admin/divisions',      icon: Building2,        roles: ['org_admin'], section: 'admin' },
+  { label: 'Verticals',          path: '/admin/verticals',      icon: Network,          roles: ['org_admin','division_admin','vertical_head'], section: 'admin' },
+  { label: 'Permission Matrix',  path: '/admin/permissions',    icon: ShieldCheck,      roles: ['org_admin'], section: 'admin' },
   { label: 'External Users',     path: '/admin/external-users', icon: UserPlus,         roles: ['org_admin'], section: 'admin' },
-  { label: 'Approvals',          path: '/admin/approvals',      icon: CheckCircle,      roles: ['org_admin','division_admin','project_manager'], section: 'admin' },
-  { label: 'Forms',              path: '/admin/forms',          icon: FileText,         roles: ['org_admin','division_admin','project_manager'], section: 'admin' },
+  { label: 'Approvals',          path: '/admin/approvals',      icon: CheckCircle,      roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead'], section: 'admin' },
+  { label: 'Forms',              path: '/admin/forms',          icon: FileText,         roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead'], section: 'admin' },
   { label: 'Versioning',         path: '/admin/versioning',     icon: History,          roles: ['org_admin'], section: 'admin' },
-  { label: 'Exports',            path: '/admin/exports',        icon: Download,         roles: ['org_admin','division_admin','project_manager'], section: 'admin' },
-  { label: 'Audit Log',          path: '/admin/audit-log',      icon: Activity,         roles: ['org_admin','division_admin'], section: 'admin' },
+  { label: 'Exports',            path: '/admin/exports',        icon: Download,         roles: ['org_admin','division_admin','vertical_head','project_manager'], section: 'admin' },
+  { label: 'Audit Log',          path: '/admin/audit-log',      icon: Activity,         roles: ['org_admin','division_admin','vertical_head'], section: 'admin' },
   { label: 'Integrations',       path: '/settings/integrations',icon: Plug,             roles: ['org_admin','project_manager','member'], section: 'admin' },
   { label: 'Feature Flags',      path: '/admin/feature-flags',  icon: Zap,              roles: ['org_admin'], section: 'admin' },
   { label: 'Onboarding Wizard',  path: '/admin/onboarding',     icon: Network,          roles: ['org_admin'], section: 'admin' },
@@ -75,14 +77,14 @@ const navItems: NavItem[] = [
   { label: 'Governance',         path: '/workflow/governance',  icon: ShieldCheck,      roles: ['org_admin','executive'], section: 'admin' },
   { label: 'Gov. Dashboard',     path: '/governance',           icon: TrendingUp,       roles: ['org_admin','division_admin','executive'], section: 'admin' },
   { label: 'Project Closure',    path: '/governance/closure',   icon: Lock,             roles: ['org_admin','division_admin','project_manager'], section: 'admin' },
-  { label: 'Training Guide',     path: '/workflow/training',    icon: BookOpen,         roles: ['org_admin','division_admin','project_manager','executive','member'], section: 'admin' },
+  { label: 'Training Guide',     path: '/workflow/training',    icon: BookOpen,         roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive','member'], section: 'admin' },
 ];
 
 const SECTIONS: Record<string, { label: string; roles: OrgRole[] }> = {
-  core:      { label: 'Workspace',    roles: ['org_admin','division_admin','project_manager','member','viewer','executive'] },
-  pm:        { label: 'Project Mgmt', roles: ['org_admin','division_admin','project_manager','member'] },
+  core:      { label: 'Workspace',    roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member','viewer','executive'] },
+  pm:        { label: 'Project Mgmt', roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member'] },
   executive: { label: 'Executive',    roles: ['org_admin','executive'] },
-  admin:     { label: 'Admin',        roles: ['org_admin','division_admin'] },
+  admin:     { label: 'Admin',        roles: ['org_admin','division_admin','vertical_head'] },
 };
 
 export function Sidebar() {
@@ -101,6 +103,13 @@ export function Sidebar() {
       items: visibleItems.filter((i) => i.section === sec),
     }))
     .filter((g) => g.items.length > 0);
+
+  const ROLE_LABELS: Record<string, string> = {
+    org_admin: 'System Admin', division_admin: 'Division Admin',
+    vertical_head: 'Vertical Head', project_manager: 'Project Lead',
+    team_lead: 'Team Lead', member: 'Project Team Member',
+    executive: 'Leadership', viewer: 'Others',
+  };
 
   const displayName = user
     ? `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim()
@@ -244,7 +253,7 @@ export function Sidebar() {
         >
           <p className="text-xs font-semibold text-white/80 truncate">{displayName}</p>
           <p style={{ color: sectionLabel }} className="text-[10px] capitalize truncate">
-            {currentRole?.replace(/_/g, ' ')}
+            {ROLE_LABELS[currentRole || ''] || currentRole?.replace(/_/g, ' ')}
           </p>
         </NavLink>
       )}

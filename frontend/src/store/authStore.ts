@@ -50,6 +50,16 @@ export const STAKEHOLDER_PERSONAS: StakeholderPersona[] = [
     defaultDivisionId: 'div_engineering',
   },
   {
+    role: 'vertical_head',
+    label: 'Vertical Head',
+    name: 'Demo Vertical Head',
+    email: 'vertical-head@example.local',
+    description: 'Manage team verticals, allocate members, track vertical KPIs',
+    color: 'bg-teal-100 text-teal-700',
+    devUserId: 'dev-vertical_head-id',
+    defaultDivisionId: 'div_engineering',
+  },
+  {
     role: 'project_manager',
     label: 'Project Lead',
     name: 'Demo PM',
@@ -57,6 +67,16 @@ export const STAKEHOLDER_PERSONAS: StakeholderPersona[] = [
     description: 'Manage projects & sprints in Engineering',
     color: 'bg-blue-100 text-blue-700',
     devUserId: 'dev-project_manager-id',
+    defaultDivisionId: 'div_engineering',
+  },
+  {
+    role: 'team_lead',
+    label: 'Team Lead',
+    name: 'Demo Team Lead',
+    email: 'team-lead@example.local',
+    description: 'Lead a team, assign tasks, track team progress',
+    color: 'bg-cyan-100 text-cyan-700',
+    devUserId: 'dev-team_lead-id',
     defaultDivisionId: 'div_engineering',
   },
   {
@@ -129,6 +149,6 @@ export const useAuthStore = create<AuthState>()(
 
       setDivision: (divisionId) => set({ currentDivisionId: divisionId }),
     }),
-    { name: 'pm-auth-v2' }
+    { name: 'pm-auth-v3' }
   )
 );

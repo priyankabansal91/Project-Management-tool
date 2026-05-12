@@ -20,7 +20,9 @@ enum UserStatus {
 enum OrgRole {
   org_admin
   division_admin
+  vertical_head
   project_manager
+  team_lead
   member
   executive
   viewer
@@ -98,6 +100,7 @@ model Organization {
   invitations     Invitation[]
   aiLogs          AiLog[]
   divisions       Division[]
+  verticals       Vertical[]
   customRoles     CustomRole[]
   externalUsers   ExternalUser[]
   exports         Export[]
@@ -134,9 +137,29 @@ model Division {
   manager      User?            @relation(fields: [managerId], references: [id])
   members      DivisionMember[]
   projects     Project[]
+  verticals    Vertical[]
 
   @@unique([orgId, code])
   @@map("divisions")
+}
+
+model Vertical {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  color       String   @default("#3B82F6")
+  status      String   @default("active")
+  orgId       String   @map("org_id")
+  divisionId  String?  @map("division_id")
+  headId      String?  @map("head_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  division    Division?    @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  head        User?        @relation("VerticalHead", fields: [headId], references: [id], onDelete: SetNull)
+
+  @@map("verticals")
 }
 
 model DivisionMember {
@@ -192,6 +215,7 @@ model User {
   divisionMembers   DivisionMember[]
   customRoleMembers CustomRoleMember[]
   managedDivisions  Division[]
+  verticalHeadOf    Vertical[]         @relation("VerticalHead")
 
   @@map("users")
 }

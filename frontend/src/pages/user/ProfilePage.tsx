@@ -15,7 +15,9 @@ import {
 const ROLE_LABEL: Record<string, string> = {
   org_admin: 'System Admin',
   division_admin: 'Division Admin',
+  vertical_head: 'Vertical Head',
   project_manager: 'Project Lead',
+  team_lead: 'Team Lead',
   member: 'Project Team Member',
   viewer: 'Others',
   executive: 'Leadership',

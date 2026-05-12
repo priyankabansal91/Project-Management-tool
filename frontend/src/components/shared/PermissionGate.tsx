@@ -14,12 +14,26 @@ const ROLE_PERMISSIONS: Record<OrgRole, string[]> = {
     'division:read','division:update','division:manage_members',
     'admin:view_audit',
   ],
+  vertical_head: [
+    'project:create','project:read','project:update','project:manage_members',
+    'task:create','task:read','task:update','task:delete','task:assign','task:comment',
+    'workflow:read','workflow:update',
+    'approval:create','approval:approve','approval:reject',
+    'division:read','admin:view_audit',
+  ],
   project_manager: [
     'project:create','project:read','project:update','project:manage_members',
     'task:create','task:read','task:update','task:delete','task:assign','task:comment',
     'workflow:create','workflow:read','workflow:update',
     'approval:create','approval:approve','approval:reject',
     'division:read','admin:view_audit',
+  ],
+  team_lead: [
+    'project:read','project:update','project:manage_members',
+    'task:create','task:read','task:update','task:delete','task:assign','task:comment',
+    'workflow:read',
+    'approval:create','approval:approve','approval:reject',
+    'division:read',
   ],
   member: [
     'project:read','task:create','task:read','task:update','task:comment',

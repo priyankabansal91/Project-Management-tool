@@ -27,7 +27,9 @@ type Member = {
 const roleColors: Record<string, string> = {
   org_admin:       'bg-red-100 text-red-700',
   division_admin:  'bg-orange-100 text-orange-700',
+  vertical_head:   'bg-teal-100 text-teal-700',
   project_manager: 'bg-blue-100 text-blue-700',
+  team_lead:       'bg-cyan-100 text-cyan-700',
   member:          'bg-green-100 text-green-700',
   executive:       'bg-purple-100 text-purple-700',
   viewer:          'bg-gray-100 text-gray-700',
@@ -561,7 +563,9 @@ export function UserManagementPage() {
                         <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}
                           className="w-full rounded-md border border-input bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                           <option value="member">Project Team Member</option>
+                          <option value="team_lead">Team Lead</option>
                           <option value="project_manager">Project Lead</option>
+                          <option value="vertical_head">Vertical Head</option>
                           <option value="division_admin">Division Admin</option>
                           <option value="org_admin">System Admin</option>
                           <option value="executive">Leadership</option>
@@ -613,7 +617,9 @@ export function UserManagementPage() {
                         <select value={directForm.role} onChange={(e) => setDirectForm((p) => ({ ...p, role: e.target.value }))}
                           className="w-full rounded-md border border-input bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                           <option value="member">Project Team Member</option>
+                          <option value="team_lead">Team Lead</option>
                           <option value="project_manager">Project Lead</option>
+                          <option value="vertical_head">Vertical Head</option>
                           <option value="division_admin">Division Admin</option>
                           <option value="org_admin">System Admin</option>
                           <option value="executive">Leadership</option>

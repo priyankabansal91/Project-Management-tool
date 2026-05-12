@@ -254,7 +254,8 @@ Call log:
               - /url: /workflow/training
               - img [ref=e293]
               - generic [ref=e295]: Training Guide
-      - generic [ref=e296]:
+      - link "Priya Sharma org admin" [ref=e296] [cursor=pointer]:
+        - /url: /profile
         - paragraph [ref=e297]: Priya Sharma
         - paragraph [ref=e298]: org admin
       - button "Collapse sidebar" [ref=e299] [cursor=pointer]:
@@ -380,7 +381,7 @@ Call log:
                       - generic [ref=e458]: NH-48 Highway Widening Project
                       - generic [ref=e459]: HIGH
                       - generic [ref=e460]: PRE PROJECT
-                    - generic [ref=e461]: Started 30/4/2025 by Anita Sharma
+                    - generic [ref=e461]: Started 30/04/2025 by Anita Sharma
                 - generic [ref=e462]:
                   - generic [ref=e463]: "Current: Core Team Review"
                   - generic [ref=e465]:
@@ -409,7 +410,7 @@ Call log:
                       - generic [ref=e499]:
                         - generic [ref=e500]: Rajesh Kumar
                         - generic [ref=e501]: Division Head
-                        - generic [ref=e502]: 30/4/2025
+                        - generic [ref=e502]: 30/04/2025
                       - paragraph [ref=e503]: "\"Technical specs look solid.\""
                     - img [ref=e504]
                   - generic [ref=e506]:
@@ -456,7 +457,7 @@ Call log:
                     - generic [ref=e564]: Yamuna Bridge Strengthening Phase II
                     - generic [ref=e565]: HIGH
                     - generic [ref=e566]: PRE PROJECT
-                  - generic [ref=e567]: Started 28/4/2025 by Rajesh Kumar
+                  - generic [ref=e567]: Started 28/04/2025 by Rajesh Kumar
               - generic [ref=e568]:
                 - generic [ref=e569]: "Current: CFO Final Approval"
                 - generic [ref=e571]:
@@ -472,7 +473,7 @@ Call log:
                   - generic [ref=e592]: Rural Water Supply Scheme — Rajasthan
                   - generic [ref=e593]: MEDIUM
                   - generic [ref=e594]: PRE PROJECT
-                - generic [ref=e595]: Started 20/4/2025 by Priyanka Bansal · Completed 24/4/2025
+                - generic [ref=e595]: Started 20/04/2025 by Priyanka Bansal · Completed 24/04/2025
             - generic [ref=e596]:
               - generic [ref=e597]: COMPLETED
               - generic [ref=e599]:

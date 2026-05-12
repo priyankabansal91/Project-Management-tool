@@ -251,7 +251,8 @@ Call log:
               - /url: /workflow/training
               - img [ref=e293]
               - generic [ref=e295]: Training Guide
-      - generic [ref=e296]:
+      - link "Priya Sharma org admin" [ref=e296] [cursor=pointer]:
+        - /url: /profile
         - paragraph [ref=e297]: Priya Sharma
         - paragraph [ref=e298]: org admin
       - button "Collapse sidebar" [ref=e299] [cursor=pointer]:

@@ -1,0 +1,549 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/avatar';
+import {
+  Network, Plus, Edit2, Trash2, Users, FolderKanban, X,
+  ChevronDown, Search, Building2, UserCheck,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
+
+// ─── Seed Data ───────────────────────────────────────────
+
+interface Vertical {
+  id: string;
+  name: string;
+  description: string;
+  division: string;
+  division_id: string;
+  head_name: string;
+  color: string;
+  member_count: number;
+  project_count: number;
+  status: 'active' | 'inactive';
+}
+
+const SEED_VERTICALS: Vertical[] = [
+  { id: 'v1', name: 'Development Team', description: 'Core software development vertical', division: 'IT Division', division_id: 'div_it', head_name: 'Rahul Mehta', color: '#3B82F6', member_count: 8, project_count: 3, status: 'active' },
+  { id: 'v2', name: 'QA & Testing', description: 'Quality assurance and testing vertical', division: 'IT Division', division_id: 'div_it', head_name: 'Sunita Rao', color: '#10B981', member_count: 4, project_count: 2, status: 'active' },
+  { id: 'v3', name: 'UI/UX Design', description: 'User experience and interface design', division: 'IT Division', division_id: 'div_it', head_name: 'Priya Sharma', color: '#8B5CF6', member_count: 3, project_count: 2, status: 'active' },
+  { id: 'v4', name: 'Finance Operations', description: 'Financial processing and reporting', division: 'Finance Division', division_id: 'div_finance', head_name: 'Vikram Singh', color: '#F59E0B', member_count: 5, project_count: 1, status: 'active' },
+  { id: 'v5', name: 'Accreditation Team', description: 'Standards and accreditation vertical', division: 'Accreditation Division', division_id: 'div_accred', head_name: 'Anjali Gupta', color: '#EF4444', member_count: 6, project_count: 2, status: 'inactive' },
+  { id: 'v6', name: 'Infrastructure', description: 'IT infrastructure and DevOps', division: 'IT Division', division_id: 'div_it', head_name: 'David Park', color: '#06B6D4', member_count: 4, project_count: 1, status: 'active' },
+];
+
+const DIVISIONS = ['All Divisions', 'IT Division', 'Finance Division', 'Accreditation Division', 'Operations Division'];
+const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
+
+const SAMPLE_USERS = [
+  'Rahul Mehta', 'Sunita Rao', 'Priya Sharma', 'Vikram Singh',
+  'Anjali Gupta', 'David Park', 'Neha Joshi', 'Arjun Patel',
+];
+
+// ─── Form State ──────────────────────────────────────────
+
+interface VerticalFormData {
+  name: string;
+  description: string;
+  division: string;
+  head_name: string;
+  color: string;
+  status: 'active' | 'inactive';
+}
+
+const EMPTY_FORM: VerticalFormData = {
+  name: '',
+  description: '',
+  division: DIVISIONS[1],
+  head_name: '',
+  color: COLORS[0],
+  status: 'active',
+};
+
+// ─── Stat Card ───────────────────────────────────────────
+
+function StatCard({ label, value, icon: Icon, colorClass, bgClass }: {
+  label: string; value: number;
+  icon: React.ElementType; colorClass: string; bgClass: string;
+}) {
+  return (
+    <Card className={cn('p-4', bgClass)}>
+      <div className="flex items-center gap-3">
+        <Icon className={cn('h-5 w-5', colorClass)} />
+        <div>
+          <p className={cn('text-2xl font-bold', colorClass)}>{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ─── Vertical Card ───────────────────────────────────────
+
+function VerticalCard({ vertical, onEdit, onDelete }: {
+  vertical: Vertical;
+  onEdit: (v: Vertical) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <Card
+      className="overflow-hidden border-l-4 hover:shadow-md transition-shadow"
+      style={{ borderLeftColor: vertical.color }}
+    >
+      <CardContent className="p-4">
+        {/* Name + Status + Actions */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div
+                className="h-7 w-7 rounded-md flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                style={{ backgroundColor: vertical.color }}
+              >
+                {vertical.name.charAt(0)}
+              </div>
+              <h3 className="font-semibold text-sm truncate">{vertical.name}</h3>
+            </div>
+            {vertical.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{vertical.description}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Button
+              size="sm" variant="ghost" className="h-7 w-7 p-0"
+              onClick={() => onEdit(vertical)} title="Edit"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="sm" variant="ghost"
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+              onClick={() => onDelete(vertical.id)} title="Delete"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Division badge */}
+        <div className="flex items-center gap-1.5 mb-3">
+          <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          <Badge variant="outline" className="text-[10px] font-medium">{vertical.division}</Badge>
+          <Badge
+            className={cn(
+              'text-[10px] ml-auto',
+              vertical.status === 'active'
+                ? 'bg-green-100 text-green-700 border-0'
+                : 'bg-gray-100 text-gray-500 border-0',
+            )}
+          >
+            {vertical.status === 'active' ? 'Active' : 'Inactive'}
+          </Badge>
+        </div>
+
+        {/* Vertical Head */}
+        <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-muted/30">
+          <UserCheck className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          <span className="text-[11px] text-muted-foreground mr-1">Head:</span>
+          <Avatar name={vertical.head_name} size="sm" />
+          <span className="text-xs font-medium truncate">{vertical.head_name}</span>
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-2">
+          <span className="flex items-center gap-1">
+            <Users className="h-3.5 w-3.5" />
+            <span className="font-medium text-foreground">{vertical.member_count}</span> members
+          </span>
+          <span className="flex items-center gap-1">
+            <FolderKanban className="h-3.5 w-3.5" />
+            <span className="font-medium text-foreground">{vertical.project_count}</span> projects
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Modal ───────────────────────────────────────────────
+
+function VerticalModal({ editingId, initialData, onSave, onClose }: {
+  editingId: string | null;
+  initialData: VerticalFormData;
+  onSave: (id: string | null, data: VerticalFormData) => void;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<VerticalFormData>(initialData);
+
+  const set = (patch: Partial<VerticalFormData>) => setForm((f) => ({ ...f, ...patch }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    onSave(editingId, form);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Dialog */}
+      <Card className="relative z-10 w-full max-w-lg shadow-2xl">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-base">
+            {editingId ? 'Edit Vertical' : 'Create Vertical'}
+          </CardTitle>
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name */}
+            <div>
+              <label className="text-sm font-medium block mb-1">
+                Vertical Name <span className="text-destructive">*</span>
+              </label>
+              <Input
+                placeholder="e.g., Development Team"
+                value={form.name}
+                onChange={(e) => set({ name: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-sm font-medium block mb-1">Description</label>
+              <textarea
+                placeholder="Brief description of this vertical's purpose..."
+                value={form.description}
+                onChange={(e) => set({ description: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                rows={2}
+              />
+            </div>
+
+            {/* Division */}
+            <div>
+              <label className="text-sm font-medium block mb-1">Division</label>
+              <div className="relative">
+                <select
+                  value={form.division}
+                  onChange={(e) => set({ division: e.target.value })}
+                  className="w-full appearance-none px-3 py-2 pr-8 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {DIVISIONS.filter((d) => d !== 'All Divisions').map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Vertical Head */}
+            <div>
+              <label className="text-sm font-medium block mb-1">Vertical Head</label>
+              <div className="relative">
+                <select
+                  value={form.head_name}
+                  onChange={(e) => set({ head_name: e.target.value })}
+                  className="w-full appearance-none px-3 py-2 pr-8 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">— Select a user —</option>
+                  {SAMPLE_USERS.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Color picker */}
+            <div>
+              <label className="text-sm font-medium block mb-2">Color</label>
+              <div className="flex items-center gap-2">
+                {COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => set({ color: c })}
+                    className={cn(
+                      'h-7 w-7 rounded-full border-2 transition-transform hover:scale-110',
+                      form.color === c ? 'border-foreground scale-110' : 'border-transparent',
+                    )}
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+                <div
+                  className="h-6 w-6 rounded flex items-center justify-center text-white text-xs font-bold ml-2"
+                  style={{ backgroundColor: form.color }}
+                >
+                  {form.name.charAt(0) || 'V'}
+                </div>
+              </div>
+            </div>
+
+            {/* Status toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">Status</p>
+                <p className="text-xs text-muted-foreground">
+                  {form.status === 'active' ? 'This vertical is active and visible.' : 'This vertical is inactive and hidden from members.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => set({ status: form.status === 'active' ? 'inactive' : 'active' })}
+                className={cn(
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none',
+                  form.status === 'active' ? 'bg-primary' : 'bg-muted-foreground/30',
+                )}
+              >
+                <span
+                  className={cn(
+                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+                    form.status === 'active' ? 'translate-x-6' : 'translate-x-1',
+                  )}
+                />
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <Button type="submit">
+                {editingId ? 'Update Vertical' : 'Create Vertical'}
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Main Page ───────────────────────────────────────────
+
+export function VerticalsPage() {
+  const { user } = useAuthStore();
+
+  const [verticals, setVerticals] = useState<Vertical[]>(SEED_VERTICALS);
+  const [showModal, setShowModal] = useState(false);
+  const [editingVertical, setEditingVertical] = useState<Vertical | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [divisionFilter, setDivisionFilter] = useState('All Divisions');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  // ── Filtered list ────────────────────────────────────
+  const filtered = verticals.filter((v) => {
+    const matchSearch = v.name.toLowerCase().includes(search.toLowerCase())
+      || v.description.toLowerCase().includes(search.toLowerCase())
+      || v.head_name.toLowerCase().includes(search.toLowerCase());
+    const matchDivision = divisionFilter === 'All Divisions' || v.division === divisionFilter;
+    const matchStatus = statusFilter === 'all' || v.status === statusFilter;
+    return matchSearch && matchDivision && matchStatus;
+  });
+
+  // ── Stats ────────────────────────────────────────────
+  const totalMembers = verticals.reduce((s, v) => s + v.member_count, 0);
+  const totalProjects = verticals.reduce((s, v) => s + v.project_count, 0);
+  const activeCount = verticals.filter((v) => v.status === 'active').length;
+
+  // ── Handlers ─────────────────────────────────────────
+  const openCreate = () => {
+    setEditingVertical(null);
+    setShowModal(true);
+  };
+
+  const openEdit = (v: Vertical) => {
+    setEditingVertical(v);
+    setShowModal(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Delete this vertical? This action cannot be undone.')) {
+      setVerticals((prev) => prev.filter((v) => v.id !== id));
+    }
+  };
+
+  const handleSave = (id: string | null, data: VerticalFormData) => {
+    if (id) {
+      setVerticals((prev) =>
+        prev.map((v) =>
+          v.id === id
+            ? { ...v, ...data }
+            : v,
+        ),
+      );
+    } else {
+      const newVertical: Vertical = {
+        id: `v${Date.now()}`,
+        ...data,
+        division_id: `div_${data.division.toLowerCase().replace(/\s+/g, '_')}`,
+        member_count: 0,
+        project_count: 0,
+      };
+      setVerticals((prev) => [newVertical, ...prev]);
+    }
+    setShowModal(false);
+    setEditingVertical(null);
+  };
+
+  const modalInitial: VerticalFormData = editingVertical
+    ? {
+        name: editingVertical.name,
+        description: editingVertical.description,
+        division: editingVertical.division,
+        head_name: editingVertical.head_name,
+        color: editingVertical.color,
+        status: editingVertical.status,
+      }
+    : EMPTY_FORM;
+
+  return (
+    <div className="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Network className="h-6 w-6 text-primary" /> Verticals
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage team verticals within your boards/divisions
+          </p>
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="h-4 w-4 mr-2" /> Create Vertical
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="Total Verticals" value={verticals.length} icon={Network} colorClass="text-blue-600" bgClass="bg-blue-50" />
+        <StatCard label="Active Verticals" value={activeCount} icon={UserCheck} colorClass="text-green-600" bgClass="bg-green-50" />
+        <StatCard label="Total Members" value={totalMembers} icon={Users} colorClass="text-purple-600" bgClass="bg-purple-50" />
+        <StatCard label="Total Projects" value={totalProjects} icon={FolderKanban} colorClass="text-orange-600" bgClass="bg-orange-50" />
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* Search */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search verticals..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Division filter */}
+        <div className="relative">
+          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <select
+            value={divisionFilter}
+            onChange={(e) => setDivisionFilter(e.target.value)}
+            className="appearance-none pl-9 pr-8 py-2 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring min-w-[180px]"
+          >
+            {DIVISIONS.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+        </div>
+
+        {/* Status filter */}
+        <div className="flex items-center gap-1 rounded-md border bg-card p-1">
+          {(['all', 'active', 'inactive'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={cn(
+                'px-3 py-1 rounded text-xs font-medium capitalize transition-colors',
+                statusFilter === s
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Results count */}
+      {(search || divisionFilter !== 'All Divisions' || statusFilter !== 'all') && (
+        <p className="text-xs text-muted-foreground">
+          Showing {filtered.length} of {verticals.length} verticals
+        </p>
+      )}
+
+      {/* Grid */}
+      {filtered.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((v) => (
+            <VerticalCard
+              key={v.id}
+              vertical={v}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Empty state */
+        <Card className="p-12 text-center">
+          <div className="h-16 w-16 mx-auto rounded-full bg-muted flex items-center justify-center mb-4">
+            <Network className="h-8 w-8 text-muted-foreground" />
+          </div>
+          {search || divisionFilter !== 'All Divisions' || statusFilter !== 'all' ? (
+            <>
+              <p className="font-medium text-muted-foreground">No verticals match your filters</p>
+              <p className="text-sm text-muted-foreground mt-1">Try adjusting your search or filter criteria.</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => { setSearch(''); setDivisionFilter('All Divisions'); setStatusFilter('all'); }}
+              >
+                Clear Filters
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="font-medium text-muted-foreground">No verticals yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Create your first vertical to start organizing teams within your divisions.
+              </p>
+              <Button className="mt-4" onClick={openCreate}>
+                <Plus className="h-4 w-4 mr-2" /> Create First Vertical
+              </Button>
+            </>
+          )}
+        </Card>
+      )}
+
+      {/* Modal */}
+      {showModal && (
+        <VerticalModal
+          editingId={editingVertical?.id ?? null}
+          initialData={modalInitial}
+          onSave={handleSave}
+          onClose={() => { setShowModal(false); setEditingVertical(null); }}
+        />
+      )}
+    </div>
+  );
+}

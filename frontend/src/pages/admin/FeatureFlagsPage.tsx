@@ -13,7 +13,9 @@ import { cn } from '@/lib/utils';
 const ROLES: { key: OrgRole; label: string; color: string; bg: string }[] = [
   { key: 'org_admin',       label: 'System Admin',    color: 'text-red-600',    bg: 'bg-red-50'    },
   { key: 'division_admin',  label: 'Div Admin',       color: 'text-orange-600', bg: 'bg-orange-50' },
+  { key: 'vertical_head',   label: 'Vertical Head',   color: 'text-teal-600',   bg: 'bg-teal-50'   },
   { key: 'project_manager', label: 'Project Lead',    color: 'text-blue-600',   bg: 'bg-blue-50'   },
+  { key: 'team_lead',       label: 'Team Lead',       color: 'text-cyan-600',   bg: 'bg-cyan-50'   },
   { key: 'member',          label: 'Team Member',     color: 'text-green-600',  bg: 'bg-green-50'  },
   { key: 'executive',       label: 'Leadership',      color: 'text-purple-600', bg: 'bg-purple-50' },
   { key: 'viewer',          label: 'Others',          color: 'text-gray-600',   bg: 'bg-gray-50'   },
@@ -127,7 +129,7 @@ export function FeatureFlagsPage() {
             </CardHeader>
             <CardContent className="p-0">
               {/* Role header row */}
-              <div className="grid grid-cols-[220px_repeat(6,1fr)] border-b bg-muted/20 text-xs font-semibold text-muted-foreground">
+              <div className="grid grid-cols-[220px_repeat(8,1fr)] border-b bg-muted/20 text-xs font-semibold text-muted-foreground">
                 <div className="px-4 py-2.5">Feature</div>
                 {ROLES.map((r) => {
                   const isOrgAdminCol = r.key === 'org_admin';
@@ -161,7 +163,7 @@ export function FeatureFlagsPage() {
                 <div
                   key={feature.key}
                   className={cn(
-                    'grid grid-cols-[220px_repeat(6,1fr)] items-center border-b last:border-0 hover:bg-muted/10 transition-colors',
+                    'grid grid-cols-[220px_repeat(8,1fr)] items-center border-b last:border-0 hover:bg-muted/10 transition-colors',
                     idx % 2 === 0 ? '' : 'bg-muted/5'
                   )}
                 >
@@ -212,7 +214,7 @@ export function FeatureFlagsPage() {
 
       {/* Summary stats */}
       <Card className="p-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
           {ROLES.map((r) => {
             const count = features.filter((f) =>
               r.key === 'org_admin' || f.enabledForRoles.includes(r.key)

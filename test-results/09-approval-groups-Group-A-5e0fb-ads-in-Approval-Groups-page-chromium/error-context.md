@@ -254,7 +254,8 @@ Call log:
               - /url: /workflow/training
               - img [ref=e293]
               - generic [ref=e295]: Training Guide
-      - generic [ref=e296]:
+      - link "Priya Sharma org admin" [ref=e296] [cursor=pointer]:
+        - /url: /profile
         - paragraph [ref=e297]: Priya Sharma
         - paragraph [ref=e298]: org admin
       - button "Collapse sidebar" [ref=e299] [cursor=pointer]:
@@ -340,7 +341,7 @@ Call log:
                 - generic [ref=e416]: GROUP_CREATED
                 - generic [ref=e417]: Group "Core Team" created
               - generic [ref=e418]: "{\"approvalType\":\"QUORUM\"}"
-              - generic [ref=e419]: 15/1/2025, 2:30:00 pm
+              - generic [ref=e419]: 15/01/2025
           - generic [ref=e420]:
             - generic [ref=e421]: P
             - generic [ref=e422]:
@@ -348,7 +349,7 @@ Call log:
                 - generic [ref=e424]: Priyanka Bansal
                 - generic [ref=e425]: MEMBER_ADDED
               - generic [ref=e426]: "{\"userId\":\"dev-division_admin-id\",\"title\":\"Division Head\"}"
-              - generic [ref=e427]: 15/1/2025, 2:35:00 pm
+              - generic [ref=e427]: 15/01/2025
           - generic [ref=e428]:
             - generic [ref=e429]: P
             - generic [ref=e430]:
@@ -357,7 +358,7 @@ Call log:
                 - generic [ref=e433]: GROUP_CREATED
                 - generic [ref=e434]: Group "CFO Group" created
               - generic [ref=e435]: "{\"approvalType\":\"ANY\"}"
-              - generic [ref=e436]: 15/1/2025, 2:40:00 pm
+              - generic [ref=e436]: 15/01/2025
           - generic [ref=e437]:
             - generic [ref=e438]: P
             - generic [ref=e439]:
@@ -365,7 +366,7 @@ Call log:
                 - generic [ref=e441]: Priyanka Bansal
                 - generic [ref=e442]: STEP_UPSERTED
               - generic [ref=e443]: "{\"name\":\"Core Team Review\",\"stepOrder\":1}"
-              - generic [ref=e444]: 15/1/2025, 2:50:00 pm
+              - generic [ref=e444]: 15/01/2025
           - generic [ref=e445]:
             - generic [ref=e446]: P
             - generic [ref=e447]:
@@ -373,7 +374,7 @@ Call log:
                 - generic [ref=e449]: Priyanka Bansal
                 - generic [ref=e450]: GROUP_UPDATED
               - generic [ref=e451]: "{\"slaHours\":48}"
-              - generic [ref=e452]: 16/1/2025, 8:00:00 pm
+              - generic [ref=e452]: 16/01/2025
 ```
 
 # Test source

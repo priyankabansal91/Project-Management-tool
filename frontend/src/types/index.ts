@@ -12,7 +12,7 @@ export interface User {
   organizations?: OrgMembership[];
 }
 
-export type OrgRole = 'org_admin' | 'division_admin' | 'project_manager' | 'member' | 'viewer' | 'executive';
+export type OrgRole = 'org_admin' | 'division_admin' | 'vertical_head' | 'project_manager' | 'team_lead' | 'member' | 'viewer' | 'executive';
 
 export interface OrgMembership {
   id: string;
@@ -188,4 +188,18 @@ export interface ApiResponse<T> {
   success: boolean;
   data: T;
   error?: { code: string; message: string; details?: unknown[] };
+}
+
+export interface Vertical {
+  id: string;
+  name: string;
+  description: string | null;
+  division_id: string;
+  head_id: string | null;
+  head_name: string | null;
+  color: string;
+  member_count: number;
+  project_count: number;
+  status: 'active' | 'inactive';
+  created_at: string;
 }

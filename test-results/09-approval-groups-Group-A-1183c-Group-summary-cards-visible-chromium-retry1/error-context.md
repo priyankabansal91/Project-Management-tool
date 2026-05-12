@@ -254,7 +254,8 @@ Call log:
               - /url: /workflow/training
               - img [ref=e293]
               - generic [ref=e295]: Training Guide
-      - generic [ref=e296]:
+      - link "Priya Sharma org admin" [ref=e296] [cursor=pointer]:
+        - /url: /profile
         - paragraph [ref=e297]: Priya Sharma
         - paragraph [ref=e298]: org admin
       - button "Collapse sidebar" [ref=e299] [cursor=pointer]:
@@ -379,7 +380,7 @@ Call log:
                     - generic [ref=e458]: NH-48 Highway Widening Project
                     - generic [ref=e459]: HIGH
                     - generic [ref=e460]: PRE PROJECT
-                  - generic [ref=e461]: Started 30/4/2025 by Anita Sharma
+                  - generic [ref=e461]: Started 30/04/2025 by Anita Sharma
               - generic [ref=e462]:
                 - generic [ref=e463]: "Current: Core Team Review"
                 - generic [ref=e465]:
@@ -396,7 +397,7 @@ Call log:
                     - generic [ref=e485]: Yamuna Bridge Strengthening Phase II
                     - generic [ref=e486]: HIGH
                     - generic [ref=e487]: PRE PROJECT
-                  - generic [ref=e488]: Started 28/4/2025 by Rajesh Kumar
+                  - generic [ref=e488]: Started 28/04/2025 by Rajesh Kumar
               - generic [ref=e489]:
                 - generic [ref=e490]: "Current: CFO Final Approval"
                 - generic [ref=e492]:
@@ -412,7 +413,7 @@ Call log:
                   - generic [ref=e513]: Rural Water Supply Scheme — Rajasthan
                   - generic [ref=e514]: MEDIUM
                   - generic [ref=e515]: PRE PROJECT
-                - generic [ref=e516]: Started 20/4/2025 by Priyanka Bansal · Completed 24/4/2025
+                - generic [ref=e516]: Started 20/04/2025 by Priyanka Bansal · Completed 24/04/2025
             - generic [ref=e517]:
               - generic [ref=e518]: COMPLETED
               - generic [ref=e520]:

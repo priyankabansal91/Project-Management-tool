@@ -10,6 +10,8 @@ const DEV_USERS = {
   'dev-member-id':          { id: 'dev-member-id',          orgId: 'dev-org-id', role: 'member',          email: 'member@example.local' },
   'dev-viewer-id':          { id: 'dev-viewer-id',          orgId: 'dev-org-id', role: 'viewer',          email: 'viewer@example.local' },
   'dev-executive-id':       { id: 'dev-executive-id',       orgId: 'dev-org-id', role: 'executive',       email: 'executive@example.local' },
+  'dev-vertical_head-id':  { id: 'dev-vertical_head-id',  orgId: 'dev-org-id', role: 'vertical_head',  email: 'vertical-head@example.local' },
+  'dev-team_lead-id':      { id: 'dev-team_lead-id',      orgId: 'dev-org-id', role: 'team_lead',      email: 'team-lead@example.local' },
 };
 
 // Allowed dev user ID values — only exact keys from above are accepted

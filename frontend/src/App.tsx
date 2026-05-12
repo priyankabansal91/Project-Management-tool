@@ -52,6 +52,8 @@ import { FeatureFlagsPage } from '@/pages/admin/FeatureFlagsPage';
 import { OnboardingWizardPage } from '@/pages/admin/OnboardingWizardPage';
 import { AttendancePage } from '@/pages/pm/AttendancePage';
 import { DivisionMISPage } from '@/pages/admin/DivisionMISPage';
+import { VerticalsPage } from '@/pages/admin/VerticalsPage';
+import { PermissionMatrixPage } from '@/pages/admin/PermissionMatrixPage';
 import { NotificationsPage } from '@/pages/user/NotificationsPage';
 import { WorkflowMonitoringPage } from '@/pages/workflow/WorkflowMonitoringPage';
 import { WorkflowGovernancePage } from '@/pages/workflow/WorkflowGovernancePage';
@@ -155,6 +157,8 @@ export default function App() {
         <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />
         <Route path="/admin/integrations" element={<OutlookIntegrationPage />} />
         <Route path="/admin/division-mis" element={<DivisionMISPage />} />
+        <Route path="/admin/verticals" element={<VerticalsPage />} />
+        <Route path="/admin/permissions" element={<PermissionMatrixPage />} />
 
         {/* Workflow operational layer */}
         <Route path="/workflow/monitor" element={<WorkflowMonitoringPage />} />
