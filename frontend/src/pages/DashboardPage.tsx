@@ -497,7 +497,7 @@ export function DashboardPage() {
         <div
           className="cursor-pointer group"
           onClick={() => navigate('/my-tasks')}
-          title="Go to My Tasks"
+          title="View all tasks"
         >
           <StatCard
             title="Total Tasks"
@@ -510,7 +510,7 @@ export function DashboardPage() {
 
         <div
           className="cursor-pointer group"
-          onClick={() => navigate('/my-tasks')}
+          onClick={() => navigate('/my-tasks?tab=open')}
           title="View my open tasks"
         >
           <StatCard
@@ -524,7 +524,7 @@ export function DashboardPage() {
 
         <div
           className="cursor-pointer group"
-          onClick={() => navigate('/my-tasks')}
+          onClick={() => navigate('/my-tasks?tab=overdue')}
           title="View overdue tasks"
         >
           <StatCard

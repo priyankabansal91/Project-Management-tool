@@ -17,27 +17,29 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, className,
     <Card className={cn(
       'p-6 cursor-default transition-all duration-200',
       'hover:shadow-md hover:-translate-y-0.5',
-      'group',
+      'group flex flex-col justify-between min-h-[130px]',
       className
     )}>
       <div className="flex items-start justify-between">
-        <div className="space-y-1">
+        <div className="space-y-1 flex-1 min-w-0">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="text-3xl font-bold transition-colors duration-200 group-hover:text-primary">{value}</p>
-          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-          {trend && (
-            <p className={cn('text-xs font-medium', trend.value >= 0 ? 'text-green-600' : 'text-red-600')}>
-              {trend.value >= 0 ? '+' : ''}{trend.value}% {trend.label}
-            </p>
-          )}
         </div>
         <div className={cn(
-          'rounded-lg bg-primary/10 p-3 transition-all duration-200',
+          'rounded-lg bg-primary/10 p-3 transition-all duration-200 flex-shrink-0 ml-3',
           'group-hover:bg-primary/20 group-hover:scale-110',
           iconColor
         )}>
           <Icon className="h-6 w-6" />
         </div>
+      </div>
+      <div className="mt-2 min-h-[16px]">
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+        {trend && (
+          <p className={cn('text-xs font-medium', trend.value >= 0 ? 'text-green-600' : 'text-red-600')}>
+            {trend.value >= 0 ? '+' : ''}{trend.value}% {trend.label}
+          </p>
+        )}
       </div>
     </Card>
   );

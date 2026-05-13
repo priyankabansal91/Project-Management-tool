@@ -286,11 +286,6 @@ export function Header() {
                   ))}
                 </div>
 
-                {/* Theme toggle */}
-                <div className="border-t p-2 hidden lg:block">
-                  <ThemeToggle />
-                </div>
-
                 {/* Sign out */}
                 <div className="border-t p-1">
                   <button

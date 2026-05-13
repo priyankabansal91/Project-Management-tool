@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -138,7 +138,9 @@ function BulkActionBar({ selectedCount, onMarkDone, onSetPriority, onDelete, onC
 
 export function MyTasksPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<TabFilter>('all');
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as TabFilter) || 'all';
+  const [tab, setTab] = useState<TabFilter>(initialTab);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
