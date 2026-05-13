@@ -22,7 +22,6 @@ const FEATURES = [
   { key: 'ai',                label: 'AI Features',         icon: Brain,       description: 'Claude-powered task generation & reports' },
   { key: 'exports',           label: 'Data Exports',        icon: Download,    description: 'Export tasks, reports, and data' },
   { key: 'financialDashboard',label: 'Financial Dashboard', icon: DollarSign,  description: 'Budget tracking, ROI, cost analysis' },
-  { key: 'okrDashboard',      label: 'OKR Dashboard',       icon: Target,      description: 'Goals, key results, and alignment' },
   { key: 'resourceDashboard', label: 'Resource Dashboard',  icon: Users,       description: 'Capacity planning and skill matrix' },
   { key: 'approvals',         label: 'Approvals',           icon: CheckCircle, description: 'Multi-step approval workflows' },
   { key: 'forms',             label: 'Forms & Intake',      icon: FileText,    description: 'Intake forms for requests' },

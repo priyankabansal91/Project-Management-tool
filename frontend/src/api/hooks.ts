@@ -956,40 +956,6 @@ export function useExecutiveScorecards() {
   });
 }
 
-// ─── OKRs ────────────────────────────────────────────────
-
-export function useOKRs(params?: { level?: string; quarter?: string; year?: string }) {
-  return useQuery({
-    queryKey: ['okrs', params],
-    queryFn: async () => {
-      const { data } = await api.get('/okrs', { params });
-      return data.data;
-    },
-  });
-}
-
-export function useCreateOKR() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: Record<string, unknown>) => {
-      const { data } = await api.post('/okrs', body);
-      return data.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okrs'] }),
-  });
-}
-
-export function useUpdateOKR() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...body }: { id: string } & Record<string, unknown>) => {
-      const { data } = await api.patch(`/okrs/${id}`, body);
-      return data.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['okrs'] }),
-  });
-}
-
 // ─── Resources ───────────────────────────────────────────
 
 export function useResources(params?: { type?: string; department?: string; status?: string }) {

@@ -13,7 +13,7 @@ const STATIC_RESOURCES = [
   { id: 'r1', name: 'Anjali Singh',  type: 'fte',        department: 'Engineering', division: 'div_engineering', utilization: 92,  skills: ['React','TypeScript','Node.js'],           available: 8 },
   { id: 'r2', name: 'Ravi Kumar',    type: 'fte',        department: 'Engineering', division: 'div_engineering', utilization: 105, skills: ['Python','AWS','DevOps'],                  available: -5 },
   { id: 'r3', name: 'Rahul Mehta',   type: 'fte',        department: 'Engineering', division: 'div_engineering', utilization: 78,  skills: ['Architecture','Postgres','Redis'],        available: 22 },
-  { id: 'r4', name: 'Priya Sharma',  type: 'fte',        department: 'Management',  division: 'div_engineering', utilization: 85,  skills: ['Product Strategy','OKR','Stakeholders'],  available: 15 },
+  { id: 'r4', name: 'Priya Sharma',  type: 'fte',        department: 'Management',  division: 'div_engineering', utilization: 85,  skills: ['Product Strategy','Roadmap','Stakeholders'],  available: 15 },
   { id: 'r5', name: 'Sneha Patel',   type: 'contractor', department: 'Sales',       division: 'div_sales',       utilization: 65,  skills: ['CRM','Salesforce','Lead Gen'],            available: 35 },
   { id: 'r6', name: 'Vikram Nair',   type: 'fte',        department: 'Sales',       division: 'div_sales',       utilization: 88,  skills: ['Enterprise Sales','Negotiation'],         available: 12 },
   { id: 'r7', name: 'Deepa Rao',     type: 'fte',        department: 'HR',          division: 'div_hr',          utilization: 60,  skills: ['L&D','HRMS','Recruitment'],               available: 40 },

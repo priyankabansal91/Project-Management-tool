@@ -41,7 +41,6 @@ const navItems: NavItem[] = [
   { label: 'Workflow Monitor',   path: '/workflow/monitor',     icon: MonitorCheck,     roles: ['org_admin','division_admin','vertical_head','project_manager','executive'], section: 'pm' },
   // Executive — executive + admin
   { label: 'Executive View',     path: '/executive',            icon: Crown,            roles: ['org_admin','executive'], section: 'executive' },
-  { label: 'OKR & Goals',        path: '/executive/okrs',       icon: Target,           roles: ['org_admin','executive'], section: 'executive' },
   { label: 'Financial Dashboard',path: '/executive/financial',  icon: DollarSign,       roles: ['org_admin','executive'], section: 'executive' },
   { label: 'Resource Dashboard', path: '/executive/resources',  icon: Users2,           roles: ['org_admin','executive'], section: 'executive' },
   { label: 'Roadmap',            path: '/roadmap',              icon: Map,              roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive','viewer'], section: 'executive' },

@@ -33,7 +33,6 @@ import { ExecutiveDashboardPage } from '@/pages/executive/ExecutiveDashboardPage
 import { RoadmapPage } from '@/pages/executive/RoadmapPage';
 import { StatusReportsPage } from '@/pages/executive/StatusReportsPage';
 import { RiskRegisterPage } from '@/pages/executive/RiskRegisterPage';
-import { OKRDashboardPage } from '@/pages/executive/OKRDashboardPage';
 import { ResourceDashboardPage } from '@/pages/executive/ResourceDashboardPage';
 import { FinancialDashboardPage } from '@/pages/executive/FinancialDashboardPage';
 import { DivisionsPage } from '@/pages/admin/DivisionsPage';
@@ -120,7 +119,6 @@ export default function App() {
         <Route path="/roadmap" element={<RoadmapPage />} />
         <Route path="/status-reports" element={<StatusReportsPage />} />
         <Route path="/risk-register" element={<RiskRegisterPage />} />
-        <Route path="/executive/okrs" element={<OKRDashboardPage />} />
         <Route path="/executive/resources" element={<ResourceDashboardPage />} />
         <Route path="/executive/financial" element={<FinancialDashboardPage />} />
         <Route path="/time-tracking" element={<TimeLoggingPage />} />

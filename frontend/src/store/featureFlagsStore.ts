@@ -28,7 +28,6 @@ export const DEFAULT_FEATURES: FeatureFlag[] = [
 
   // Executive
   { key: 'executive_view',   label: 'Executive Dashboard','description': 'Cross-division KPI overview',             category: 'Executive',  enabledForRoles: ['org_admin','executive'],                                                      isCore: false },
-  { key: 'okrs',             label: 'OKR & Goals',        description: 'Objectives and key results tracking',        category: 'Executive',  enabledForRoles: ['org_admin','executive'],                                                      isCore: false },
   { key: 'financial_dash',   label: 'Financial Dashboard','description': 'Budget and cost tracking',                 category: 'Executive',  enabledForRoles: ['org_admin','executive'],                                                      isCore: false },
   { key: 'roadmap',          label: 'Roadmap',            description: 'High-level product/project roadmap',         category: 'Executive',  enabledForRoles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive','viewer'],         isCore: false },
   { key: 'risk_register',    label: 'Risk Register',      description: 'Track and mitigate project risks',           category: 'Executive',  enabledForRoles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive'],                  isCore: false },
