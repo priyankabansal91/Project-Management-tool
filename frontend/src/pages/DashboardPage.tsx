@@ -481,7 +481,7 @@ export function DashboardPage() {
       {/* Stat Cards — all clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children animate-fade-in-up">
         <div
-          className="cursor-pointer group"
+          className="cursor-pointer group h-full"
           onClick={() => navigate('/projects')}
           title="Go to Projects"
         >
@@ -490,12 +490,12 @@ export function DashboardPage() {
             value={stats.active_projects}
             icon={FolderKanban}
             trend={{ value: 12, label: 'vs last month' }}
-            className="stat-tile card-hover group-hover:border-primary/40 transition-colors"
+            className="group-hover:border-primary/40"
           />
         </div>
 
         <div
-          className="cursor-pointer group"
+          className="cursor-pointer group h-full"
           onClick={() => navigate('/my-tasks')}
           title="View all tasks"
         >
@@ -504,12 +504,12 @@ export function DashboardPage() {
             value={stats.total_tasks}
             icon={ListTodo}
             subtitle={`${stats.completed_tasks} completed`}
-            className="stat-tile card-hover group-hover:border-primary/40 transition-colors"
+            className="group-hover:border-primary/40"
           />
         </div>
 
         <div
-          className="cursor-pointer group"
+          className="cursor-pointer group h-full"
           onClick={() => navigate('/my-tasks?tab=open')}
           title="View my open tasks"
         >
@@ -518,12 +518,12 @@ export function DashboardPage() {
             value={stats.my_open_tasks}
             icon={CheckSquare}
             iconColor="text-blue-600"
-            className="stat-tile card-hover group-hover:border-blue-300 transition-colors"
+            className="group-hover:border-blue-300"
           />
         </div>
 
         <div
-          className="cursor-pointer group"
+          className="cursor-pointer group h-full"
           onClick={() => navigate('/my-tasks?tab=overdue')}
           title="View overdue tasks"
         >
@@ -533,7 +533,7 @@ export function DashboardPage() {
             icon={AlertTriangle}
             iconColor="text-red-600"
             className={cn(
-              'stat-tile card-hover group-hover:border-red-300 transition-colors',
+              'group-hover:border-red-300',
               stats.overdue_tasks > 0 ? 'border-red-200' : ''
             )}
           />
