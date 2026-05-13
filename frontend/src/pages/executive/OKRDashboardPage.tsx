@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, TrendingUp, AlertCircle, CheckCircle, Loader2, RefreshCw, Target, Building2, X } from 'lucide-react';
+import { Plus, TrendingUp, AlertCircle, CheckCircle, Loader2, RefreshCw, Target, Building2, X, ChevronRight, FolderKanban } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +47,16 @@ const STATIC_OKRS = [
   },
 ];
 
+// ─── Project detail lookup (enriches linked-project keys) ─
+const PROJECT_DETAILS: Record<string, { name: string; status: string; completion: number; color: string; division: string }> = {
+  APIV3: { name: 'API v3 Upgrade',              status: 'In Progress', completion: 52, color: '#8B5CF6', division: 'Engineering' },
+  SALES: { name: 'Sales Pipeline CRM',          status: 'Active',      completion: 38, color: '#F59E0B', division: 'Sales' },
+  HR26:  { name: 'HR 2026 Initiative',           status: 'On Track',    completion: 70, color: '#10B981', division: 'HR' },
+  CPR:   { name: 'Customer Portal Redesign',     status: 'Active',      completion: 65, color: '#3B82F6', division: 'Engineering' },
+  AGM:   { name: 'API Gateway Migration',        status: 'In Progress', completion: 25, color: '#6366F1', division: 'Engineering' },
+  MAV2:  { name: 'Mobile App v2',                status: 'Planning',    completion: 40, color: '#EC4899', division: 'Engineering' },
+};
+
 // ─── Helpers ─────────────────────────────────────────────
 
 const healthConfig = {
@@ -54,6 +64,121 @@ const healthConfig = {
   behind:   { label: 'Behind',    icon: AlertCircle,   cls: 'bg-yellow-100 text-yellow-800', bar: '#F59E0B' },
   at_risk:  { label: 'At Risk',   icon: AlertCircle,   cls: 'bg-red-100 text-red-800',       bar: '#EF4444' },
 };
+
+// ─── Health detail panel ──────────────────────────────────
+
+type HealthKey = 'on_track' | 'behind' | 'at_risk';
+
+function HealthDetailPanel({ health, okrs, onClose }: { health: HealthKey; okrs: any[]; onClose: () => void }) {
+  const hc = healthConfig[health];
+  const HIcon = hc.icon;
+  const filtered = okrs.filter((o) => o.health === health);
+
+  return (
+    <>
+      {/* backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
+
+      {/* slide-in panel */}
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-[480px] bg-background border-l shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+        {/* panel header */}
+        <div className={cn('flex items-center justify-between px-5 py-4 border-b', hc.cls.replace('text-', 'border-').replace(/\s.*/, '') )}>
+          <div className="flex items-center gap-2">
+            <span className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold', hc.cls)}>
+              <HIcon className="w-4 h-4" /> {hc.label}
+            </span>
+            <span className="text-sm text-muted-foreground">{filtered.length} OKR{filtered.length !== 1 ? 's' : ''}</span>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-muted transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* panel body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {filtered.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">No OKRs with this status.</p>
+          )}
+
+          {filtered.map((okr) => {
+            const projects = (okr.linkedProjects || []).map((key: string) => ({
+              key,
+              ...(PROJECT_DETAILS[key] || { name: key, status: 'Active', completion: 0, color: '#94A3B8', division: '—' }),
+            }));
+
+            return (
+              <div key={okr.id} className="rounded-xl border bg-card p-4 space-y-4">
+                {/* OKR header */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm leading-snug">{okr.title}</h3>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {okr.division && <Badge variant="outline" className="text-[10px]">{okr.division}</Badge>}
+                      <Badge variant="secondary" className="text-[10px] capitalize">{okr.level} · {okr.quarter}</Badge>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-2xl font-bold" style={{ color: hc.bar }}>{okr.progress}%</p>
+                    <p className="text-[10px] text-muted-foreground">Progress</p>
+                  </div>
+                </div>
+
+                {/* progress bar */}
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div className="h-2 rounded-full transition-all" style={{ width: `${okr.progress}%`, backgroundColor: hc.bar }} />
+                </div>
+
+                {/* key results */}
+                {(okr.keyResults || []).length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Key Results</p>
+                    {okr.keyResults.map((kr: any) => (
+                      <div key={kr.id} className="rounded-lg bg-muted/40 px-3 py-2 flex items-center justify-between gap-3">
+                        <span className="text-xs flex-1">{kr.title}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="w-16 bg-muted rounded-full h-1.5">
+                            <div className="h-1.5 rounded-full bg-blue-500 transition-all" style={{ width: `${kr.progress}%` }} />
+                          </div>
+                          <span className="text-xs font-semibold w-8 text-right">{kr.progress}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* linked projects */}
+                {projects.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      <FolderKanban className="w-3.5 h-3.5" /> Linked Projects
+                    </p>
+                    {projects.map((proj: any) => (
+                      <div key={proj.key} className="rounded-lg border bg-background px-3 py-2.5 flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                          style={{ backgroundColor: proj.color }}>
+                          {proj.key.substring(0, 2)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{proj.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{proj.division}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-bold" style={{ color: proj.color }}>{proj.completion}%</p>
+                          <p className="text-[10px] text-muted-foreground">{proj.status}</p>
+                        </div>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
 
 // ─── OKR card ─────────────────────────────────────────────
 
@@ -127,6 +252,7 @@ export function OKRDashboardPage() {
   const divisionName = activeDivision?.divisionName ?? null;
 
   const [showNewOKR, setShowNewOKR] = useState(false);
+  const [selectedHealth, setSelectedHealth] = useState<HealthKey | null>(null);
   const [form, setForm] = useState({ title: '', level: 'company', quarter: 'Q2', health: 'on_track' });
   const [formError, setFormError] = useState('');
   const createOKR = useCreateOKR();
@@ -209,17 +335,31 @@ export function OKRDashboardPage() {
 
       {/* Health + avg progress summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'On Track', count: healthCounts.on_track, cls: 'text-green-600',  bg: 'bg-green-50',  Icon: CheckCircle },
-          { label: 'Behind',   count: healthCounts.behind,   cls: 'text-yellow-600', bg: 'bg-yellow-50', Icon: AlertCircle },
-          { label: 'At Risk',  count: healthCounts.at_risk,  cls: 'text-red-600',    bg: 'bg-red-50',    Icon: AlertCircle },
-          { label: 'Avg Progress', count: `${avgProgress}%`, cls: 'text-blue-600',   bg: 'bg-blue-50',   Icon: TrendingUp },
-        ].map(({ label, count, cls, bg, Icon }) => (
-          <Card key={label} className={cn('p-5', bg)}>
+        {([
+          { label: 'On Track', count: healthCounts.on_track, cls: 'text-green-600',  bg: 'bg-green-50 dark:bg-green-950/30',  Icon: CheckCircle, health: 'on_track' as HealthKey },
+          { label: 'Behind',   count: healthCounts.behind,   cls: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-950/30', Icon: AlertCircle, health: 'behind'   as HealthKey },
+          { label: 'At Risk',  count: healthCounts.at_risk,  cls: 'text-red-600',    bg: 'bg-red-50 dark:bg-red-950/30',       Icon: AlertCircle, health: 'at_risk'  as HealthKey },
+          { label: 'Avg Progress', count: `${avgProgress}%`, cls: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-blue-950/30',     Icon: TrendingUp,  health: null },
+        ] as const).map(({ label, count, cls, bg, Icon, health }) => (
+          <Card
+            key={label}
+            className={cn(
+              'p-5 transition-all duration-150',
+              bg,
+              health
+                ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:ring-2 hover:ring-current/20'
+                : '',
+              selectedHealth === health && health ? 'ring-2 ring-current/30 shadow-md' : '',
+            )}
+            onClick={() => health && setSelectedHealth(selectedHealth === health ? null : health)}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">{label}</p>
                 <p className={cn('text-3xl font-bold', cls)}>{count}</p>
+                {health && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Click to view →</p>
+                )}
               </div>
               <Icon className={cn('w-10 h-10 opacity-20', cls)} />
             </div>
@@ -288,6 +428,15 @@ export function OKRDashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Health detail panel */}
+      {selectedHealth && (
+        <HealthDetailPanel
+          health={selectedHealth}
+          okrs={okrs}
+          onClose={() => setSelectedHealth(null)}
+        />
+      )}
 
       {/* New OKR modal */}
       {showNewOKR && (
