@@ -5,7 +5,7 @@ import {
   Calendar, Clock, Target, Sparkles, Activity, Layers, ClipboardList, PieChart,
   Building2, KeyRound, UserPlus, History, Download, CheckCircle, FileText, Gauge,
   Crown, Map, ClipboardCheck, AlertTriangle, DollarSign, Users2,
-  LayoutGrid, Lock, Briefcase, Zap, GanttChartSquare, Network, UserCheck,
+  LayoutGrid, Lock, Briefcase, Zap, GanttChartSquare, Network,
   BarChart2, MonitorCheck, ShieldCheck, BookOpen, TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -38,7 +38,6 @@ const navItems: NavItem[] = [
   { label: 'Project Tracking',   path: '/project-tracking',     icon: Gauge,            roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','executive','viewer'], section: 'pm' },
   { label: 'AI Features',        path: '/ai',                   icon: Sparkles,         roles: ['org_admin','division_admin','project_manager'], section: 'pm' },
   { label: 'Gantt Timeline',     path: '/gantt',                icon: GanttChartSquare, roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead'], section: 'pm' },
-  { label: 'Attendance',         path: '/attendance',           icon: UserCheck,        roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member'], section: 'pm' },
   { label: 'Workflow Monitor',   path: '/workflow/monitor',     icon: MonitorCheck,     roles: ['org_admin','division_admin','vertical_head','project_manager','executive'], section: 'pm' },
   // Executive — executive + admin
   { label: 'Executive View',     path: '/executive',            icon: Crown,            roles: ['org_admin','executive'], section: 'executive' },

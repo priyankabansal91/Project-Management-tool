@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { useMyTasks, useProjects, useWeeklySummary } from '@/api/hooks';
-import { useAttendanceStore } from '@/store/attendanceStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
@@ -59,9 +58,6 @@ export function ProfilePage() {
   const { data: projectsData, isLoading: projectsLoading } = useProjects();
   const { data: tasksData, isLoading: tasksLoading } = useMyTasks();
   const { data: weekSummary, isLoading: timeLoading } = useWeeklySummary();
-  const getMonthRecords = useAttendanceStore(s => s.getMonthRecords);
-  const leaveBalance = useAttendanceStore(s => s.leaveBalance);
-
   const [taskTab, setTaskTab] = useState<TaskTab>('all');
 
   const projects: any[] = (projectsData as any)?.items ?? [];
@@ -70,13 +66,7 @@ export function ProfilePage() {
   const doneTasks = allTasks.filter(t => !!t.completed_at);
   const displayTasks = taskTab === 'all' ? allTasks : taskTab === 'open' ? openTasks : doneTasks;
 
-  // Attendance — month is 0-indexed to match getMonth()
   const now = new Date();
-  const monthRecords = user ? getMonthRecords(user.id, now.getFullYear(), now.getMonth()) : [];
-  const presentCount = monthRecords.filter(r => ['present', 'wfh', 'half_day'].includes(r.status)).length;
-  const leaveCount = monthRecords.filter(r => r.status === 'leave').length;
-  const absentCount = monthRecords.filter(r => r.status === 'absent').length;
-  const balance = (user && leaveBalance[user.id]) ?? { sick: 0, casual: 0, earned: 0 };
 
   // Time by day
   const dayHours: Record<string, number> = weekSummary?.byDay ?? {};
@@ -354,57 +344,6 @@ export function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Attendance This Month */}
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-1.5">
-                  <CalendarDays className="h-4 w-4" />
-                  Attendance
-                </CardTitle>
-                <Link to="/attendance" className="text-xs text-primary hover:underline flex items-center gap-1">
-                  Details <ChevronRight className="h-3 w-3" />
-                </Link>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
-              </p>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="text-center p-2 rounded-lg bg-green-50 dark:bg-green-900/20">
-                  <p className="text-lg font-bold text-green-600">{presentCount}</p>
-                  <p className="text-[11px] text-muted-foreground">Present</p>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
-                  <p className="text-lg font-bold text-yellow-600">{leaveCount}</p>
-                  <p className="text-[11px] text-muted-foreground">On Leave</p>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-red-50 dark:bg-red-900/20">
-                  <p className="text-lg font-bold text-red-600">{absentCount}</p>
-                  <p className="text-[11px] text-muted-foreground">Absent</p>
-                </div>
-              </div>
-
-              <div className="border-t pt-3">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Leave Balance</p>
-                <div className="grid grid-cols-3 gap-1 text-center">
-                  <div>
-                    <p className="text-base font-bold">{balance.sick}</p>
-                    <p className="text-[11px] text-muted-foreground">Sick</p>
-                  </div>
-                  <div>
-                    <p className="text-base font-bold">{balance.casual}</p>
-                    <p className="text-[11px] text-muted-foreground">Casual</p>
-                  </div>
-                  <div>
-                    <p className="text-base font-bold">{balance.earned}</p>
-                    <p className="text-[11px] text-muted-foreground">Earned</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
