@@ -60,6 +60,7 @@ const navItems: NavItem[] = [
   { label: 'Task Templates',     path: '/admin/templates',      icon: ClipboardList,    roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead'], section: 'admin' },
   { label: 'Custom Fields',      path: '/admin/custom-fields',  icon: FormInput,        roles: ['org_admin'], section: 'admin' },
   { label: 'Divisions',          path: '/admin/divisions',      icon: Building2,        roles: ['org_admin'], section: 'admin' },
+  { label: 'Org Hierarchy',      path: '/admin/hierarchy',      icon: Layers,           roles: ['org_admin','division_admin','vertical_head','project_manager','team_lead','member','executive','viewer'], section: 'admin' },
   { label: 'Verticals',          path: '/admin/verticals',      icon: Network,          roles: ['org_admin','division_admin','vertical_head'], section: 'admin' },
   { label: 'Permission Matrix',  path: '/admin/permissions',    icon: ShieldCheck,      roles: ['org_admin'], section: 'admin' },
   { label: 'External Users',     path: '/admin/external-users', icon: UserPlus,         roles: ['org_admin'], section: 'admin' },

@@ -36,6 +36,7 @@ import { RiskRegisterPage } from '@/pages/executive/RiskRegisterPage';
 import { ResourceDashboardPage } from '@/pages/executive/ResourceDashboardPage';
 import { FinancialDashboardPage } from '@/pages/executive/FinancialDashboardPage';
 import { DivisionsPage } from '@/pages/admin/DivisionsPage';
+import { HierarchyPage } from '@/pages/admin/HierarchyPage';
 import { CustomRolesPage } from '@/pages/admin/CustomRolesPage';
 import { ExternalUsersPage } from '@/pages/admin/ExternalUsersPage';
 import { VersioningPage } from '@/pages/admin/VersioningPage';
@@ -139,6 +140,7 @@ export default function App() {
         <Route path="/admin/audit-log" element={<AuditLogPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/divisions" element={<DivisionsPage />} />
+        <Route path="/admin/hierarchy" element={<HierarchyPage />} />
         <Route path="/admin/division-config" element={<DivisionConfigPage />} />
         <Route path="/admin/handoff" element={<AdminHandoffPage />} />
         <Route path="/admin/roles" element={<CustomRolesPage />} />

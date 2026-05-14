@@ -101,6 +101,7 @@ model Organization {
   aiLogs          AiLog[]
   divisions       Division[]
   verticals       Vertical[]
+  milestones      Milestone[]
   customRoles     CustomRole[]
   externalUsers   ExternalUser[]
   exports         Export[]
@@ -158,6 +159,7 @@ model Vertical {
   org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   division    Division?    @relation(fields: [divisionId], references: [id], onDelete: SetNull)
   head        User?        @relation("VerticalHead", fields: [headId], references: [id], onDelete: SetNull)
+  projects    Project[]
 
   @@map("verticals")
 }
@@ -384,6 +386,7 @@ model Project {
   id               String            @id @default(uuid())
   orgId            String            @map("org_id")
   divisionId       String?           @map("division_id")
+  verticalId       String?           @map("vertical_id")
   name             String
   description      String?
   key              String
@@ -404,13 +407,39 @@ model Project {
 
   organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   division       Division?       @relation(fields: [divisionId], references: [id])
+  vertical       Vertical?       @relation(fields: [verticalId], references: [id])
   workflowConfig WorkflowConfig? @relation(fields: [workflowConfigId], references: [id])
   members        ProjectMember[]
   tasks          Task[]
   sprints        Sprint[]
+  milestones     Milestone[]
 
   @@unique([orgId, key])
   @@map("projects")
+}
+
+// ─── MILESTONES ─────────────────────────────────────────
+
+model Milestone {
+  id          String    @id @default(uuid())
+  orgId       String    @map("org_id")
+  projectId   String    @map("project_id")
+  title       String
+  description String?
+  status      String    @default("pending")
+  dueDate     DateTime? @map("due_date")
+  startDate   DateTime? @map("start_date")
+  progress    Int       @default(0)
+  completedAt DateTime? @map("completed_at")
+  createdBy   String    @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+
+  @@map("milestones")
 }
 
 // ─── PROJECT MEMBERS ────────────────────────────────────
@@ -454,6 +483,7 @@ model Task {
   tags               String[]     @default([])
   customFields       Json         @default("{}") @map("custom_fields")
   attachments        Json         @default("[]")
+  milestoneId        String?      @map("milestone_id")
   formTemplateId     String?      @map("form_template_id")
   formSubmissionData Json?        @map("form_submission_data")
   sprintId           String?      @map("sprint_id")
@@ -466,6 +496,7 @@ model Task {
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone    Milestone?   @relation(fields: [milestoneId], references: [id])
   sprint       Sprint?      @relation(fields: [sprintId], references: [id])
   parentTask   Task?        @relation("Subtasks", fields: [parentTaskId], references: [id])
   subtasks     Task[]       @relation("Subtasks")
@@ -687,19 +718,23 @@ model Export {
 }
 
 model Approval {
-  id               String   @id @default(uuid())
-  orgId            String   @map("org_id")
-  workflowId       String   @map("workflow_id")
-  title            String
-  description      String?
-  content          String?
-  status           String   @default("pending")
-  currentStep      Int      @default(1) @map("current_step")
-  requestedBy      String   @map("requested_by")
-  relatedTaskId    String?  @map("related_task_id")
-  relatedProjectId String?  @map("related_project_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(uuid())
+  orgId               String   @map("org_id")
+  workflowId          String   @map("workflow_id")
+  title               String
+  description         String?
+  content             String?
+  status              String   @default("pending")
+  currentStep         Int      @default(1) @map("current_step")
+  requestedBy         String   @map("requested_by")
+  relatedTaskId       String?  @map("related_task_id")
+  relatedProjectId    String?  @map("related_project_id")
+  relatedMilestoneId  String?  @map("related_milestone_id")
+  relatedVerticalId   String?  @map("related_vertical_id")
+  relatedDivisionId   String?  @map("related_division_id")
+  hierarchyLevel      String?  @map("hierarchy_level") // task | milestone | project | vertical | division
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   organization    Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   requestedByUser User             @relation("ApprovalRequester", fields: [requestedBy], references: [id])
