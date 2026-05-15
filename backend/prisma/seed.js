@@ -23,12 +23,14 @@ async function main() {
 
   // ── Users ────────────────────────────────────────────────
   const users = [
-    { id: 'dev-org_admin-id',       email: 'admin@example.local',     firstName: 'Priya',   lastName: 'Sharma' },
-    { id: 'dev-division_admin-id',  email: 'div-admin@example.local', firstName: 'Vikram',  lastName: 'Mehta' },
-    { id: 'dev-project_manager-id', email: 'pm@example.local',        firstName: 'Anjali',  lastName: 'Singh' },
-    { id: 'dev-member-id',          email: 'member@example.local',    firstName: 'Ravi',    lastName: 'Kumar' },
-    { id: 'dev-executive-id',       email: 'executive@example.local', firstName: 'Sunita',  lastName: 'Reddy' },
-    { id: 'dev-viewer-id',          email: 'viewer@example.local',    firstName: 'Arjun',   lastName: 'Patel' },
+    { id: 'dev-org_admin-id',       email: 'admin@example.local',          firstName: 'Priya',   lastName: 'Sharma' },
+    { id: 'dev-division_admin-id',  email: 'div-admin@example.local',      firstName: 'Vikram',  lastName: 'Mehta' },
+    { id: 'dev-vertical_head-id',   email: 'vertical-head@example.local',  firstName: 'Deepa',   lastName: 'Nair' },
+    { id: 'dev-project_manager-id', email: 'pm@example.local',             firstName: 'Anjali',  lastName: 'Singh' },
+    { id: 'dev-team_lead-id',       email: 'team-lead@example.local',      firstName: 'Rahul',   lastName: 'Pillai' },
+    { id: 'dev-member-id',          email: 'member@example.local',         firstName: 'Ravi',    lastName: 'Kumar' },
+    { id: 'dev-executive-id',       email: 'executive@example.local',      firstName: 'Sunita',  lastName: 'Reddy' },
+    { id: 'dev-viewer-id',          email: 'viewer@example.local',         firstName: 'Arjun',   lastName: 'Patel' },
   ];
 
   for (const u of users) {
@@ -43,7 +45,9 @@ async function main() {
   const orgMembers = [
     { userId: 'dev-org_admin-id',       role: 'org_admin',       isOwner: true },
     { userId: 'dev-division_admin-id',  role: 'division_admin',  isOwner: false },
+    { userId: 'dev-vertical_head-id',   role: 'vertical_head',   isOwner: false },
     { userId: 'dev-project_manager-id', role: 'project_manager', isOwner: false },
+    { userId: 'dev-team_lead-id',       role: 'team_lead',       isOwner: false },
     { userId: 'dev-member-id',          role: 'member',          isOwner: false },
     { userId: 'dev-executive-id',       role: 'executive',       isOwner: false },
     { userId: 'dev-viewer-id',          role: 'viewer',          isOwner: false },
