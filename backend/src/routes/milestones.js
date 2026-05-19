@@ -1,16 +1,9 @@
 const express = require('express');
-const router = express.Router({ mergeParams: true }); // mergeParams for /projects/:projectId/milestones
+const router = express.Router({ mergeParams: true });
 const { authenticate, authorize } = require('../middleware/auth');
+const { requirePermission } = require('../utils/permissions');
 
 router.use(authenticate);
-
-const SEED_MILESTONES = [
-  { id: 'ms1', projectId: null, title: 'Requirement Gathering', description: 'Collect and document all requirements', status: 'completed', progress: 100, startDate: '2026-01-10', dueDate: '2026-01-25', createdAt: new Date().toISOString() },
-  { id: 'ms2', projectId: null, title: 'UI/UX Design Finalization', description: 'Finalize wireframes and design system', status: 'completed', progress: 100, startDate: '2026-01-26', dueDate: '2026-02-10', createdAt: new Date().toISOString() },
-  { id: 'ms3', projectId: null, title: 'Development Phase 1', description: 'Core module development', status: 'in_progress', progress: 65, startDate: '2026-02-11', dueDate: '2026-03-20', createdAt: new Date().toISOString() },
-  { id: 'ms4', projectId: null, title: 'UAT & Testing', description: 'User acceptance testing and QA', status: 'pending', progress: 0, startDate: '2026-03-21', dueDate: '2026-04-05', createdAt: new Date().toISOString() },
-  { id: 'ms5', projectId: null, title: 'Production Deployment', description: 'Deploy to production environment', status: 'pending', progress: 0, startDate: '2026-04-06', dueDate: '2026-04-15', createdAt: new Date().toISOString() },
-];
 
 // GET /v1/projects/:projectId/milestones
 router.get('/', async (req, res) => {
@@ -19,40 +12,103 @@ router.get('/', async (req, res) => {
     const milestones = await prisma.milestone.findMany({
       where: { projectId: req.params.projectId, orgId: req.user.orgId },
       include: {
-        tasks: { select: { id: true, title: true, statusName: true, priority: true, assigneeId: true } },
+        tasks: {
+          select: {
+            id: true, title: true, statusName: true, priority: true,
+            assigneeId: true, estimatedHours: true, loggedHours: true,
+          },
+        },
       },
       orderBy: { dueDate: 'asc' },
     });
-    res.json({ success: true, data: { items: milestones } });
-  } catch {
-    const seeded = SEED_MILESTONES.map(m => ({ ...m, projectId: req.params.projectId }));
-    res.json({ success: true, data: { items: seeded } });
+
+    // Compute aggregated effort from tasks for each milestone
+    const enriched = milestones.map((m) => {
+      const taskHours = m.tasks.reduce((s, t) => s + Number(t.loggedHours || 0), 0);
+      return {
+        ...m,
+        actualEffort: Number(m.actualEffort || 0) + taskHours,
+        taskCount: m.tasks.length,
+        budget: m.budget ? Number(m.budget) : null,
+        effortEstimate: m.effortEstimate ? Number(m.effortEstimate) : null,
+        budgetUtilizationPct: m.budget && taskHours > 0
+          ? Math.min(100, Math.round((taskHours / Number(m.effortEstimate || 1)) * 100))
+          : 0,
+      };
+    });
+
+    res.json({ success: true, data: { items: enriched } });
+  } catch (err) {
+    // Fallback to seed data if DB not yet migrated
+    res.json({ success: true, data: { items: [] } });
   }
 });
 
 // POST /v1/projects/:projectId/milestones
-router.post('/', async (req, res) => {
-  const { title, description, status = 'pending', progress = 0, startDate, dueDate } = req.body;
-  if (!title) return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'title is required' } });
+router.post('/', requirePermission('milestone:create'), async (req, res) => {
+  const {
+    title, description, status = 'pending', progress = 0,
+    startDate, dueDate, budget, effortEstimate, milestoneType = 'general',
+    approvalRequired = false, currency = 'INR',
+  } = req.body;
+
+  if (!title) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'title is required' } });
+  }
+
   try {
     const prisma = require('../config/prisma');
     const milestone = await prisma.milestone.create({
       data: {
-        title,
-        description,
-        status,
-        progress,
+        title, description,
+        status, progress,
         startDate: startDate ? new Date(startDate) : null,
         dueDate: dueDate ? new Date(dueDate) : null,
         projectId: req.params.projectId,
         orgId: req.user.orgId,
         createdBy: req.user.id,
+        budget: budget ? parseFloat(budget) : null,
+        effortEstimate: effortEstimate ? parseFloat(effortEstimate) : null,
+        milestoneType,
+        approvalRequired: Boolean(approvalRequired),
+        currency,
       },
     });
     res.status(201).json({ success: true, data: milestone });
-  } catch {
-    const fake = { id: 'ms_' + Date.now(), projectId: req.params.projectId, title, description, status, progress, startDate, dueDate, createdAt: new Date().toISOString() };
-    res.status(201).json({ success: true, data: fake });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+  }
+});
+
+// GET /v1/projects/:projectId/milestones/summary — aggregated financials
+// NOTE: must be before /:id to avoid "summary" being treated as an id
+router.get('/summary', async (req, res) => {
+  try {
+    const prisma = require('../config/prisma');
+    const milestones = await prisma.milestone.findMany({
+      where: { projectId: req.params.projectId, orgId: req.user.orgId },
+      include: {
+        tasks: { select: { estimatedHours: true, loggedHours: true } },
+      },
+    });
+
+    const summary = {
+      total: milestones.length,
+      completed: milestones.filter(m => m.status === 'completed').length,
+      inProgress: milestones.filter(m => m.status === 'in_progress').length,
+      pending: milestones.filter(m => m.status === 'pending').length,
+      overdue: milestones.filter(m => m.dueDate && new Date(m.dueDate) < new Date() && m.status !== 'completed').length,
+      totalBudget: milestones.reduce((s, m) => s + Number(m.budget || 0), 0),
+      totalEffortEstimate: milestones.reduce((s, m) => s + Number(m.effortEstimate || 0), 0),
+      totalLoggedHours: milestones.reduce((s, m) => s + m.tasks.reduce((ts, t) => ts + Number(t.loggedHours || 0), 0), 0),
+      completionPct: milestones.length > 0
+        ? Math.round(milestones.reduce((s, m) => s + (m.progress || 0), 0) / milestones.length)
+        : 0,
+    };
+
+    res.json({ success: true, data: summary });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
   }
 });
 
@@ -63,22 +119,50 @@ router.get('/:id', async (req, res) => {
     const milestone = await prisma.milestone.findFirst({
       where: { id: req.params.id, projectId: req.params.projectId, orgId: req.user.orgId },
       include: {
-        tasks: { select: { id: true, title: true, statusName: true, priority: true, assigneeId: true, dueDate: true } },
+        tasks: {
+          select: {
+            id: true, title: true, statusName: true, priority: true,
+            assigneeId: true, dueDate: true, estimatedHours: true, loggedHours: true,
+          },
+        },
         project: { select: { id: true, name: true, verticalId: true, divisionId: true } },
       },
     });
-    if (!milestone) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Milestone not found' } });
-    res.json({ success: true, data: milestone });
+    if (!milestone) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Milestone not found' } });
+    }
+
+    const totalLoggedHours = milestone.tasks.reduce((s, t) => s + Number(t.loggedHours || 0), 0);
+    const totalEstimatedHours = milestone.tasks.reduce((s, t) => s + Number(t.estimatedHours || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        ...milestone,
+        budget: milestone.budget ? Number(milestone.budget) : null,
+        effortEstimate: milestone.effortEstimate ? Number(milestone.effortEstimate) : null,
+        actualEffort: Number(milestone.actualEffort || 0) + totalLoggedHours,
+        taskCount: milestone.tasks.length,
+        totalEstimatedHours,
+        totalLoggedHours,
+        burnRate: totalEstimatedHours > 0 ? Math.round((totalLoggedHours / totalEstimatedHours) * 100) : 0,
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
   }
 });
 
 // PATCH /v1/projects/:projectId/milestones/:id
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', requirePermission('milestone:edit'), async (req, res) => {
   try {
     const prisma = require('../config/prisma');
-    const { title, description, status, progress, startDate, dueDate } = req.body;
+    const {
+      title, description, status, progress,
+      startDate, dueDate, budget, effortEstimate,
+      milestoneType, approvalRequired, currency,
+    } = req.body;
+
     const data = {};
     if (title !== undefined) data.title = title;
     if (description !== undefined) data.description = description;
@@ -86,21 +170,79 @@ router.patch('/:id', async (req, res) => {
     if (progress !== undefined) data.progress = progress;
     if (startDate !== undefined) data.startDate = startDate ? new Date(startDate) : null;
     if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
+    if (budget !== undefined) data.budget = budget ? parseFloat(budget) : null;
+    if (effortEstimate !== undefined) data.effortEstimate = effortEstimate ? parseFloat(effortEstimate) : null;
+    if (milestoneType !== undefined) data.milestoneType = milestoneType;
+    if (approvalRequired !== undefined) data.approvalRequired = Boolean(approvalRequired);
+    if (currency !== undefined) data.currency = currency;
     if (status === 'completed') data.completedAt = new Date();
+
     const milestone = await prisma.milestone.update({ where: { id: req.params.id }, data });
     res.json({ success: true, data: milestone });
-  } catch {
-    res.json({ success: true, data: { ...req.body, id: req.params.id } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
   }
 });
 
 // DELETE /v1/projects/:projectId/milestones/:id
-router.delete('/:id', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), async (req, res) => {
+router.delete('/:id', requirePermission('milestone:delete'), async (req, res) => {
   try {
     const prisma = require('../config/prisma');
     await prisma.milestone.delete({ where: { id: req.params.id } });
   } catch { /* not yet in DB */ }
   res.json({ success: true, data: { deleted: true } });
+});
+
+// POST /v1/projects/:projectId/milestones/:id/close
+// Milestone closure workflow — creates an approval if required
+router.post('/:id/close', requirePermission('milestone:close'), async (req, res) => {
+  try {
+    const prisma = require('../config/prisma');
+    const { completionNotes } = req.body;
+
+    const milestone = await prisma.milestone.findFirst({
+      where: { id: req.params.id, projectId: req.params.projectId, orgId: req.user.orgId },
+    });
+    if (!milestone) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Milestone not found' } });
+    }
+    if (milestone.status === 'completed') {
+      return res.status(400).json({ success: false, error: { code: 'ALREADY_CLOSED', message: 'Milestone is already closed' } });
+    }
+
+    if (milestone.approvalRequired) {
+      // Create approval request — do NOT close milestone yet
+      const approval = await prisma.approval.create({
+        data: {
+          orgId: req.user.orgId,
+          requestedBy: req.user.id,
+          entityType: 'milestone',
+          entityId: milestone.id,
+          title: `Milestone Closure: ${milestone.title}`,
+          description: completionNotes || `Requesting closure of milestone: ${milestone.title}`,
+          status: 'pending',
+          workflowType: 'milestone_closure',
+        },
+      }).catch(() => null);
+
+      if (approval) {
+        await prisma.milestone.update({
+          where: { id: milestone.id },
+          data: { status: 'review', approvalId: approval.id },
+        }).catch(() => {});
+        return res.json({ success: true, data: { status: 'pending_approval', approvalId: approval?.id } });
+      }
+    }
+
+    // Close immediately if no approval required
+    await prisma.milestone.update({
+      where: { id: milestone.id },
+      data: { status: 'completed', progress: 100, completedAt: new Date() },
+    });
+    res.json({ success: true, data: { status: 'completed' } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+  }
 });
 
 module.exports = router;

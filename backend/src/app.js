@@ -41,6 +41,7 @@ const auditLogRoutes = require('./routes/auditLog');
 const misRoutes = require('./routes/mis');
 const verticalsRoutes = require('./routes/verticals');
 const milestonesRoutes = require('./routes/milestones');
+const dashboardV2Routes = require('./routes/dashboardV2');
 
 
 const app = express();
@@ -155,6 +156,7 @@ app.use('/v1/portfolio', portfolioRoutes);
 app.use('/v1/sprints', sprintRoutes);
 app.use('/v1/audit-logs', auditLogRoutes);
 app.use('/v1/mis', misRoutes);
+app.use('/v1/dashboard/v2', dashboardV2Routes);
 app.use('/v1/verticals', verticalsRoutes);
 
 // ─── 404 ────────────────────────────────────────────────

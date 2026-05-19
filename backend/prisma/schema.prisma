@@ -421,19 +421,26 @@ model Project {
 // ─── MILESTONES ─────────────────────────────────────────
 
 model Milestone {
-  id          String    @id @default(uuid())
-  orgId       String    @map("org_id")
-  projectId   String    @map("project_id")
-  title       String
-  description String?
-  status      String    @default("pending")
-  dueDate     DateTime? @map("due_date")
-  startDate   DateTime? @map("start_date")
-  progress    Int       @default(0)
-  completedAt DateTime? @map("completed_at")
-  createdBy   String    @map("created_by")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id               String    @id @default(uuid())
+  orgId            String    @map("org_id")
+  projectId        String    @map("project_id")
+  title            String
+  description      String?
+  status           String    @default("pending")
+  dueDate          DateTime? @map("due_date")
+  startDate        DateTime? @map("start_date")
+  progress         Int       @default(0)
+  completedAt      DateTime? @map("completed_at")
+  createdBy        String    @map("created_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  budget           Decimal?  @map("budget")
+  effortEstimate   Decimal?  @map("effort_estimate")
+  actualEffort     Decimal   @default(0) @map("actual_effort")
+  milestoneType    String    @default("general") @map("milestone_type")
+  approvalRequired Boolean   @default(false) @map("approval_required")
+  approvalId       String?   @map("approval_id")
+  currency         String    @default("INR") @map("currency")
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -720,7 +727,7 @@ model Export {
 model Approval {
   id                  String   @id @default(uuid())
   orgId               String   @map("org_id")
-  workflowId          String   @map("workflow_id")
+  workflowId          String?  @map("workflow_id")
   title               String
   description         String?
   content             String?
@@ -733,6 +740,9 @@ model Approval {
   relatedVerticalId   String?  @map("related_vertical_id")
   relatedDivisionId   String?  @map("related_division_id")
   hierarchyLevel      String?  @map("hierarchy_level") // task | milestone | project | vertical | division
+  entityType          String?  @map("entity_type")     // task, milestone, project
+  entityId            String?  @map("entity_id")
+  workflowType        String   @default("general") @map("workflow_type")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
