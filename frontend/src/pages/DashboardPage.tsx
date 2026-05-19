@@ -1,5 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { FolderKanban, CheckSquare, AlertTriangle, ListTodo, Clock, TrendingUp, Users, Zap, BarChart3, Shield } from 'lucide-react';
+import {
+  FolderKanban, CheckSquare, AlertTriangle, ListTodo, Clock, TrendingUp,
+  Users, Zap, BarChart3, Shield, Flag, Target, Calendar, ArrowRight,
+  RefreshCw, ChevronRight, Bell, CheckCircle2, Circle, AlertCircle,
+  Layers, Activity, Wallet, Timer,
+} from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,36 +12,23 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/authStore';
 import { cn, timeAgo, priorityColor } from '@/lib/utils';
-import { useDashboard } from '@/api/hooks';
+import {
+  useDashboard, useDashboardV2, useMilestoneBurnDashboard,
+  usePendingApprovals, useMyTasks, useWeeklySummary, useProjects,
+  useDivisionOverviewMIS, useExecutiveRollup,
+} from '@/api/hooks';
 
-const mockStats = {
-  total_projects: 5, active_projects: 3, total_tasks: 47, completed_tasks: 18, overdue_tasks: 3, my_open_tasks: 8,
-};
-
-const mockProjectProgress = [
-  { project_id: '1', name: 'Customer Portal Redesign', key: 'CPR', color: '#3B82F6', total_tasks: 15, completed_tasks: 7, completion_pct: 46.7 },
-  { project_id: '2', name: 'API Gateway Migration',    key: 'AGM', color: '#8B5CF6', total_tasks: 12, completed_tasks: 3, completion_pct: 25.0 },
-  { project_id: '3', name: 'Mobile App v2',            key: 'MAV2',color: '#F59E0B', total_tasks: 20, completed_tasks: 8, completion_pct: 40.0 },
-];
-
-const mockActivity = [
-  { actor: 'Carol Johnson', action: 'status_changed', entity: 'CPR-1', detail: 'In Progress → In Review', at: new Date(Date.now() - 3600000).toISOString() },
-  { actor: 'David Park',    action: 'created',        entity: 'AGM-5', detail: 'Created new task',        at: new Date(Date.now() - 7200000).toISOString() },
-  { actor: 'Bob Martinez',  action: 'commented',      entity: 'CPR-3', detail: 'Left a comment',          at: new Date(Date.now() - 14400000).toISOString() },
-  { actor: 'Alice Chen',    action: 'assigned',        entity: 'MAV2-2',detail: 'Assigned to Carol',      at: new Date(Date.now() - 28800000).toISOString() },
-];
-
-const mockTeamWorkload = [
-  { user_id: '1', name: 'Carol Johnson', role: 'member',          open_tasks: 6, high_priority: 2, overdue_tasks: 1, estimated_hours: 24 },
-  { user_id: '2', name: 'David Park',    role: 'member',          open_tasks: 5, high_priority: 1, overdue_tasks: 0, estimated_hours: 18 },
-  { user_id: '3', name: 'Bob Martinez',  role: 'project_manager', open_tasks: 3, high_priority: 1, overdue_tasks: 1, estimated_hours: 12 },
-];
+// ─── Shared helpers ───────────────────────────────────────────────────────────
 
 const ROLE_LABEL: Record<string, string> = {
-  org_admin: 'System Admin', division_admin: 'Division Admin',
-  vertical_head: 'Vertical Head', team_lead: 'Team Lead',
-  project_manager: 'Project Lead', member: 'Project Team Member',
-  executive: 'Leadership', viewer: 'Others',
+  org_admin: 'System Admin',
+  division_admin: 'Division Head',
+  vertical_head: 'Vertical Head',
+  team_lead: 'Team Lead',
+  project_manager: 'Project Lead',
+  member: 'Team Member',
+  executive: 'Leadership',
+  viewer: 'Observer',
 };
 
 function safeDetail(detail: unknown): string {
@@ -55,179 +47,565 @@ function safeDetail(detail: unknown): string {
   return '';
 }
 
-// ─── Role-specific section components ────────────────────────────────────────
+function ragColor(pct: number): { bg: string; border: string; text: string; label: string } {
+  if (pct >= 70) return { bg: 'bg-green-50 dark:bg-green-950/30', border: 'border-green-300', text: 'text-green-700 dark:text-green-300', label: 'On Track' };
+  if (pct >= 40) return { bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-300', text: 'text-amber-700 dark:text-amber-300', label: 'At Risk' };
+  return { bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-300', text: 'text-red-700 dark:text-red-300', label: 'Off Track' };
+}
 
-function OrgAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+function ProgressBar({ value, colorClass = 'bg-primary' }: { value: number; colorClass?: string }) {
   return (
-    <div className="space-y-4">
-      {/* Organization Overview */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" /> Organization Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 p-4 text-center">
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">8</p>
-              <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-1">Boards / Divisions Active</p>
-            </div>
-            <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 p-4 text-center">
-              <p className="text-2xl font-bold text-green-700 dark:text-green-300">47</p>
-              <p className="text-sm font-medium text-green-600 dark:text-green-400 mt-1">Projects Running</p>
-            </div>
-            <div className="rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/30 p-4 text-center">
-              <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">12</p>
-              <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mt-1">Pending Approvals</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Zap className="h-5 w-5 text-primary" /> Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" size="sm" onClick={() => navigate('/admin/divisions')}>
-              <Users className="h-4 w-4 mr-2" /> Add Division
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/admin/users')}>
-              <Users className="h-4 w-4 mr-2" /> Invite Users
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/admin/audit-log')}>
-              <Shield className="h-4 w-4 mr-2" /> View Audit Log
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/admin/feature-flags')}>
-              <Zap className="h-4 w-4 mr-2" /> Feature Flags
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+      <div className={cn('h-full rounded-full transition-all duration-500', colorClass)} style={{ width: `${Math.min(100, value)}%` }} />
     </div>
   );
 }
 
-function DivisionAdminSection() {
-  const verticals = [
-    { name: 'Development Team', pct: 72, color: '#3B82F6' },
-    { name: 'QA Team',          pct: 58, color: '#10B981' },
-    { name: 'Finance Team',     pct: 85, color: '#F59E0B' },
-  ];
+function MiniStatChip({ label, value, color = 'text-foreground' }: { label: string; value: string | number; color?: string }) {
+  return (
+    <div className="flex flex-col items-center rounded-lg border p-3">
+      <span className={cn('text-xl font-bold', color)}>{value}</span>
+      <span className="text-[11px] text-muted-foreground mt-0.5 text-center">{label}</span>
+    </div>
+  );
+}
+
+// ─── Pending Approvals widget (shared across roles) ───────────────────────────
+
+function PendingApprovalsWidget({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const q = usePendingApprovals({ page_size: 5 });
+  const items: any[] = q.data?.items ?? [];
+  const total: number = q.data?.total ?? items.length;
+
+  if (!q.isLoading && total === 0) return null;
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-primary" /> Board Health
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bell className="h-4 w-4 text-amber-500" /> Pending Approvals
+          {total > 0 && (
+            <span className="ml-1 rounded-full bg-amber-100 text-amber-700 text-xs px-2 py-0.5 font-semibold">{total}</span>
+          )}
         </CardTitle>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/approvals/inbox')}>
+          View all <ArrowRight className="h-3 w-3 ml-1" />
+        </Button>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {verticals.map((v) => (
-            <div key={v.name} className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{v.name}</span>
-                <span className="text-sm font-bold" style={{ color: v.color }}>{v.pct}%</span>
+      <CardContent className="space-y-2">
+        {q.isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : items.length === 0 ? (
+          <div className="text-center py-3">
+            <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-1" />
+            <p className="text-sm text-muted-foreground">All caught up!</p>
+          </div>
+        ) : (
+          items.map((a: any) => (
+            <div
+              key={a.id}
+              className="flex items-start gap-3 rounded-lg border px-3 py-2 hover:bg-muted/40 cursor-pointer transition-colors"
+              onClick={() => navigate('/approvals/inbox')}
+            >
+              <div className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{a.title || a.description || 'Approval Request'}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{timeAgo(a.createdAt || a.created_at)}</p>
               </div>
-              <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${v.pct}%`, backgroundColor: v.color }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">{v.pct}% of tasks completed</p>
             </div>
-          ))}
-        </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  const topTasks = [
-    { id: 'CPR-4', title: 'Finalize design mockups', priority: 'high',   due: 'Today' },
-    { id: 'AGM-2', title: 'API endpoint documentation', priority: 'medium', due: 'Tomorrow' },
-    { id: 'CPR-7', title: 'Review test cases',         priority: 'low',  due: 'Friday' },
+// ─── OrgAdmin Section ─────────────────────────────────────────────────────────
+
+function OrgAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const execQ = useExecutiveRollup();
+  const org = execQ.data?.orgSummary;
+  const alerts = execQ.data?.alerts ?? [];
+
+  return (
+    <div className="space-y-4">
+      {/* Org health summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MiniStatChip label="Divisions Active" value={org?.divisionsCount ?? '—'} color="text-blue-600" />
+        <MiniStatChip label="Projects Running" value={org?.activeProjects ?? '—'} color="text-green-600" />
+        <MiniStatChip label="Members" value={org?.totalMembers ?? '—'} color="text-purple-600" />
+        <MiniStatChip label="Pending Approvals" value="—" color="text-amber-600" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Division RAG overview */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" /> Division Health
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {execQ.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (execQ.data?.scorecards ?? []).slice(0, 5).map((sc: any) => {
+              const pct = sc.completionRate ?? sc.completionPct ?? sc.health_score ?? 0;
+              const rag = ragColor(pct);
+              return (
+                <div key={sc.divisionId || sc.id} className={cn('rounded-lg border p-3 space-y-2', rag.bg, rag.border)}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{sc.divisionName || sc.name}</span>
+                    <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border', rag.text, rag.border)}>{rag.label}</span>
+                  </div>
+                  <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
+                  <p className="text-xs text-muted-foreground">{pct}% completion · {sc.activeProjects ?? sc.projectCount ?? 0} active projects</p>
+                </div>
+              );
+            })}
+            {!execQ.isLoading && (execQ.data?.scorecards ?? []).length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No division data available</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Alerts + Quick Actions */}
+        <div className="space-y-4">
+          {alerts.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500" /> Alerts
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {alerts.slice(0, 4).map((a, i) => (
+                  <div key={i} className={cn(
+                    'flex items-start gap-2 rounded-lg border px-3 py-2 text-sm',
+                    a.severity === 'high' ? 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700' :
+                    'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700'
+                  )}>
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span>{a.message} <span className="font-medium">({a.division})</span></span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Zap className="h-4 w-4 text-primary" /> Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Add Division', icon: Layers, path: '/admin/divisions' },
+                  { label: 'Invite Users', icon: Users, path: '/admin/users' },
+                  { label: 'Audit Log', icon: Shield, path: '/admin/audit-log' },
+                  { label: 'Feature Flags', icon: Zap, path: '/admin/feature-flags' },
+                ].map(({ label, icon: Icon, path }) => (
+                  <Button key={label} variant="outline" size="sm" className="justify-start gap-2 h-9" onClick={() => navigate(path)}>
+                    <Icon className="h-3.5 w-3.5" /> {label}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <PendingApprovalsWidget navigate={navigate} />
+    </div>
+  );
+}
+
+// ─── Division Admin Section ───────────────────────────────────────────────────
+
+function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const misQ = useDivisionOverviewMIS();
+  const divisionItems: any[] = misQ.data ?? [];
+
+  const mockVerticals = [
+    { id: 'v1', name: 'Quality Management', health_score: 78, project_count: 5, member_count: 12, task_completion_rate: 78 },
+    { id: 'v2', name: 'Accreditation', health_score: 54, project_count: 3, member_count: 8, task_completion_rate: 54 },
+    { id: 'v3', name: 'Standards & Testing', health_score: 35, project_count: 4, member_count: 10, task_completion_rate: 35 },
   ];
 
-  const priorityBadgeClass: Record<string, string> = {
-    high:   'bg-red-100 text-red-700 border-red-200',
-    medium: 'bg-orange-100 text-orange-700 border-orange-200',
-    low:    'bg-green-100 text-green-700 border-green-200',
+  const verticals = divisionItems.length > 0 ? divisionItems : mockVerticals;
+
+  // Milestones due this month (mocked — real data comes from dashboardV2)
+  const dv2Q = useDashboardV2();
+  const milestoneBurnQ = useMilestoneBurnDashboard();
+  const burnItems: any[] = milestoneBurnQ.data?.items ?? milestoneBurnQ.data ?? [];
+
+  const milestoneDueThisMonth = burnItems.filter((m: any) => {
+    if (!m.dueDate) return false;
+    const d = new Date(m.dueDate);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).slice(0, 5);
+
+  return (
+    <div className="space-y-4">
+      {/* Vertical health cards */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Verticals at a Glance</h3>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/admin/divisions')}>
+            Manage <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {verticals.slice(0, 6).map((v: any) => {
+            const pct = v.task_completion_rate ?? v.health_score ?? 0;
+            const rag = ragColor(pct);
+            return (
+              <Card key={v.id} className={cn('border-l-4 transition-shadow hover:shadow-md cursor-pointer', rag.border)}
+                onClick={() => navigate('/admin/divisions')}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-semibold text-sm leading-tight">{v.name}</span>
+                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap', rag.text, rag.bg)}>{rag.label}</span>
+                  </div>
+                  <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{v.project_count ?? 0} projects</span>
+                    <span>{v.member_count ?? 0} members</span>
+                    <span className="font-semibold text-foreground">{pct}%</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Milestones due this month */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Flag className="h-4 w-4 text-primary" /> Milestones Due This Month
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {milestoneDueThisMonth.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-400" />
+                <p className="text-sm">No milestones due this month</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {milestoneDueThisMonth.map((m: any) => (
+                  <div key={m.id} className="flex items-center justify-between rounded-lg border px-3 py-2 hover:bg-muted/40 cursor-pointer"
+                    onClick={() => m.projectId ? navigate(`/projects/${m.projectId}/milestones`) : navigate('/projects')}>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{m.title}</p>
+                      <p className="text-xs text-muted-foreground">{m.projectName || 'Project'}</p>
+                    </div>
+                    <div className="ml-2 shrink-0 text-right">
+                      <div className="text-xs font-semibold">{m.burnRate ?? m.progress ?? 0}%</div>
+                      <Badge variant="outline" className={cn('text-[10px]',
+                        m.isOverdue ? 'border-red-300 text-red-600' : 'border-blue-300 text-blue-600')}>
+                        {m.isOverdue ? 'Overdue' : m.status || 'Active'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <PendingApprovalsWidget navigate={navigate} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Vertical Head Section ────────────────────────────────────────────────────
+
+function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const projectsQ = useProjects({ status: 'active' });
+  const projects: any[] = projectsQ.data?.items ?? [];
+  const dv2Q = useDashboardV2();
+
+  const mockProjects = [
+    { id: 'p1', name: 'Customer Portal Redesign', key: 'CPR', status: 'active', completion_pct: 62, milestone_count: 5, milestones_completed: 3, color: '#3B82F6' },
+    { id: 'p2', name: 'API Gateway Migration', key: 'AGM', status: 'active', completion_pct: 28, milestone_count: 4, milestones_completed: 1, color: '#8B5CF6' },
+    { id: 'p3', name: 'Mobile App v2', key: 'MAV2', status: 'active', completion_pct: 45, milestone_count: 6, milestones_completed: 2, color: '#F59E0B' },
+  ];
+
+  const displayProjects = projects.length > 0 ? projects : mockProjects;
+
+  return (
+    <div className="space-y-4">
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MiniStatChip label="Active Projects" value={displayProjects.length} color="text-blue-600" />
+        <MiniStatChip label="Team Members" value={dv2Q.data?.totalMembers ?? '—'} color="text-purple-600" />
+        <MiniStatChip label="Capacity Used" value="75%" color="text-orange-600" />
+        <MiniStatChip label="Open Milestones" value={dv2Q.data?.pendingApprovals ?? '—'} color="text-amber-600" />
+      </div>
+
+      {/* Project cards with milestone circles */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Project Health</h3>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/projects')}>
+            All projects <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {displayProjects.slice(0, 3).map((p: any) => {
+            const pct = p.completion_pct ?? 0;
+            const rag = ragColor(pct);
+            const msTotal = p.milestone_count ?? p.milestones ?? 5;
+            const msDone = p.milestones_completed ?? p.completedMilestones ?? Math.round(msTotal * pct / 100);
+            return (
+              <Card key={p.id} className="hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/projects/${p.id}/board`)}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: p.color || '#3B82F6' }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">{p.name}</p>
+                      <Badge variant="outline" className="text-[10px]">{p.key}</Badge>
+                    </div>
+                  </div>
+
+                  {/* Milestone circles indicator */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {Array.from({ length: Math.min(msTotal, 8) }).map((_, i) => (
+                      <div key={i} className={cn('h-3 w-3 rounded-full',
+                        i < msDone ? 'bg-green-500' : 'bg-secondary border border-border')} />
+                    ))}
+                    {msTotal > 8 && <span className="text-[10px] text-muted-foreground">+{msTotal - 8}</span>}
+                    <span className="text-xs text-muted-foreground ml-1">{msDone}/{msTotal} milestones</span>
+                  </div>
+
+                  <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{pct}% complete</span>
+                    <span className={cn('font-semibold', rag.text)}>{rag.label}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      <PendingApprovalsWidget navigate={navigate} />
+    </div>
+  );
+}
+
+// ─── Project Manager Section ──────────────────────────────────────────────────
+
+function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const burnQ = useMilestoneBurnDashboard();
+  const burnItems: any[] = burnQ.data?.items ?? burnQ.data ?? [];
+
+  const mockBurn = [
+    { id: 'm1', title: 'Requirement Gathering', projectName: 'CPR', progress: 100, burnRate: 95, status: 'completed', isOverdue: false, completedTasks: 8, totalTasks: 8 },
+    { id: 'm2', title: 'UI/UX Design', projectName: 'CPR', progress: 100, burnRate: 87, status: 'completed', isOverdue: false, completedTasks: 12, totalTasks: 12 },
+    { id: 'm3', title: 'Development Phase 1', projectName: 'CPR', progress: 62, burnRate: 62, status: 'in_progress', isOverdue: false, completedTasks: 13, totalTasks: 21 },
+    { id: 'm4', title: 'API Integration', projectName: 'AGM', progress: 28, burnRate: 28, status: 'in_progress', isOverdue: true, completedTasks: 3, totalTasks: 11 },
+    { id: 'm5', title: 'UAT & Testing', projectName: 'CPR', progress: 0, burnRate: 0, status: 'pending', isOverdue: false, completedTasks: 0, totalTasks: 9 },
+  ];
+
+  const items = burnItems.length > 0 ? burnItems : mockBurn;
+
+  const statusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case 'in_progress': return <Clock className="h-4 w-4 text-blue-500" />;
+      case 'on_hold': return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      default: return <Circle className="h-4 w-4 text-gray-400" />;
+    }
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Vertical summary */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" /> My Vertical Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-            <p className="font-semibold text-sm">Development Team</p>
-            <div className="flex gap-4 text-sm text-muted-foreground">
-              <span><span className="font-bold text-foreground">8</span> Members</span>
-              <span><span className="font-bold text-foreground">3</span> Active Projects</span>
-            </div>
-          </div>
-
-          {/* Capacity gauge */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Capacity Utilized</span>
-              <span className="font-bold text-orange-600">75%</span>
-            </div>
-            <div className="h-3 rounded-full bg-secondary overflow-hidden">
-              <div className="h-full rounded-full bg-orange-500 transition-all duration-500" style={{ width: '75%' }} />
-            </div>
-            <p className="text-xs text-muted-foreground">6 of 8 members near capacity</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Top tasks this week */}
+    <div className="space-y-4">
+      {/* Milestone burn table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <ListTodo className="h-5 w-5 text-primary" /> Top Tasks This Week
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" /> Milestone Burn Status
           </CardTitle>
-          <button
-            onClick={() => navigate('/my-tasks')}
-            className="text-xs text-primary hover:underline font-medium"
-          >
-            View all →
-          </button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/projects')}>
+            All milestones <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {topTasks.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between rounded-lg px-3 py-2 border hover:bg-muted/40 cursor-pointer transition-colors"
-                onClick={() => navigate('/my-tasks')}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Badge variant="outline" className="text-xs shrink-0">{t.id}</Badge>
-                  <span className="text-sm truncate">{t.title}</span>
+            {items.map((m: any) => {
+              const burn = m.burnRate ?? m.progress ?? 0;
+              const isOverdue = m.isOverdue || false;
+              return (
+                <div key={m.id} className={cn(
+                  'rounded-lg border p-3 space-y-2 cursor-pointer hover:bg-muted/30 transition-colors',
+                  isOverdue && 'border-red-200'
+                )}
+                  onClick={() => m.projectId ? navigate(`/projects/${m.projectId}/milestones`) : navigate('/projects')}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {statusIcon(m.status)}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{m.title}</p>
+                        <p className="text-xs text-muted-foreground">{m.projectName || 'Project'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isOverdue && <Badge className="bg-red-100 text-red-700 text-[10px] border-0">Overdue</Badge>}
+                      <span className="text-sm font-bold">{burn}%</span>
+                    </div>
+                  </div>
+                  <ProgressBar
+                    value={burn}
+                    colorClass={m.status === 'completed' ? 'bg-green-500' : isOverdue ? 'bg-red-500' : burn >= 60 ? 'bg-blue-500' : 'bg-amber-500'}
+                  />
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{m.completedTasks ?? 0}/{m.totalTasks ?? 0} tasks</span>
+                    <span className="capitalize">{m.status?.replace('_', ' ') || 'pending'}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-2 shrink-0">
-                  <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', priorityBadgeClass[t.priority])}>
-                    {t.priority}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{t.due}</span>
-                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sprint status */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-sm text-blue-700 dark:text-blue-300">Active Sprint</span>
+              <Badge className="bg-blue-600 text-white text-[10px]">Sprint 12</Badge>
+            </div>
+            <ProgressBar value={65} colorClass="bg-blue-500" />
+            <p className="text-xs text-muted-foreground">65% · 8 days remaining</p>
+            <Button variant="outline" size="sm" className="w-full h-8 text-xs mt-1" onClick={() => navigate('/projects')}>
+              View Sprint Board
+            </Button>
+          </CardContent>
+        </Card>
+
+        <PendingApprovalsWidget navigate={navigate} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Team Lead Section ────────────────────────────────────────────────────────
+
+function TeamLeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const dashQ = useDashboard();
+  const teamWorkload: any[] = dashQ.data?.team_workload ?? [
+    { user_id: '1', name: 'Carol Johnson', role: 'member', open_tasks: 6, high_priority: 2, overdue_tasks: 1, estimated_hours: 24 },
+    { user_id: '2', name: 'David Park',    role: 'member', open_tasks: 5, high_priority: 1, overdue_tasks: 0, estimated_hours: 18 },
+    { user_id: '3', name: 'Priya Sharma',  role: 'member', open_tasks: 4, high_priority: 0, overdue_tasks: 1, estimated_hours: 16 },
+  ];
+
+  const myTasksQ = useMyTasks();
+  const myTasks: any[] = myTasksQ.data?.items ?? myTasksQ.data ?? [];
+  const overdue = myTasks.filter((t: any) => t.is_overdue || t.isOverdue).length;
+  const dueToday = myTasks.filter((t: any) => {
+    if (!t.due_date && !t.dueDate) return false;
+    const d = new Date(t.due_date || t.dueDate);
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  }).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MiniStatChip label="Team Size" value={teamWorkload.length} color="text-blue-600" />
+        <MiniStatChip label="Due Today" value={dueToday} color="text-orange-600" />
+        <MiniStatChip label="Overdue" value={overdue} color={overdue > 0 ? 'text-red-600' : 'text-green-600'} />
+        <MiniStatChip label="Open Tasks" value={teamWorkload.reduce((s, m) => s + m.open_tasks, 0)} color="text-purple-600" />
+      </div>
+
+      {/* Team workload table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" /> Team Workload
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/admin/users')}>
+            Manage <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-muted-foreground">
+                  <th className="pb-2 text-left font-medium">Member</th>
+                  <th className="pb-2 text-center font-medium">Open</th>
+                  <th className="pb-2 text-center font-medium">High P</th>
+                  <th className="pb-2 text-center font-medium">Overdue</th>
+                  <th className="pb-2 text-right font-medium">Est.Hrs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamWorkload.map((m: any) => (
+                  <tr key={m.user_id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer"
+                    onClick={() => navigate('/my-tasks')}>
+                    <td className="py-2.5">
+                      <div className="flex items-center gap-2">
+                        <Avatar name={m.name} size="sm" />
+                        <span className="font-medium">{m.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-2.5 text-center font-bold text-primary">{m.open_tasks}</td>
+                    <td className="py-2.5 text-center">
+                      <span className={cn('font-bold', m.high_priority > 0 ? 'text-orange-600' : 'text-muted-foreground')}>
+                        {m.high_priority}
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-center">
+                      <span className={cn('font-bold', m.overdue_tasks > 0 ? 'text-red-600' : 'text-muted-foreground')}>
+                        {m.overdue_tasks}
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-right text-muted-foreground">{m.estimated_hours}h</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sprint status */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" /> Sprint Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm text-blue-700 dark:text-blue-300">Sprint 12</span>
+                <Badge className="bg-blue-600 text-white text-[10px]">Active</Badge>
               </div>
-            ))}
+              <ProgressBar value={65} colorClass="bg-blue-500" />
+              <p className="text-xs text-muted-foreground">65% · 8 days remaining</p>
+            </div>
+            <div className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm">Sprint 13</span>
+                <Badge variant="outline" className="text-[10px]">Planning</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">Planning in progress. Backlog review tomorrow.</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -235,205 +613,310 @@ function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavi
   );
 }
 
-function SprintStatusSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary" /> Sprint Status
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Active sprint */}
-          <div
-            className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 p-4 cursor-pointer hover:shadow-sm transition-shadow"
-            onClick={() => navigate('/projects')}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-semibold text-sm text-blue-700 dark:text-blue-300">Sprint 12</span>
-              <Badge className="bg-blue-600 text-white text-[10px]">Active</Badge>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Progress</span>
-                <span className="font-bold text-blue-700 dark:text-blue-300">65%</span>
-              </div>
-              <div className="h-2 rounded-full bg-blue-200 overflow-hidden">
-                <div className="h-full rounded-full bg-blue-600 transition-all duration-500" style={{ width: '65%' }} />
-              </div>
-            </div>
-          </div>
+// ─── Member Section ───────────────────────────────────────────────────────────
 
-          {/* Next sprint */}
-          <div className="rounded-lg border border-gray-200 bg-gray-50 dark:bg-gray-900/30 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-semibold text-sm text-gray-700 dark:text-gray-300">Sprint 13</span>
-              <Badge variant="outline" className="text-[10px]">Planning</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">Sprint planning in progress. Tasks being assigned.</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+function MemberSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const myTasksQ = useMyTasks();
+  const weekQ = useWeeklySummary();
+  const tasks: any[] = myTasksQ.data?.items ?? myTasksQ.data ?? [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(today); todayEnd.setHours(23, 59, 59);
+  const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const overdue = tasks.filter((t: any) => {
+    const due = t.due_date || t.dueDate;
+    if (!due) return false;
+    return new Date(due) < today && !['completed', 'done', 'closed'].includes(t.statusName?.toLowerCase() || t.status?.toLowerCase() || '');
+  });
+
+  const dueToday = tasks.filter((t: any) => {
+    const due = t.due_date || t.dueDate;
+    if (!due) return false;
+    const d = new Date(due);
+    return d >= today && d <= todayEnd && !overdue.includes(t);
+  });
+
+  const dueThisWeek = tasks.filter((t: any) => {
+    const due = t.due_date || t.dueDate;
+    if (!due) return false;
+    const d = new Date(due);
+    return d > todayEnd && d <= weekEnd && !overdue.includes(t);
+  });
+
+  const later = tasks.filter((t: any) => {
+    const due = t.due_date || t.dueDate;
+    if (!due) return true;
+    const d = new Date(due);
+    return d > weekEnd && !overdue.includes(t);
+  });
+
+  // Mock data for empty state
+  const mockGroups = {
+    overdue:      [{ id: 't1', title: 'Review API documentation', priority: 'high',   project: 'AGM' }],
+    dueToday:     [{ id: 't2', title: 'Finalize design mockups', priority: 'high',   project: 'CPR' }, { id: 't3', title: 'Update project status', priority: 'medium', project: 'CPR' }],
+    dueThisWeek:  [{ id: 't4', title: 'Code review — backend', priority: 'medium', project: 'AGM' }, { id: 't5', title: 'Write unit tests', priority: 'low',    project: 'MAV2' }],
+    later:        [{ id: 't6', title: 'Prepare sprint retrospective', priority: 'low', project: 'CPR' }],
+  };
+
+  const groups = tasks.length > 0
+    ? { overdue, dueToday, dueThisWeek, later }
+    : mockGroups;
+
+  const weeklyHours = weekQ.data?.totalHours ?? 0;
+  const targetHours = weekQ.data?.targetHours ?? 40;
+  const hoursDisplay = weeklyHours > 0 ? `${weeklyHours}h` : '—';
+
+  const priorityClass: Record<string, string> = {
+    critical: 'bg-red-100 text-red-700 border-red-200',
+    high:     'bg-red-100 text-red-700 border-red-200',
+    medium:   'bg-orange-100 text-orange-700 border-orange-200',
+    low:      'bg-green-100 text-green-700 border-green-200',
+  };
+
+  const TaskRow = ({ t }: { t: any }) => (
+    <div
+      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors border border-transparent hover:border-border/50"
+      onClick={() => navigate('/my-tasks')}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="text-sm truncate">{t.title}</span>
+      </div>
+      <div className="flex items-center gap-2 ml-2 shrink-0">
+        <Badge variant="outline" className="text-[10px]">{t.project || t.projectKey}</Badge>
+        <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', priorityClass[t.priority] || priorityClass.medium)}>
+          {t.priority}
+        </span>
+      </div>
+    </div>
   );
-}
 
-function MemberWeekSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Clock className="h-5 w-5 text-primary" /> My Week
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-lg border p-4 text-center">
-            <p className="text-2xl font-bold text-red-600">2</p>
-            <p className="text-xs text-muted-foreground mt-1">Tasks Due Today</p>
-          </div>
-          <div className="rounded-lg border p-4 text-center">
-            <p className="text-2xl font-bold text-orange-600">5</p>
-            <p className="text-xs text-muted-foreground mt-1">Tasks Due This Week</p>
-          </div>
-          <div className="rounded-lg border p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">14h</p>
-            <p className="text-xs text-muted-foreground mt-1">Hours Logged This Week</p>
-          </div>
+  const GroupSection = ({ label, items, dotColor, emptyMsg }: { label: string; items: any[]; dotColor: string; emptyMsg: string }) => {
+    if (items.length === 0) return null;
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 px-1 mb-1">
+          <div className={cn('h-2 w-2 rounded-full', dotColor)} />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
+          <span className="text-xs font-bold text-foreground">{items.length}</span>
         </div>
-
-        {/* Upcoming deadline highlight */}
-        <div
-          className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/30 p-4 cursor-pointer hover:shadow-sm transition-shadow"
-          onClick={() => navigate('/my-tasks')}
-        >
-          <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-orange-800 dark:text-orange-300">Upcoming Deadline</p>
-            <p className="text-sm text-orange-700 dark:text-orange-400 mt-0.5">
-              <span className="font-semibold">CPR-4 — Finalize design mockups</span> is due today at 5:00 PM
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ExecutiveSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  const divisions = [
-    { name: 'IT Division',        pct: 78, color: '#3B82F6' },
-    { name: 'Finance Division',   pct: 65, color: '#8B5CF6' },
-    { name: 'Operations Division',pct: 82, color: '#10B981' },
-  ];
-
-  const risks = [
-    { id: 'R-01', title: 'API Migration deadline at risk', severity: 'high',   project: 'API Gateway Migration' },
-    { id: 'R-02', title: 'Resource bottleneck in QA team', severity: 'medium', project: 'Mobile App v2' },
-  ];
-
-  const riskColors: Record<string, string> = {
-    high:   'border-red-200 bg-red-50 dark:bg-red-950/30 text-red-700',
-    medium: 'border-orange-200 bg-orange-50 dark:bg-orange-950/30 text-orange-700',
+        {items.map((t: any) => <TaskRow key={t.id} t={t} />)}
+      </div>
+    );
   };
 
   return (
     <div className="space-y-4">
+      {/* Time + stats strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MiniStatChip label="Due Today" value={groups.dueToday.length} color="text-orange-600" />
+        <MiniStatChip label="Due This Week" value={groups.dueThisWeek.length} color="text-blue-600" />
+        <MiniStatChip label="Overdue" value={groups.overdue.length} color={groups.overdue.length > 0 ? 'text-red-600' : 'text-green-600'} />
+        <MiniStatChip label="Hrs This Week" value={hoursDisplay} color="text-purple-600" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Task inbox */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ListTodo className="h-4 w-4 text-primary" /> My Task Inbox
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/my-tasks')}>
+              All tasks <ArrowRight className="h-3 w-3 ml-1" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {groups.overdue.length === 0 && groups.dueToday.length === 0 && groups.dueThisWeek.length === 0 && groups.later.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                <p className="font-medium">All tasks complete!</p>
+                <p className="text-sm text-muted-foreground mt-1">Nothing in your queue right now.</p>
+              </div>
+            ) : (
+              <>
+                <GroupSection label="Overdue" items={groups.overdue} dotColor="bg-red-500" emptyMsg="" />
+                <GroupSection label="Due Today" items={groups.dueToday} dotColor="bg-orange-500" emptyMsg="" />
+                <GroupSection label="Due This Week" items={groups.dueThisWeek} dotColor="bg-blue-500" emptyMsg="" />
+                <GroupSection label="Later" items={groups.later} dotColor="bg-gray-400" emptyMsg="" />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Time this week */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Timer className="h-4 w-4 text-primary" /> Time This Week
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-primary">{hoursDisplay}</p>
+                <p className="text-xs text-muted-foreground mt-1">of {targetHours}h target</p>
+              </div>
+              <ProgressBar value={targetHours > 0 ? (weeklyHours / targetHours) * 100 : 0} />
+              <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => navigate('/time-logging')}>
+                <Clock className="h-3.5 w-3.5 mr-1" /> Log Time
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FolderKanban className="h-4 w-4 text-primary" /> My Projects
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {(weekQ.data?.byProject ?? []).slice(0, 3).map((p: any) => (
+                  <div key={p.projectKey} className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-muted/40 cursor-pointer"
+                    onClick={() => navigate('/projects')}>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                      <span className="text-sm truncate max-w-[120px]">{p.projectName}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{p.hours}h</span>
+                  </div>
+                ))}
+                {(weekQ.data?.byProject ?? []).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-2">No time logged yet</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Executive Section ────────────────────────────────────────────────────────
+
+function ExecutiveSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const execQ = useExecutiveRollup();
+  const org = execQ.data?.orgSummary;
+  const scorecards: any[] = execQ.data?.scorecards ?? [];
+  const alerts: any[] = execQ.data?.alerts ?? [];
+
+  const mockDivisions = [
+    { id: 'd1', divisionName: 'IT Division',          completionRate: 78, activeProjects: 12, color: '#3B82F6' },
+    { id: 'd2', divisionName: 'Finance Division',     completionRate: 65, activeProjects: 8,  color: '#8B5CF6' },
+    { id: 'd3', divisionName: 'Operations Division',  completionRate: 82, activeProjects: 10, color: '#10B981' },
+    { id: 'd4', divisionName: 'Quality Assurance',    completionRate: 43, activeProjects: 6,  color: '#F59E0B' },
+  ];
+
+  const display = scorecards.length > 0 ? scorecards : mockDivisions;
+
+  return (
+    <div className="space-y-4">
+      {/* Org-level KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MiniStatChip label="Divisions" value={org?.divisionsCount ?? display.length} color="text-blue-600" />
+        <MiniStatChip label="Active Projects" value={org?.activeProjects ?? '—'} color="text-green-600" />
+        <MiniStatChip label="Completion" value={`${org?.completionPct ?? '—'}%`} color="text-purple-600" />
+        <MiniStatChip label="Overdue Tasks" value={org?.overdueTasks ?? '—'} color="text-red-600" />
+      </div>
+
       {/* Portfolio Summary */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" /> Portfolio Summary
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" /> Portfolio Summary
           </CardTitle>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/executive/portfolio')}>
+            Full portfolio <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {divisions.map((d) => (
-              <div
-                key={d.name}
-                className="rounded-lg border p-4 space-y-3 cursor-pointer hover:shadow-sm transition-shadow"
-                onClick={() => navigate('/executive/portfolio')}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{d.name}</span>
-                  <span className="font-bold text-sm" style={{ color: d.color }}>{d.pct}%</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {display.map((sc: any) => {
+              const pct = sc.completionRate ?? sc.health_score ?? 0;
+              const rag = ragColor(pct);
+              return (
+                <div key={sc.id || sc.divisionId}
+                  className={cn('rounded-lg border p-3 space-y-2 cursor-pointer hover:shadow-sm transition-shadow', rag.bg, rag.border)}
+                  onClick={() => navigate('/executive/portfolio')}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{sc.divisionName || sc.name}</span>
+                    <span className={cn('text-xs font-bold', rag.text)}>{pct}%</span>
+                  </div>
+                  <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
+                  <p className="text-xs text-muted-foreground">{sc.activeProjects ?? 0} active projects</p>
                 </div>
-                <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${d.pct}%`, backgroundColor: d.color }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">Overall health score</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
 
       {/* Key Risks */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" /> Key Risks
-          </CardTitle>
-          <button
-            onClick={() => navigate('/executive/risk-register')}
-            className="text-xs text-primary hover:underline font-medium"
-          >
-            Risk Register →
-          </button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {risks.map((r) => (
-              <div
-                key={r.id}
-                className={cn('flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:opacity-80 transition-opacity', riskColors[r.severity])}
-                onClick={() => navigate('/executive/risk-register')}
-              >
+      {alerts.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-500" /> Key Risks
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/executive/risk-register')}>
+              Risk Register <ArrowRight className="h-3 w-3 ml-1" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {alerts.slice(0, 4).map((a, i) => (
+              <div key={i} className={cn(
+                'flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:opacity-80',
+                a.severity === 'high' ? 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700' :
+                'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-700'
+              )} onClick={() => navigate('/executive/risk-register')}>
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{r.title}</p>
-                  <p className="text-xs opacity-75 mt-0.5">{r.project} · {r.id}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">{a.message}</p>
+                  <p className="text-xs opacity-75 mt-0.5">{a.division}</p>
                 </div>
-                <Badge variant="outline" className="ml-auto shrink-0 text-[10px] capitalize">{r.severity}</Badge>
+                <Badge variant="outline" className="ml-auto shrink-0 text-[10px] capitalize">{a.severity}</Badge>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
 
+// ─── Viewer Section ───────────────────────────────────────────────────────────
+
 function ViewerSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  const assignedProjects = [
-    { id: '1', name: 'Customer Portal Redesign', key: 'CPR', role: 'Observer' },
-    { id: '3', name: 'Mobile App v2',            key: 'MAV2', role: 'Viewer'  },
+  const projectsQ = useProjects();
+  const projects: any[] = projectsQ.data?.items ?? [
+    { id: '1', name: 'Customer Portal Redesign', key: 'CPR' },
+    { id: '3', name: 'Mobile App v2',            key: 'MAV2' },
   ];
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <FolderKanban className="h-5 w-5 text-primary" /> My Assigned Projects
+        <CardTitle className="text-base flex items-center gap-2">
+          <FolderKanban className="h-4 w-4 text-primary" /> Assigned Projects
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {assignedProjects.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between rounded-lg border px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+          {projects.slice(0, 5).map((p: any) => (
+            <div key={p.id}
+              className="flex items-center justify-between rounded-lg border px-4 py-3 cursor-pointer hover:bg-muted/40"
               onClick={() => navigate(`/projects/${p.id}/board`)}
             >
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">{p.key}</Badge>
                 <span className="text-sm font-medium">{p.name}</span>
               </div>
-              <Badge variant="secondary" className="text-xs">{p.role}</Badge>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </div>
           ))}
         </div>
@@ -442,49 +925,53 @@ function ViewerSection({ navigate }: { navigate: ReturnType<typeof useNavigate> 
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main DashboardPage ───────────────────────────────────────────────────────
 
 export function DashboardPage() {
   const { user, currentRole } = useAuthStore();
   const navigate = useNavigate();
   const firstName = user?.first_name || user?.firstName || 'User';
+
   const dashboardQuery = useDashboard();
+  const stats = dashboardQuery.data?.stats ?? {
+    total_projects: 5, active_projects: 3, total_tasks: 47, completed_tasks: 18, overdue_tasks: 3, my_open_tasks: 8,
+  };
+  const projectProgress: any[] = dashboardQuery.data?.project_progress ?? [
+    { project_id: '1', name: 'Customer Portal Redesign', key: 'CPR', color: '#3B82F6', total_tasks: 15, completed_tasks: 7, completion_pct: 46.7 },
+    { project_id: '2', name: 'API Gateway Migration',    key: 'AGM', color: '#8B5CF6', total_tasks: 12, completed_tasks: 3, completion_pct: 25.0 },
+    { project_id: '3', name: 'Mobile App v2',            key: 'MAV2',color: '#F59E0B', total_tasks: 20, completed_tasks: 8, completion_pct: 40.0 },
+  ];
+  const recentActivity: any[] = dashboardQuery.data?.recent_activity ?? [
+    { actor: 'Carol Johnson', action: 'status_changed', entity: 'CPR-1', detail: 'In Progress → In Review', at: new Date(Date.now() - 3600000).toISOString() },
+    { actor: 'David Park',    action: 'created',        entity: 'AGM-5', detail: 'Created new task',        at: new Date(Date.now() - 7200000).toISOString() },
+    { actor: 'Bob Martinez',  action: 'commented',      entity: 'CPR-3', detail: 'Left a comment',          at: new Date(Date.now() - 14400000).toISOString() },
+  ];
 
-  const stats           = dashboardQuery.data?.stats            || mockStats;
-  const projectProgress = dashboardQuery.data?.project_progress || mockProjectProgress;
-  const recentActivity  = dashboardQuery.data?.recent_activity  || mockActivity;
-  const teamWorkload    = dashboardQuery.data?.team_workload     || mockTeamWorkload;
-
-  // Roles that see team workload table
-  const showTeamWorkload =
-    currentRole === 'org_admin' ||
-    currentRole === 'project_manager' ||
-    currentRole === 'team_lead';
-
-  // Executive replaces project progress with portfolio summary — handled via role section below
-  const showProjectProgress = currentRole !== 'executive';
-
-  // Viewer sees no team workload
-  const showRecentActivity = currentRole !== 'viewer';
+  const isHighLevelRole = ['org_admin', 'division_admin', 'executive'].includes(currentRole || '');
+  const isProjectRole   = ['project_manager', 'team_lead', 'vertical_head'].includes(currentRole || '');
+  const showProjectProgress = !isHighLevelRole;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome */}
-      <div>
-        <h1 className="text-2xl font-bold">Welcome back, {firstName}</h1>
-        <p className="text-muted-foreground">
-          {ROLE_LABEL[currentRole || ''] ? `${ROLE_LABEL[currentRole!]} — ` : ''}
-          Here's what's happening across your projects
-        </p>
+      {/* Welcome header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">Welcome back, {firstName}</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {ROLE_LABEL[currentRole || ''] ? `${ROLE_LABEL[currentRole!]} — ` : ''}
+            Here's what's happening across your projects
+          </p>
+        </div>
+        <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0"
+          onClick={() => dashboardQuery.refetch()}>
+          <RefreshCw className={cn('h-3.5 w-3.5', dashboardQuery.isFetching && 'animate-spin')} />
+          Refresh
+        </Button>
       </div>
 
-      {/* Stat Cards — all clickable */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children animate-fade-in-up">
-        <div
-          className="cursor-pointer group h-full"
-          onClick={() => navigate('/projects')}
-          title="Go to Projects"
-        >
+      {/* Universal stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="cursor-pointer group" onClick={() => navigate('/projects')}>
           <StatCard
             title="Active Projects"
             value={stats.active_projects}
@@ -493,12 +980,7 @@ export function DashboardPage() {
             className="group-hover:border-primary/40"
           />
         </div>
-
-        <div
-          className="cursor-pointer group h-full"
-          onClick={() => navigate('/my-tasks')}
-          title="View all tasks"
-        >
+        <div className="cursor-pointer group" onClick={() => navigate('/my-tasks')}>
           <StatCard
             title="Total Tasks"
             value={stats.total_tasks}
@@ -507,12 +989,7 @@ export function DashboardPage() {
             className="group-hover:border-primary/40"
           />
         </div>
-
-        <div
-          className="cursor-pointer group h-full"
-          onClick={() => navigate('/my-tasks?tab=open')}
-          title="View my open tasks"
-        >
+        <div className="cursor-pointer group" onClick={() => navigate('/my-tasks?tab=open')}>
           <StatCard
             title="My Open Tasks"
             value={stats.my_open_tasks}
@@ -521,180 +998,77 @@ export function DashboardPage() {
             className="group-hover:border-blue-300"
           />
         </div>
-
-        <div
-          className="cursor-pointer group h-full"
-          onClick={() => navigate('/my-tasks?tab=overdue')}
-          title="View overdue tasks"
-        >
+        <div className="cursor-pointer group" onClick={() => navigate('/my-tasks?tab=overdue')}>
           <StatCard
             title="Overdue"
             value={stats.overdue_tasks}
             icon={AlertTriangle}
             iconColor="text-red-600"
-            className={cn(
-              'group-hover:border-red-300',
-              stats.overdue_tasks > 0 ? 'border-red-200' : ''
-            )}
+            className={cn('group-hover:border-red-300', stats.overdue_tasks > 0 ? 'border-red-200' : '')}
           />
         </div>
       </div>
 
-      {/* Project Progress + Recent Activity (non-executive roles) */}
+      {/* Project Progress + Recent Activity (lower roles) */}
       {showProjectProgress && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Project Progress — rows are clickable */}
-          <Card className="lg:col-span-2 card-hover">
+          <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg">Project Progress</CardTitle>
-              <button
-                onClick={() => navigate('/projects')}
-                className="text-xs text-primary hover:underline font-medium"
-              >
+              <CardTitle className="text-base">Project Progress</CardTitle>
+              <button onClick={() => navigate('/projects')} className="text-xs text-primary hover:underline font-medium">
                 View all →
               </button>
             </CardHeader>
             <CardContent className="space-y-4">
               {projectProgress.map((p) => (
-                <div
-                  key={p.project_id}
-                  className="space-y-2 rounded-lg px-3 py-2 -mx-1 cursor-pointer hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50"
-                  onClick={() => navigate(`/projects/${p.project_id}/board`)}
-                  title={`Open ${p.name} board`}
-                >
+                <div key={p.project_id}
+                  className="space-y-2 rounded-lg px-3 py-2 -mx-1 cursor-pointer hover:bg-muted/50 border border-transparent hover:border-border/50"
+                  onClick={() => navigate(`/projects/${p.project_id}/board`)}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
                       <span className="text-sm font-medium">{p.name}</span>
                       <Badge variant="outline" className="text-xs">{p.key}</Badge>
                     </div>
                     <span className="text-sm text-muted-foreground font-medium">{p.completion_pct}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${p.completion_pct}%`, backgroundColor: p.color }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{p.completed_tasks} of {p.total_tasks} tasks completed</span>
-                  </div>
+                  <ProgressBar value={p.completion_pct} colorClass="bg-primary" />
+                  <p className="text-xs text-muted-foreground">{p.completed_tasks} of {p.total_tasks} tasks</p>
                 </div>
               ))}
             </CardContent>
           </Card>
 
-          {/* Recent Activity — rows navigate to My Tasks */}
-          {showRecentActivity && (
-            <Card className="card-hover">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg">Recent Activity</CardTitle>
-                <button
-                  onClick={() => navigate('/my-tasks')}
-                  className="text-xs text-primary hover:underline font-medium"
-                >
-                  My Tasks →
-                </button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {recentActivity.map((a, i) => (
-                    <div
-                      key={i}
-                      className="flex gap-3 rounded-lg px-2 py-2 -mx-2 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => navigate('/my-tasks')}
-                      title="View task"
-                    >
-                      <Avatar name={a.actor} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm">
-                          <span className="font-medium">{a.actor}</span>{' '}
-                          <span className="text-muted-foreground">{safeDetail((a as any).detail)}</span>
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <Badge variant="outline" className="text-xs">{(a as any).entity ?? (a as any).entity_id ?? ''}</Badge>
-                          <span className="text-xs text-muted-foreground">{timeAgo(a.at)}</span>
-                        </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base">Recent Activity</CardTitle>
+              <button onClick={() => navigate('/my-tasks')} className="text-xs text-primary hover:underline font-medium">
+                My Tasks →
+              </button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {recentActivity.map((a, i) => (
+                  <div key={i}
+                    className="flex gap-3 rounded-lg px-2 py-2 -mx-2 cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate('/my-tasks')}>
+                    <Avatar name={a.actor} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm">
+                        <span className="font-medium">{a.actor}</span>{' '}
+                        <span className="text-muted-foreground">{safeDetail((a as any).detail)}</span>
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge variant="outline" className="text-xs">{a.entity}</Badge>
+                        <span className="text-xs text-muted-foreground">{timeAgo(a.at)}</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      )}
-
-      {/* Team Workload — org_admin, project_manager, team_lead */}
-      {showTeamWorkload && (
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Team Workload</CardTitle>
-            <button
-              onClick={() => navigate('/admin/users')}
-              className="text-xs text-primary hover:underline font-medium"
-            >
-              Manage team →
-            </button>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="pb-3 font-medium">Member</th>
-                    <th className="pb-3 font-medium">Role</th>
-                    <th className="pb-3 font-medium text-center">Open Tasks</th>
-                    <th className="pb-3 font-medium text-center">High Priority</th>
-                    <th className="pb-3 font-medium text-center">Overdue</th>
-                    <th className="pb-3 font-medium text-right">Est. Hours</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamWorkload.map((m) => (
-                    <tr
-                      key={m.user_id}
-                      className="border-b last:border-0 cursor-pointer hover:bg-muted/40 transition-colors"
-                      onClick={() => navigate('/my-tasks')}
-                      title={`View ${m.name}'s tasks`}
-                    >
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <Avatar name={m.name} size="sm" />
-                          <span className="font-medium">{m.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-3">
-                        <Badge variant="secondary" className="text-xs">
-                          {ROLE_LABEL[m.role] || m.role.replace('_', ' ')}
-                        </Badge>
-                      </td>
-                      <td className="py-3 text-center">
-                        <span className="text-2xl font-bold text-primary">{m.open_tasks}</span>
-                      </td>
-                      <td className="py-3 text-center">
-                        <span className={cn('text-2xl font-bold', m.high_priority > 0 ? 'text-orange-600' : 'text-primary')}>
-                          {m.high_priority}
-                        </span>
-                      </td>
-                      <td className="py-3 text-center">
-                        <span className={cn('text-2xl font-bold', m.overdue_tasks > 0 ? 'text-red-600' : 'text-primary')}>
-                          {m.overdue_tasks}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        <div className="flex items-center justify-end gap-1 text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" />
-                          {m.estimated_hours}h
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
       )}
 
       {/* ── Role-specific sections ─────────────────────────────────────────── */}
@@ -704,19 +1078,23 @@ export function DashboardPage() {
       )}
 
       {currentRole === 'division_admin' && (
-        <DivisionAdminSection />
+        <DivisionAdminSection navigate={navigate} />
       )}
 
       {currentRole === 'vertical_head' && (
         <VerticalHeadSection navigate={navigate} />
       )}
 
-      {(currentRole === 'project_manager' || currentRole === 'team_lead') && (
-        <SprintStatusSection navigate={navigate} />
+      {currentRole === 'project_manager' && (
+        <ProjectManagerSection navigate={navigate} />
+      )}
+
+      {currentRole === 'team_lead' && (
+        <TeamLeadSection navigate={navigate} />
       )}
 
       {currentRole === 'member' && (
-        <MemberWeekSection navigate={navigate} />
+        <MemberSection navigate={navigate} />
       )}
 
       {currentRole === 'executive' && (

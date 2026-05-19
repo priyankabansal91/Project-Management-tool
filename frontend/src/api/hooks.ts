@@ -1493,3 +1493,30 @@ export function useDeleteVertical() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['verticals'] }),
   });
 }
+
+// ─── Dashboard V2 ─────────────────────────────────────────────────────────────
+
+export function useDashboardV2() {
+  return useQuery({
+    queryKey: ['dashboardV2'],
+    queryFn: () => api.get('/dashboard/v2/overview').then((r) => r.data.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useMilestoneBurnDashboard() {
+  return useQuery({
+    queryKey: ['milestoneBurnDashboard'],
+    queryFn: () => api.get('/dashboard/v2/milestone-burn').then((r) => r.data.data),
+    staleTime: 60_000,
+  });
+}
+
+export function useMilestoneSummary(projectId: string) {
+  return useQuery({
+    queryKey: ['milestoneSummary', projectId],
+    queryFn: () => api.get(`/projects/${projectId}/milestones/summary`).then((r) => r.data.data),
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
+}
