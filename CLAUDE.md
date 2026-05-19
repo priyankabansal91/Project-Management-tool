@@ -2,7 +2,8 @@
 
 ## Project Overview
 Multi-role SaaS project management tool for Quality Council of India (QCI / Q-Flow).
-Roles: `org_admin`, `division_admin`, `project_manager`, `member`, `viewer`, `executive`.
+Roles: `org_admin`, `division_admin`, `vertical_head`, `project_manager`, `team_lead`, `member`, `viewer`, `executive`.
+Hierarchy: Division → Vertical → Project → Milestone → Task
 
 ---
 
@@ -34,6 +35,23 @@ npx playwright test                  # full suite (172 tests, ~4 min)
 npx playwright test e2e/08-preproject-workflow.spec.ts   # single spec
 npx playwright test --grep "test name"
 ```
+
+## Vercel Deploy (production)
+Both projects have rootDirectory set in Vercel dashboard, so deploy from repo ROOT.
+
+```bash
+# Deploy backend (set root .vercel/project.json to backend project)
+cp backend/.vercel/project.json .vercel/project.json
+vercel --prod --yes      # run from repo root
+
+# Deploy frontend (set root .vercel/project.json to frontend project)
+cp frontend/.vercel/project.json .vercel/project.json
+vercel --prod --yes      # run from repo root
+```
+
+Production URLs:
+- Backend:  https://qflow-backend-priyankabansal91s-projects.vercel.app
+- Frontend: https://frontend-priyankabansal91s-projects.vercel.app
 
 ---
 
