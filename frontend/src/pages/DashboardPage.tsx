@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FolderKanban, CheckSquare, AlertTriangle, ListTodo, Clock, TrendingUp,
-  TrendingDown, Check, X, Flame, Building2,
+  TrendingDown, Check, X, Flame, Building2, Link2,
   Users, Zap, BarChart3, Shield, Flag, Target, Calendar, ArrowRight,
   RefreshCw, ChevronRight, Bell, CheckCircle2, Circle, AlertCircle,
   Layers, Activity, Wallet, Timer,
@@ -983,99 +983,433 @@ function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavi
   );
 }
 
-// ─── Project Manager Section ──────────────────────────────────────────────────
+// ─── Project Manager sub-components ──────────────────────────────────────────
 
-function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  const burnQ = useMilestoneBurnDashboard();
-  const burnItems: any[] = burnQ.data?.items ?? burnQ.data ?? [];
+const PM_MILESTONES = [
+  {
+    id: 'pm1', title: 'Requirements Gathering', projectName: 'CPR', projectId: 'p1',
+    status: 'completed', progress: 100, burnRate: 95, isOverdue: false, driftDays: 0,
+    plannedHours: 40,  actualHours: 38,  plannedBudget: 800000,  actualBudget: 760000,
+    completedTasks: 8, totalTasks: 8,
+    tasks: [
+      { id: 't1', title: 'Stakeholder interviews',  status: 'done',        priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
+      { id: 't2', title: 'BRD documentation',       status: 'done',        priority: 'medium', assignee: 'Carol J.',  blockers: [] },
+      { id: 't3', title: 'Approval sign-off',        status: 'done',        priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
+    ],
+  },
+  {
+    id: 'pm2', title: 'UI/UX Design Phase', projectName: 'CPR', projectId: 'p1',
+    status: 'completed', progress: 100, burnRate: 87, isOverdue: false, driftDays: 3,
+    plannedHours: 80,  actualHours: 90,  plannedBudget: 1200000, actualBudget: 1380000,
+    completedTasks: 12, totalTasks: 12,
+    tasks: [
+      { id: 't4', title: 'Wireframes — all screens', status: 'done', priority: 'high',   assignee: 'Carol J.',  blockers: [] },
+      { id: 't5', title: 'Design system tokens',     status: 'done', priority: 'medium', assignee: 'Priya S.',  blockers: [] },
+    ],
+  },
+  {
+    id: 'pm3', title: 'Development Phase 1', projectName: 'CPR', projectId: 'p1',
+    status: 'in_progress', progress: 62, burnRate: 62, isOverdue: false, driftDays: 0,
+    plannedHours: 200, actualHours: 145, plannedBudget: 3500000, actualBudget: 3200000,
+    completedTasks: 13, totalTasks: 21,
+    tasks: [
+      { id: 't6',  title: 'Auth module',           status: 'done',        priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
+      { id: 't7',  title: 'Dashboard layout',      status: 'done',        priority: 'high',   assignee: 'Carol J.',  blockers: [] },
+      { id: 't8',  title: 'API integration layer', status: 'in_progress', priority: 'high',   assignee: 'David P.',  blockers: ['t11'] },
+      { id: 't9',  title: 'Notification service',  status: 'in_progress', priority: 'medium', assignee: 'Priya S.',  blockers: [] },
+      { id: 't10', title: 'Search & filter',       status: 'todo',        priority: 'medium', assignee: 'David P.',  blockers: ['t8'] },
+      { id: 't11', title: 'Backend data models',   status: 'in_progress', priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
+      { id: 't12', title: 'Unit tests',            status: 'todo',        priority: 'low',    assignee: 'Carol J.',  blockers: ['t8', 't9'] },
+    ],
+  },
+  {
+    id: 'pm4', title: 'API Integration', projectName: 'AGM', projectId: 'p2',
+    status: 'in_progress', progress: 28, burnRate: 28, isOverdue: true, driftDays: 5,
+    plannedHours: 120, actualHours: 48,  plannedBudget: 2200000, actualBudget: 890000,
+    completedTasks: 3, totalTasks: 11,
+    tasks: [
+      { id: 't13', title: 'Gateway config',       status: 'done',        priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
+      { id: 't14', title: 'Auth middleware',       status: 'in_progress', priority: 'high',   assignee: 'David P.',  blockers: [] },
+      { id: 't15', title: 'Rate limiting setup',  status: 'todo',        priority: 'medium', assignee: 'Priya S.',  blockers: ['t14'] },
+      { id: 't16', title: 'Load testing',         status: 'todo',        priority: 'high',   assignee: 'Carol J.',  blockers: ['t15'] },
+    ],
+  },
+  {
+    id: 'pm5', title: 'UAT & Testing', projectName: 'CPR', projectId: 'p1',
+    status: 'pending', progress: 0, burnRate: 0, isOverdue: false, driftDays: 0,
+    plannedHours: 60,  actualHours: 0,   plannedBudget: 800000,  actualBudget: 0,
+    completedTasks: 0, totalTasks: 9,
+    tasks: [
+      { id: 't17', title: 'Test plan creation', status: 'todo', priority: 'high',   assignee: 'Carol J.',  blockers: [] },
+      { id: 't18', title: 'Regression testing', status: 'todo', priority: 'high',   assignee: 'Priya S.',  blockers: ['pm3'] },
+      { id: 't19', title: 'User acceptance',    status: 'todo', priority: 'medium', assignee: 'Rahul S.',  blockers: ['t18'] },
+    ],
+  },
+];
 
-  const mockBurn = [
-    { id: 'm1', title: 'Requirement Gathering', projectName: 'CPR', progress: 100, burnRate: 95, status: 'completed', isOverdue: false, completedTasks: 8, totalTasks: 8 },
-    { id: 'm2', title: 'UI/UX Design', projectName: 'CPR', progress: 100, burnRate: 87, status: 'completed', isOverdue: false, completedTasks: 12, totalTasks: 12 },
-    { id: 'm3', title: 'Development Phase 1', projectName: 'CPR', progress: 62, burnRate: 62, status: 'in_progress', isOverdue: false, completedTasks: 13, totalTasks: 21 },
-    { id: 'm4', title: 'API Integration', projectName: 'AGM', progress: 28, burnRate: 28, status: 'in_progress', isOverdue: true, completedTasks: 3, totalTasks: 11 },
-    { id: 'm5', title: 'UAT & Testing', projectName: 'CPR', progress: 0, burnRate: 0, status: 'pending', isOverdue: false, completedTasks: 0, totalTasks: 9 },
-  ];
+function MilestoneNavCard({ m, isSelected, onClick }: { m: any; isSelected: boolean; onClick: () => void }) {
+  const statusIcons: Record<string, React.ReactNode> = {
+    completed:   <CheckCircle2 className="h-4 w-4 text-green-500" />,
+    in_progress: <Clock className="h-4 w-4 text-blue-500" />,
+    on_hold:     <AlertCircle className="h-4 w-4 text-orange-500" />,
+    pending:     <Circle className="h-4 w-4 text-gray-400" />,
+  };
+  const statusBg: Record<string, string> = {
+    completed:   'border-green-200 bg-green-50/40',
+    in_progress: 'border-blue-200 bg-blue-50/40',
+    on_hold:     'border-orange-200',
+    pending:     '',
+  };
+  const burn = m.burnRate ?? m.progress ?? 0;
+  const isOverdue = m.isOverdue || false;
 
-  const items = burnItems.length > 0 ? burnItems : mockBurn;
+  return (
+    <button onClick={onClick} className={cn(
+      'flex-shrink-0 w-48 rounded-xl border-2 p-3 text-left transition-all hover:shadow-md',
+      isSelected ? 'border-primary bg-primary/5 shadow-md' :
+      isOverdue  ? 'border-red-300 bg-red-50/30 hover:border-red-400' :
+      cn('hover:border-primary/40', statusBg[m.status] || ''),
+    )}>
+      <div className="flex items-center justify-between gap-1 mb-1.5">
+        {statusIcons[m.status] || statusIcons.pending}
+        {isOverdue && <span className="text-[9px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded">Overdue</span>}
+        {!isOverdue && (m.driftDays ?? 0) > 0 && <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">+{m.driftDays}d</span>}
+      </div>
+      <p className="text-xs font-semibold leading-tight line-clamp-2">{m.title}</p>
+      <p className="text-[10px] text-muted-foreground mt-0.5">{m.projectName}</p>
+      <div className="mt-2 space-y-1">
+        <div className="flex justify-between text-[10px]">
+          <span className="text-muted-foreground">{m.completedTasks ?? 0}/{m.totalTasks ?? 0} tasks</span>
+          <span className="font-bold">{burn}%</span>
+        </div>
+        <div className="h-1 rounded-full bg-secondary overflow-hidden">
+          <div className={cn('h-full rounded-full',
+            m.status === 'completed' ? 'bg-green-500' : isOverdue ? 'bg-red-500' : burn >= 60 ? 'bg-blue-500' : 'bg-amber-500')}
+            style={{ width: `${burn}%` }} />
+        </div>
+      </div>
+    </button>
+  );
+}
 
-  const statusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'in_progress': return <Clock className="h-4 w-4 text-blue-500" />;
-      case 'on_hold': return <AlertCircle className="h-4 w-4 text-orange-500" />;
-      default: return <Circle className="h-4 w-4 text-gray-400" />;
-    }
+function MilestoneTaskList({ milestone, navigate }: { milestone: any; navigate: ReturnType<typeof useNavigate> }) {
+  const tasks: any[] = milestone.tasks ?? [];
+  const blocked     = tasks.filter(t => (t.blockers?.length ?? 0) > 0 && t.status !== 'done');
+  const inProgress  = tasks.filter(t => t.status === 'in_progress' && !(t.blockers?.length));
+  const todo        = tasks.filter(t => t.status === 'todo' && !(t.blockers?.length));
+  const done        = tasks.filter(t => t.status === 'done');
+  const pDot: Record<string, string> = { critical: 'bg-red-600', high: 'bg-red-500', medium: 'bg-amber-500', low: 'bg-green-500' };
+
+  const TaskRow = ({ t }: { t: any }) => (
+    <div className={cn(
+      'flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors',
+      (t.blockers?.length ?? 0) > 0 && t.status !== 'done' ? 'border border-red-200/60 bg-red-50/30 dark:bg-red-950/10' : ''
+    )} onClick={() => navigate('/my-tasks')}>
+      <div className={cn('h-2 w-2 rounded-full shrink-0', pDot[t.priority] || 'bg-amber-500')} />
+      <p className={cn('text-xs flex-1 min-w-0 truncate', t.status === 'done' ? 'line-through text-muted-foreground' : 'font-medium')}>{t.title}</p>
+      <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-muted-foreground">
+        {(t.blockers?.length ?? 0) > 0 && t.status !== 'done' && (
+          <span className="text-red-600 font-semibold flex items-center gap-0.5">
+            <Link2 className="h-3 w-3" />{t.blockers.length}
+          </span>
+        )}
+        <span>{t.assignee}</span>
+      </div>
+    </div>
+  );
+
+  const Group = ({ label, items, dot }: { label: string; items: any[]; dot: string }) =>
+    items.length === 0 ? null : (
+      <div>
+        <div className="flex items-center gap-2 px-1 mb-1 mt-2 first:mt-0">
+          <div className={cn('h-2 w-2 rounded-full', dot)} />
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
+          <span className="text-[10px] font-bold">{items.length}</span>
+        </div>
+        {items.map(t => <TaskRow key={t.id} t={t} />)}
+      </div>
+    );
+
+  return (
+    <div className="space-y-1 max-h-72 overflow-y-auto pr-0.5" style={{ scrollbarWidth: 'thin' }}>
+      {tasks.length === 0
+        ? <p className="text-sm text-muted-foreground text-center py-6">No tasks in this milestone</p>
+        : <>
+            <Group label="Blocked"     items={blocked}    dot="bg-red-500" />
+            <Group label="In Progress" items={inProgress} dot="bg-blue-500" />
+            <Group label="To Do"       items={todo}       dot="bg-gray-400" />
+            <Group label="Done"        items={done}       dot="bg-green-500" />
+          </>
+      }
+    </div>
+  );
+}
+
+function BurnVsPlanWidget({ milestone }: { milestone: any }) {
+  const pH = milestone.plannedHours  ?? 80;  const aH = milestone.actualHours  ?? 0;
+  const pB = milestone.plannedBudget ?? 1e6; const aB = milestone.actualBudget ?? 0;
+  const ePct = pH > 0 ? Math.round((aH / pH) * 100) : 0;
+  const bPct = pB > 0 ? Math.round((aB / pB) * 100) : 0;
+  const drift = milestone.driftDays ?? 0;
+
+  const barClsFor = (pct: number) => pct >= 115 ? 'bg-red-500' : pct >= 100 ? 'bg-amber-500' : 'bg-blue-500';
+  const txtClsFor = (pct: number, actual: number, planned: number) =>
+    actual > planned ? (pct >= 115 ? 'text-red-600' : 'text-amber-600') : 'text-green-600';
+
+  const CompareRow = ({ label, icon: Icon, actualVal, plannedVal, pct, fmtFn }: {
+    label: string; icon: any; actualVal: number; plannedVal: number; pct: number; fmtFn: (n: number) => string;
+  }) => {
+    const diff = Math.abs(pct - 100);
+    const over = actualVal > plannedVal;
+    return (
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-xs">
+          <span className="font-medium flex items-center gap-1"><Icon className="h-3.5 w-3.5 text-muted-foreground" />{label}</span>
+          <span className={cn('font-semibold text-[11px]', txtClsFor(pct, actualVal, plannedVal))}>
+            {fmtFn(actualVal)} / {fmtFn(plannedVal)} ({over ? '+' : '-'}{diff}%)
+          </span>
+        </div>
+        <div className="relative h-3 rounded-full bg-secondary overflow-hidden">
+          <div className="absolute inset-0 bg-muted/40 rounded-full" />
+          <div className={cn('absolute inset-y-0 left-0 h-full rounded-full', barClsFor(pct))}
+            style={{ width: `${Math.min(115, pct)}%`, opacity: 0.85 }} />
+        </div>
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span>Plan: {fmtFn(plannedVal)}</span><span>Actual: {fmtFn(actualVal)}</span>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="space-y-4">
-      {/* Milestone burn table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
+      <CompareRow label="Effort" icon={Timer} actualVal={aH} plannedVal={pH} pct={ePct} fmtFn={n => `${n}h`} />
+      <CompareRow label="Budget" icon={Wallet} actualVal={aB} plannedVal={pB} pct={bPct} fmtFn={fmtCurrency} />
+
+      <div className={cn('rounded-lg border px-3 py-2 flex items-center justify-between',
+        drift > 5 ? 'border-red-200 bg-red-50/50' : drift > 0 ? 'border-amber-200 bg-amber-50/50' : 'border-green-200 bg-green-50/50')}>
+        <span className="text-xs font-medium flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> Timeline</span>
+        <span className={cn('text-sm font-bold', drift > 5 ? 'text-red-600' : drift > 0 ? 'text-amber-600' : 'text-green-600')}>
+          {drift === 0 ? 'On Schedule' : `+${drift} day drift`}
+        </span>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex justify-between text-[11px] text-muted-foreground">
+          <span className="text-green-600 font-medium">Completion {milestone.progress ?? 0}%</span>
+          <span className="text-blue-600 font-medium">Burn {milestone.burnRate ?? 0}%</span>
+        </div>
+        <div className="relative h-2.5 rounded-full bg-secondary overflow-hidden">
+          <div className="absolute inset-y-0 left-0 h-full bg-green-400 rounded-full opacity-50"
+            style={{ width: `${milestone.progress ?? 0}%` }} />
+          <div className="absolute inset-y-0 left-0 h-full bg-blue-500 rounded-full opacity-70"
+            style={{ width: `${milestone.burnRate ?? 0}%` }} />
+        </div>
+        {(milestone.burnRate ?? 0) > (milestone.progress ?? 0) + 10 && (
+          <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" /> Burn ahead of completion by {(milestone.burnRate ?? 0) - (milestone.progress ?? 0)}%
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TimeTrackingAggregates({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const mockTeam = [
+    { name: 'Rahul Sharma',  role: 'Backend',  logged: 36, estimated: 40, tasks: 8,  overdue: 0 },
+    { name: 'Carol Johnson', role: 'Frontend', logged: 42, estimated: 40, tasks: 6,  overdue: 1 },
+    { name: 'David Park',    role: 'Backend',  logged: 28, estimated: 40, tasks: 5,  overdue: 0 },
+    { name: 'Priya Sharma',  role: 'Design',   logged: 38, estimated: 32, tasks: 4,  overdue: 1 },
+  ];
+  const overloaded = mockTeam.filter(m => m.logged > m.estimated);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Milestone Burn Status
+            <Timer className="h-4 w-4 text-primary" /> Time Tracking
           </CardTitle>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/projects')}>
+          <span className="text-xs text-muted-foreground">
+            {mockTeam.reduce((s, m) => s + m.logged, 0)}h logged / {mockTeam.reduce((s, m) => s + m.estimated, 0)}h est.
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {mockTeam.map(m => {
+          const util = Math.round((m.logged / m.estimated) * 100);
+          const over = m.logged > m.estimated;
+          return (
+            <div key={m.name} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <Avatar name={m.name} size="sm" />
+                  <span className="font-medium">{m.name}</span>
+                  <span className="text-muted-foreground">{m.role}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {m.overdue > 0 && <span className="text-[10px] text-red-600 font-semibold">{m.overdue} overdue</span>}
+                  <span className={cn('font-bold', over ? 'text-orange-600' : 'text-foreground')}>{m.logged}h</span>
+                  <span className="text-muted-foreground text-[11px]">/ {m.estimated}h</span>
+                </div>
+              </div>
+              <div className="relative h-2 rounded-full bg-secondary overflow-hidden">
+                <div className="absolute inset-0 bg-muted/40 rounded-full" />
+                <div className={cn('absolute inset-y-0 left-0 h-full rounded-full',
+                  util >= 110 ? 'bg-orange-500' : util >= 100 ? 'bg-amber-500' : 'bg-green-500')}
+                  style={{ width: `${Math.min(100, util)}%` }} />
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>{m.tasks} tasks</span>
+                <span className={cn(over ? 'text-orange-600 font-medium' : 'text-green-600')}>{util}% utilization</span>
+              </div>
+            </div>
+          );
+        })}
+
+        {overloaded.length > 0 && (
+          <div className="rounded-lg border border-orange-200 bg-orange-50/50 dark:bg-orange-950/10 px-3 py-2 flex items-center gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+            <p className="text-xs text-orange-700 dark:text-orange-300">
+              {overloaded.map(m => m.name.split(' ')[0]).join(', ')} {overloaded.length === 1 ? 'is' : 'are'} over capacity — consider rebalancing
+            </p>
+          </div>
+        )}
+
+        <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => navigate('/time-logging')}>
+          <Clock className="h-3.5 w-3.5 mr-1" /> Full Time Log
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Project Manager Section ──────────────────────────────────────────────────
+
+function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const burnQ = useMilestoneBurnDashboard();
+  const dv2Q  = useDashboardV2();
+  const burnItems: any[] = burnQ.data?.items ?? burnQ.data ?? [];
+
+  const milestones: any[] = burnItems.length > 0 ? burnItems : PM_MILESTONES;
+  const [selectedId, setSelectedId] = useState<string>(milestones[0]?.id ?? '');
+  const selectedMs = milestones.find((m: any) => m.id === selectedId) ?? milestones[0];
+
+  const activeMilestones  = milestones.filter((m: any) => m.status === 'in_progress').length;
+  const overdueMilestones = milestones.filter((m: any) => m.isOverdue).length;
+  const blockedTasks      = PM_MILESTONES.flatMap(m => m.tasks).filter(t => (t.blockers?.length ?? 0) > 0 && t.status !== 'done').length;
+  const pendingApprovals  = dv2Q.data?.pendingApprovals ?? 2;
+  const totalBudgetUsed   = PM_MILESTONES.reduce((s, m) => s + (m.actualBudget ?? 0), 0);
+  const totalBudgetPlan   = PM_MILESTONES.reduce((s, m) => s + (m.plannedBudget ?? 0), 0);
+  const budgetPct         = totalBudgetPlan > 0 ? Math.round((totalBudgetUsed / totalBudgetPlan) * 100) : 0;
+
+  return (
+    <div className="space-y-5">
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MiniStatChip label="Active Milestones"  value={activeMilestones}  color="text-blue-600" />
+        <MiniStatChip label="Overdue"            value={overdueMilestones} color={overdueMilestones > 0 ? 'text-red-600' : 'text-green-600'} />
+        <MiniStatChip label="Blocked Tasks"      value={blockedTasks}      color={blockedTasks > 0 ? 'text-orange-600' : 'text-green-600'} />
+        <MiniStatChip label="Pending Approvals"  value={pendingApprovals}  color="text-amber-600" />
+        <MiniStatChip label="Budget Used"        value={fmtCurrency(totalBudgetUsed)} color="text-purple-600" />
+        <MiniStatChip label="Budget Health"      value={`${budgetPct}%`}   color={budgetPct >= 110 ? 'text-red-600' : budgetPct >= 90 ? 'text-amber-600' : 'text-green-600'} />
+      </div>
+
+      {/* Milestone navigator */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <Flag className="h-4 w-4" /> Milestone Navigator — click to inspect
+          </h3>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/milestones')}>
             All milestones <ArrowRight className="h-3 w-3 ml-1" />
           </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {items.map((m: any) => {
-              const burn = m.burnRate ?? m.progress ?? 0;
-              const isOverdue = m.isOverdue || false;
-              return (
-                <div key={m.id} className={cn(
-                  'rounded-lg border p-3 space-y-2 cursor-pointer hover:bg-muted/30 transition-colors',
-                  isOverdue && 'border-red-200'
-                )}
-                  onClick={() => m.projectId ? navigate(`/projects/${m.projectId}/milestones`) : navigate('/projects')}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {statusIcon(m.status)}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{m.title}</p>
-                        <p className="text-xs text-muted-foreground">{m.projectName || 'Project'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {isOverdue && <Badge className="bg-red-100 text-red-700 text-[10px] border-0">Overdue</Badge>}
-                      <span className="text-sm font-bold">{burn}%</span>
-                    </div>
-                  </div>
-                  <ProgressBar
-                    value={burn}
-                    colorClass={m.status === 'completed' ? 'bg-green-500' : isOverdue ? 'bg-red-500' : burn >= 60 ? 'bg-blue-500' : 'bg-amber-500'}
-                  />
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{m.completedTasks ?? 0}/{m.totalTasks ?? 0} tasks</span>
-                    <span className="capitalize">{m.status?.replace('_', ' ') || 'pending'}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
+          {milestones.slice(0, 8).map((m: any) => (
+            <MilestoneNavCard key={m.id} m={m} isSelected={m.id === selectedId} onClick={() => setSelectedId(m.id)} />
+          ))}
+        </div>
+      </div>
 
-      {/* Sprint status */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-sm text-blue-700 dark:text-blue-300">Active Sprint</span>
-              <Badge className="bg-blue-600 text-white text-[10px]">Sprint 12</Badge>
+      {/* Selected milestone detail: tasks + burn vs plan */}
+      {selectedMs && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  <span className="truncate">{selectedMs.title}</span>
+                  <Badge variant="outline" className="text-[10px] shrink-0">{selectedMs.projectName}</Badge>
+                </CardTitle>
+                <div className="flex items-center gap-2 shrink-0">
+                  {selectedMs.isOverdue && <Badge className="bg-red-100 text-red-700 text-[10px] border-0">Overdue</Badge>}
+                  <Button variant="outline" size="sm" className="h-7 text-xs"
+                    onClick={() => selectedMs.projectId ? navigate(`/projects/${selectedMs.projectId}/milestones`) : navigate('/milestones')}>
+                    Open <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+                <span>{selectedMs.completedTasks ?? 0}/{selectedMs.totalTasks ?? 0} tasks</span>
+                <span>{selectedMs.progress ?? 0}% complete</span>
+                <span className="capitalize">{(selectedMs.status ?? 'pending').replace('_', ' ')}</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <MilestoneTaskList milestone={selectedMs} navigate={navigate} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" /> Burn vs Plan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BurnVsPlanWidget milestone={selectedMs} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Time tracking + sprint status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TimeTrackingAggregates navigate={navigate} />
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" /> Sprint Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm text-blue-700 dark:text-blue-300">Sprint 12</span>
+                <Badge className="bg-blue-600 text-white text-[10px]">Active</Badge>
+              </div>
+              <ProgressBar value={65} colorClass="bg-blue-500" />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>65% · 8 days remaining</span>
+                <span>34 / 52 points</span>
+              </div>
+              <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => navigate('/projects')}>
+                Sprint Board <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
             </div>
-            <ProgressBar value={65} colorClass="bg-blue-500" />
-            <p className="text-xs text-muted-foreground">65% · 8 days remaining</p>
-            <Button variant="outline" size="sm" className="w-full h-8 text-xs mt-1" onClick={() => navigate('/projects')}>
-              View Sprint Board
-            </Button>
+            <div className="rounded-lg border p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-sm">Sprint 13</span>
+                <Badge variant="outline" className="text-[10px]">Planning</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">18 stories in backlog · Grooming tomorrow</p>
+            </div>
+            <PendingApprovalsWidget navigate={navigate} />
           </CardContent>
         </Card>
-
-        <PendingApprovalsWidget navigate={navigate} />
       </div>
     </div>
   );
