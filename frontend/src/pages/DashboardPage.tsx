@@ -662,39 +662,41 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
 
 // ─── Vertical Head sub-components ────────────────────────────────────────────
 
-const VH_MOCK_MILESTONES: Record<string, Array<{ title: string; status: 'completed' | 'in_progress' | 'pending' | 'overdue' }>> = {
+type MsStatus = 'completed' | 'in_progress' | 'pending' | 'overdue';
+type VHMilestone = { title: string; status: MsStatus; burnRate?: number; hasDeps?: boolean };
+
+const VH_MOCK_MILESTONES: Record<string, VHMilestone[]> = {
   p1: [
-    { title: 'Requirements', status: 'completed' },
-    { title: 'Design',       status: 'completed' },
-    { title: 'Development',  status: 'in_progress' },
-    { title: 'Testing',      status: 'pending' },
-    { title: 'Go Live',      status: 'pending' },
+    { title: 'Requirements', status: 'completed',   burnRate: 95,  hasDeps: false },
+    { title: 'Design',       status: 'completed',   burnRate: 87,  hasDeps: false },
+    { title: 'Development',  status: 'in_progress', burnRate: 68,  hasDeps: true  },
+    { title: 'Testing',      status: 'pending',     burnRate: 0,   hasDeps: true  },
+    { title: 'Go Live',      status: 'pending',     burnRate: 0,   hasDeps: false },
   ],
   p2: [
-    { title: 'Discovery',    status: 'completed' },
-    { title: 'Architecture', status: 'overdue' },
-    { title: 'Migration',    status: 'pending' },
-    { title: 'Validation',   status: 'pending' },
+    { title: 'Discovery',    status: 'completed',   burnRate: 100, hasDeps: false },
+    { title: 'Architecture', status: 'overdue',     burnRate: 82,  hasDeps: true  },
+    { title: 'Migration',    status: 'pending',     burnRate: 0,   hasDeps: true  },
+    { title: 'Validation',   status: 'pending',     burnRate: 0,   hasDeps: false },
   ],
   p3: [
-    { title: 'Wireframes',   status: 'completed' },
-    { title: 'UI Design',    status: 'completed' },
-    { title: 'Build v2',     status: 'in_progress' },
-    { title: 'QA',           status: 'pending' },
-    { title: 'Release',      status: 'pending' },
-    { title: 'Monitoring',   status: 'pending' },
+    { title: 'Wireframes',   status: 'completed',   burnRate: 100, hasDeps: false },
+    { title: 'UI Design',    status: 'completed',   burnRate: 93,  hasDeps: false },
+    { title: 'Build v2',     status: 'in_progress', burnRate: 52,  hasDeps: false },
+    { title: 'QA',           status: 'pending',     burnRate: 0,   hasDeps: true  },
+    { title: 'Release',      status: 'pending',     burnRate: 0,   hasDeps: false },
+    { title: 'Monitoring',   status: 'pending',     burnRate: 0,   hasDeps: false },
   ],
 };
 
-type MsStatus = 'completed' | 'in_progress' | 'pending' | 'overdue';
+const VH_MOCK_RISKS = [
+  { id: 'r1', title: 'API Gateway delayed — blocks 3 downstream tasks', severity: 'high',   project: 'AGM',  daysOpen: 3 },
+  { id: 'r2', title: 'Design resource overloaded (105% utilization)',    severity: 'medium', project: 'CPR',  daysOpen: 1 },
+  { id: 'r3', title: 'UAT environment not provisioned on time',          severity: 'high',   project: 'CPR',  daysOpen: 7 },
+  { id: 'r4', title: 'Vendor SDK update has breaking changes',           severity: 'medium', project: 'MAV2', daysOpen: 2 },
+];
 
-function MilestoneTrack({ milestones }: { milestones: Array<{ title: string; status: MsStatus }> }) {
-  const dotCls: Record<MsStatus, string> = {
-    completed:   'bg-green-500 border-green-500',
-    in_progress: 'bg-blue-500 border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900',
-    overdue:     'bg-red-500 border-red-500',
-    pending:     'bg-background border-border',
-  };
+function MilestoneTrack({ milestones }: { milestones: VHMilestone[] }) {
   const labelCls: Record<MsStatus, string> = {
     completed:   'text-green-600 dark:text-green-400',
     in_progress: 'text-blue-600 dark:text-blue-400 font-semibold',
@@ -703,15 +705,34 @@ function MilestoneTrack({ milestones }: { milestones: Array<{ title: string; sta
   };
   const lineCls = (s: MsStatus) => s === 'completed' ? 'bg-green-300 dark:bg-green-700' : 'bg-border';
 
+  // ● completed  ◐ in_progress  ○ pending  ✕ overdue
+  const MsDot = ({ status }: { status: MsStatus }) => {
+    if (status === 'completed')
+      return (
+        <div className="h-4 w-4 rounded-full bg-green-500 border-2 border-green-500 shrink-0 flex items-center justify-center">
+          <Check className="h-2.5 w-2.5 text-white" />
+        </div>
+      );
+    if (status === 'in_progress')
+      return (
+        <div className="h-4 w-4 rounded-full border-2 border-blue-500 shrink-0 overflow-hidden ring-2 ring-blue-200 dark:ring-blue-900"
+          style={{ background: 'linear-gradient(to right, #3B82F6 50%, transparent 50%)' }} />
+      );
+    if (status === 'overdue')
+      return (
+        <div className="h-4 w-4 rounded-full bg-red-500 border-2 border-red-500 shrink-0 flex items-center justify-center">
+          <X className="h-2.5 w-2.5 text-white" />
+        </div>
+      );
+    return <div className="h-4 w-4 rounded-full border-2 border-border bg-background shrink-0" />;
+  };
+
   return (
     <div className="space-y-1">
       <div className="flex items-center">
         {milestones.map((ms, i) => (
-          <div key={i} className="flex items-center flex-1 last:flex-none">
-            <div className={cn('h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center', dotCls[ms.status])}>
-              {ms.status === 'completed' && <Check className="h-2.5 w-2.5 text-white" />}
-              {ms.status === 'overdue'   && <X className="h-2.5 w-2.5 text-white" />}
-            </div>
+          <div key={i} className="flex items-center flex-1 last:flex-none" title={`${ms.title} — ${ms.status.replace('_', ' ')}${ms.burnRate ? ` · ${ms.burnRate}% burn` : ''}`}>
+            <MsDot status={ms.status} />
             {i < milestones.length - 1 && (
               <div className={cn('h-0.5 flex-1 transition-colors', lineCls(ms.status))} />
             )}
@@ -736,10 +757,13 @@ function VerticalProjectCard({ p, idx, navigate }: { p: any; idx: number; naviga
   const budgetPlanned  = p.budget_planned  ?? bSeed[idx % bSeed.length];
   const budgetConsumed = p.budget_consumed ?? Math.round(budgetPlanned * (0.3 + pct / 160));
   const budgetPct = Math.round((budgetConsumed / budgetPlanned) * 100);
-  const pMilestones: Array<{ title: string; status: MsStatus }> =
-    p.milestones ?? VH_MOCK_MILESTONES[p.id] ?? VH_MOCK_MILESTONES.p1;
-  const delayed = pMilestones.filter(m => m.status === 'overdue').length;
-  const done    = pMilestones.filter(m => m.status === 'completed').length;
+  const pMilestones: VHMilestone[] = p.milestones ?? VH_MOCK_MILESTONES[p.id] ?? VH_MOCK_MILESTONES.p1;
+  const delayed  = pMilestones.filter(m => m.status === 'overdue').length;
+  const done     = pMilestones.filter(m => m.status === 'completed').length;
+  const hasDeps  = pMilestones.some(m => m.hasDeps && (m.status === 'in_progress' || m.status === 'overdue'));
+  const activeMs = pMilestones.find(m => m.status === 'in_progress' || m.status === 'overdue');
+  const burnRate = activeMs?.burnRate ?? 0;
+  const burnDrift = burnRate - pct;
 
   return (
     <Card className="hover:shadow-md transition-all cursor-pointer group" onClick={() => navigate(`/projects/${p.id}/board`)}>
@@ -753,20 +777,50 @@ function VerticalProjectCard({ p, idx, navigate }: { p: any; idx: number; naviga
           <div className="flex items-center gap-1.5 shrink-0">
             {delayed > 0 && (
               <span className="flex items-center gap-0.5 text-[10px] text-red-600 font-semibold">
-                <AlertTriangle className="h-3 w-3" />{delayed} delayed
+                <AlertTriangle className="h-3 w-3" />{delayed}
               </span>
             )}
             <Badge variant="outline" className="text-[10px]">{p.key}</Badge>
           </div>
         </div>
 
-        {/* Milestone track */}
+        {/* Milestone track ○ ○ ◐ ● ● */}
         <MilestoneTrack milestones={pMilestones} />
+
+        {/* Burn rate vs completion indicator */}
+        {burnRate > 0 && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-[10px]">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Flame className="h-3 w-3 text-orange-500" /> Burn rate
+              </span>
+              <span className={cn('font-semibold',
+                burnDrift > 15 ? 'text-red-600' : burnDrift > 5 ? 'text-amber-600' : 'text-green-600')}>
+                {burnRate}% {burnDrift > 5 ? `(+${burnDrift}% drift)` : ''}
+              </span>
+            </div>
+            <div className="relative h-2 rounded-full bg-secondary overflow-hidden">
+              <div className="absolute inset-y-0 left-0 h-full bg-green-400 opacity-50 rounded-full"
+                style={{ width: `${pct}%` }} />
+              <div className={cn('absolute inset-y-0 left-0 h-full rounded-full opacity-80',
+                burnDrift > 15 ? 'bg-red-500' : burnDrift > 5 ? 'bg-amber-500' : 'bg-blue-500')}
+                style={{ width: `${burnRate}%` }} />
+            </div>
+          </div>
+        )}
+
+        {/* Dependency alert */}
+        {hasDeps && (
+          <div className="flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 px-2 py-1 text-[10px]">
+            <Link2 className="h-3 w-3 text-amber-600 shrink-0" />
+            <span className="text-amber-700 dark:text-amber-300 font-medium">Dependency blockers active</span>
+          </div>
+        )}
 
         {/* Budget row */}
         <div className="space-y-0.5">
           <div className="flex justify-between text-[11px]">
-            <span className="text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Budget consumed</span>
+            <span className="text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Budget</span>
             <span className={cn('font-semibold',
               budgetPct >= 95 ? 'text-red-600' : budgetPct >= 80 ? 'text-amber-600' : 'text-green-600')}>
               {fmtCurrency(budgetConsumed)} / {fmtCurrency(budgetPlanned)}
@@ -779,18 +833,17 @@ function VerticalProjectCard({ p, idx, navigate }: { p: any; idx: number; naviga
           </div>
         </div>
 
-        {/* Completion */}
+        {/* Completion + RAG */}
         <div>
           <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
           <div className="flex items-center justify-between text-xs mt-1">
-            <span className="text-muted-foreground">{pct}% complete</span>
+            <span className="text-muted-foreground">{done}/{pMilestones.length} milestones · {pct}%</span>
             <span className={cn('font-semibold', rag.text)}>{rag.label}</span>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 border-t">
-          <span>{done}/{pMilestones.length} milestones done</span>
+          <span>{delayed > 0 ? `${delayed} milestone${delayed > 1 ? 's' : ''} delayed` : 'All milestones on track'}</span>
           <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary font-medium">View board →</span>
         </div>
       </CardContent>
@@ -996,6 +1049,59 @@ function VerticalApprovalsWidget({ navigate }: { navigate: ReturnType<typeof use
   );
 }
 
+function VHActiveRisksPanel({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const sevCls: Record<string, string> = {
+    high:   'border-red-200 bg-red-50/50 dark:bg-red-950/10',
+    medium: 'border-amber-200 bg-amber-50/50',
+  };
+  const sevDot: Record<string, string> = { high: 'bg-red-500', medium: 'bg-amber-500' };
+  const sevBadge: Record<string, string> = {
+    high:   'text-red-600 bg-red-50 border-red-200',
+    medium: 'text-amber-600 bg-amber-50 border-amber-200',
+  };
+  const highCount = VH_MOCK_RISKS.filter(r => r.severity === 'high').length;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4 text-red-500" /> Active Risks
+            {highCount > 0 && (
+              <span className="rounded-full bg-red-100 text-red-700 text-[10px] px-2 py-0.5 font-bold border border-red-200">
+                {highCount} high
+              </span>
+            )}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/executive/risk-register')}>
+            Register <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {VH_MOCK_RISKS.map(r => (
+          <div key={r.id} className={cn('rounded-lg border px-3 py-2 flex items-start gap-2', sevCls[r.severity])}>
+            <div className={cn('h-2 w-2 rounded-full shrink-0 mt-1.5', sevDot[r.severity])} />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium leading-snug">{r.title}</p>
+              <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                <Badge variant="outline" className="text-[9px] h-3.5 px-1">{r.project}</Badge>
+                <span>{r.daysOpen}d open</span>
+              </div>
+            </div>
+            <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded border capitalize shrink-0 mt-0.5', sevBadge[r.severity])}>
+              {r.severity}
+            </span>
+          </div>
+        ))}
+        <Button variant="outline" size="sm" className="w-full h-8 text-xs mt-1" onClick={() => navigate('/projects')}>
+          <Activity className="h-3.5 w-3.5 mr-1" /> View All Project Risks
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Vertical Head Section ────────────────────────────────────────────────────
 
 function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
@@ -1012,33 +1118,57 @@ function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavi
 
   const displayProjects = projects.length > 0 ? projects : mockProjects;
 
-  // Derive KPIs
-  const totalMembers    = dv2Q.data?.totalMembers ?? 24;
-  const openApprovals   = dv2Q.data?.pendingApprovals ?? 3;
-  const avgCompletion   = Math.round(displayProjects.reduce((s: number, p: any) => s + (p.completion_pct ?? 0), 0) / Math.max(1, displayProjects.length));
-  const utilization     = 78;
-  const msThroughput    = burnQ.data?.items ? burnQ.data.items.filter((m: any) => m.status === 'completed').length : 7;
-  const deliveryEff     = Math.round(avgCompletion * 1.05);
-  const sprintHealth    = avgCompletion >= 70 ? 'Good' : avgCompletion >= 40 ? 'Fair' : 'Poor';
-  const sprintColor     = avgCompletion >= 70 ? 'text-green-600' : avgCompletion >= 40 ? 'text-amber-600' : 'text-red-600';
+  const totalMembers   = dv2Q.data?.totalMembers ?? 24;
+  const openApprovals  = dv2Q.data?.pendingApprovals ?? 3;
+  const avgCompletion  = Math.round(displayProjects.reduce((s: number, p: any) => s + (p.completion_pct ?? 0), 0) / Math.max(1, displayProjects.length));
+  const utilization    = 78;
+  const deliveryEff    = Math.min(100, Math.round(avgCompletion * 1.05));
+  const sprintHealth   = avgCompletion >= 70 ? 'Good' : avgCompletion >= 40 ? 'Fair' : 'Poor';
+  const sprintColor    = avgCompletion >= 70 ? 'text-green-600' : avgCompletion >= 40 ? 'text-amber-600' : 'text-red-600';
+  const activeRisks    = VH_MOCK_RISKS.length;
+  const highRisks      = VH_MOCK_RISKS.filter(r => r.severity === 'high').length;
+
+  // Count delayed milestones across all mock projects
+  const delayedMs = Object.values(VH_MOCK_MILESTONES).flat().filter(m => m.status === 'overdue').length;
+  const burnQ_items: any[] = burnQ.data?.items ?? burnQ.data ?? [];
+  const delayedCount = burnQ_items.length > 0
+    ? burnQ_items.filter((m: any) => m.isOverdue || m.is_overdue).length
+    : delayedMs;
 
   return (
     <div className="space-y-5">
-      {/* KPI strip — 7 vertical-specific metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-        <MiniStatChip label="Active Projects"  value={displayProjects.length} color="text-blue-600" />
-        <MiniStatChip label="Team Members"     value={totalMembers}           color="text-purple-600" />
-        <MiniStatChip label="Utilization"      value={`${utilization}%`}      color={utilization > 90 ? 'text-red-600' : utilization > 75 ? 'text-amber-600' : 'text-green-600'} />
-        <MiniStatChip label="Sprint Health"    value={sprintHealth}           color={sprintColor} />
-        <MiniStatChip label="MS Throughput"    value={`${msThroughput}/mo`}   color="text-indigo-600" />
-        <MiniStatChip label="Delivery Eff."    value={`${Math.min(100, deliveryEff)}%`} color={deliveryEff >= 80 ? 'text-green-600' : 'text-amber-600'} />
-        <MiniStatChip label="Open Approvals"   value={openApprovals}          color="text-amber-600" />
+      {/* KPI strip — 5 operational metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <MiniStatChip label="Team Utilization"  value={`${utilization}%`}
+          color={utilization > 90 ? 'text-red-600' : utilization > 75 ? 'text-amber-600' : 'text-green-600'} />
+        <MiniStatChip label="Delivery Eff."     value={`${deliveryEff}%`}
+          color={deliveryEff >= 80 ? 'text-green-600' : 'text-amber-600'} />
+        <div className="flex flex-col items-center rounded-lg border p-3 gap-0.5 cursor-pointer hover:bg-muted/30 transition-colors"
+          onClick={() => navigate('/executive/risk-register')}>
+          <span className={cn('text-xl font-bold', highRisks > 0 ? 'text-red-600' : 'text-green-600')}>{activeRisks}</span>
+          <span className="text-[11px] text-muted-foreground text-center">Active Risks</span>
+          {highRisks > 0 && (
+            <span className="text-[9px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5">{highRisks} high</span>
+          )}
+        </div>
+        <MiniStatChip label="Sprint Health"     value={sprintHealth}       color={sprintColor} />
+        <MiniStatChip label="Delayed Milestones" value={delayedCount}
+          color={delayedCount > 0 ? 'text-red-600' : 'text-green-600'} />
       </div>
 
-      {/* Project cards with milestone track */}
+      {/* Secondary KPIs */}
+      <div className="grid grid-cols-3 gap-3">
+        <MiniStatChip label="Active Projects" value={displayProjects.length} color="text-blue-600" />
+        <MiniStatChip label="Team Members"    value={totalMembers}           color="text-purple-600" />
+        <MiniStatChip label="Open Approvals"  value={openApprovals}          color="text-amber-600" />
+      </div>
+
+      {/* Project cards with ○ ◐ ● milestone track */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Project Health</h3>
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <FolderKanban className="h-4 w-4" /> Project Health
+          </h3>
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/projects')}>
             All projects <ArrowRight className="h-3 w-3 ml-1" />
           </Button>
@@ -1050,9 +1180,10 @@ function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavi
         </div>
       </div>
 
-      {/* Financial variance + approvals queue */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* 3-panel bottom row: Financial Variance | Active Risks | Approvals Queue */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <FinancialVariancePanel navigate={navigate} />
+        <VHActiveRisksPanel navigate={navigate} />
         <VerticalApprovalsWidget navigate={navigate} />
       </div>
     </div>
@@ -1361,6 +1492,195 @@ function TimeTrackingAggregates({ navigate }: { navigate: ReturnType<typeof useN
   );
 }
 
+// Kanban column definition
+type KanbanColId = 'blocked' | 'todo' | 'in_progress' | 'done';
+const KANBAN_COLS: Array<{ id: KanbanColId; label: string; dot: string; header: string; bg: string }> = [
+  { id: 'blocked',     label: 'Blocked',     dot: 'bg-red-500',   header: 'text-red-600',   bg: 'bg-red-50/50 dark:bg-red-950/10' },
+  { id: 'todo',        label: 'To Do',       dot: 'bg-gray-400',  header: 'text-gray-600',  bg: 'bg-gray-50/60 dark:bg-gray-900/20' },
+  { id: 'in_progress', label: 'In Progress', dot: 'bg-blue-500',  header: 'text-blue-600',  bg: 'bg-blue-50/50 dark:bg-blue-950/10' },
+  { id: 'done',        label: 'Done',        dot: 'bg-green-500', header: 'text-green-600', bg: 'bg-green-50/50 dark:bg-green-950/10' },
+];
+
+function getTaskColId(t: any): KanbanColId {
+  if ((t.blockers?.length ?? 0) > 0 && t.status !== 'done') return 'blocked';
+  const s = (t.status ?? 'todo').toLowerCase();
+  if (s === 'done' || s === 'completed' || s === 'closed') return 'done';
+  if (s === 'in_progress') return 'in_progress';
+  return 'todo';
+}
+
+function PMKanbanBoard({ milestone, navigate }: { milestone: any; navigate: ReturnType<typeof useNavigate> }) {
+  const allTasks: any[] = milestone?.tasks ?? [];
+  const [taskCols, setTaskCols] = useState<Record<string, KanbanColId>>(() => {
+    const m: Record<string, KanbanColId> = {};
+    allTasks.forEach(t => { m[t.id] = getTaskColId(t); });
+    return m;
+  });
+
+  const NEXT: Record<KanbanColId, KanbanColId> = {
+    blocked: 'todo', todo: 'in_progress', in_progress: 'done', done: 'todo',
+  };
+  const pDot: Record<string, string> = { critical: 'bg-red-600', high: 'bg-red-400', medium: 'bg-amber-400', low: 'bg-green-400' };
+
+  const colTasks = (colId: KanbanColId) => allTasks.filter(t => (taskCols[t.id] ?? getTaskColId(t)) === colId);
+  const moveTask = (id: string, to: KanbanColId) => setTaskCols(prev => ({ ...prev, [id]: to }));
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {KANBAN_COLS.map(col => {
+        const tasks = colTasks(col.id);
+        return (
+          <div key={col.id} className={cn('rounded-xl p-2.5 space-y-2 min-h-[180px]', col.bg)}>
+            <div className="flex items-center gap-1.5 pb-2 border-b">
+              <div className={cn('h-2 w-2 rounded-full', col.dot)} />
+              <span className={cn('text-xs font-semibold', col.header)}>{col.label}</span>
+              <span className="ml-auto text-[10px] font-bold text-muted-foreground">{tasks.length}</span>
+            </div>
+            <div className="space-y-1.5">
+              {tasks.map(t => (
+                <div key={t.id}
+                  className="rounded-lg border bg-background p-2 space-y-1.5 cursor-pointer hover:shadow-sm transition-all group relative"
+                  onClick={() => moveTask(t.id, NEXT[col.id])}>
+                  <div className="flex items-start gap-1.5">
+                    <div className={cn('h-1.5 w-1.5 rounded-full shrink-0 mt-1.5', pDot[t.priority ?? 'medium'])} />
+                    <p className={cn('text-[11px] font-medium leading-tight',
+                      col.id === 'done' ? 'line-through text-muted-foreground' : '')}>
+                      {t.title}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pl-3 flex-wrap">
+                    {t.assignee && <span className="truncate max-w-[80px]">{t.assignee}</span>}
+                    {(t.blockers?.length ?? 0) > 0 && t.status !== 'done' && (
+                      <span className="text-red-600 font-semibold flex items-center gap-0.5">
+                        <Link2 className="h-2.5 w-2.5" />{t.blockers.length}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {KANBAN_COLS.filter(c => c.id !== col.id).map(c => (
+                      <button key={c.id}
+                        className="text-[9px] px-1.5 py-0.5 rounded border bg-muted/50 hover:bg-muted text-muted-foreground"
+                        onClick={(e) => { e.stopPropagation(); moveTask(t.id, c.id); }}>
+                        → {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {tasks.length === 0 && (
+                <p className="text-[10px] text-muted-foreground text-center py-4 opacity-40">Empty</p>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EffortVarianceChart({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const mockData = [
+    { name: 'Rahul S.',  planned: 40, actual: 36, tasks: 8,  overdue: 0 },
+    { name: 'Carol J.',  planned: 40, actual: 42, tasks: 6,  overdue: 1 },
+    { name: 'David P.',  planned: 40, actual: 28, tasks: 5,  overdue: 0 },
+    { name: 'Priya S.',  planned: 32, actual: 38, tasks: 4,  overdue: 1 },
+  ];
+  const total = { planned: mockData.reduce((s, m) => s + m.planned, 0), actual: mockData.reduce((s, m) => s + m.actual, 0) };
+  const overall = Math.round((total.actual / total.planned) * 100);
+
+  const WEEK_BURNS = [18, 34, 47, 56, 68]; // % complete by end of each sprint week
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" /> Effort & Burn Trend
+          </CardTitle>
+          <span className={cn('text-xs font-semibold px-2 py-0.5 rounded border',
+            overall > 110 ? 'text-red-600 bg-red-50 border-red-200' :
+            overall > 100 ? 'text-amber-600 bg-amber-50 border-amber-200' :
+            'text-green-600 bg-green-50 border-green-200')}>
+            {total.actual}h / {total.planned}h ({overall}%)
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Per-member effort bars */}
+        <div className="space-y-2">
+          {mockData.map(m => {
+            const util = Math.round((m.actual / m.planned) * 100);
+            const over = m.actual > m.planned;
+            return (
+              <div key={m.name} className="space-y-0.5">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <Avatar name={m.name} size="sm" />
+                    <span className="font-medium truncate max-w-[80px]">{m.name}</span>
+                    {m.overdue > 0 && <span className="text-[10px] text-red-600 font-semibold">{m.overdue} OD</span>}
+                  </div>
+                  <span className={cn('font-bold text-[11px]', over ? 'text-orange-600' : 'text-foreground')}>
+                    {m.actual}h<span className="text-muted-foreground font-normal">/{m.planned}h</span>
+                  </span>
+                </div>
+                <div className="relative h-2.5 rounded-full bg-secondary overflow-hidden">
+                  {/* Plan reference line */}
+                  <div className="absolute inset-y-0 left-0 w-full bg-muted/60 rounded-full" />
+                  {/* Actual bar */}
+                  <div className={cn('absolute inset-y-0 left-0 h-full rounded-full',
+                    util >= 110 ? 'bg-orange-500' : util >= 100 ? 'bg-amber-500' : 'bg-green-500')}
+                    style={{ width: `${Math.min(110, util)}%`, opacity: 0.85 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Burn-rate trend sparkline (5-week) */}
+        <div className="border-t pt-3 space-y-1.5">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-semibold text-muted-foreground uppercase tracking-wide">Burn Rate Trend</span>
+            <span className="text-blue-600 font-bold">Sprint {WEEK_BURNS.length} weeks</span>
+          </div>
+          <div className="flex items-end gap-1.5 h-10">
+            {WEEK_BURNS.map((pct, i) => (
+              <div key={i} className="flex flex-col items-center gap-0.5 flex-1">
+                <div className="w-full rounded-t bg-blue-500 opacity-80 transition-all"
+                  style={{ height: `${(pct / 100) * 32}px` }} />
+                <span className="text-[9px] text-muted-foreground">W{i + 1}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>Start</span>
+            <span className="text-blue-600 font-medium">Current: {WEEK_BURNS[WEEK_BURNS.length - 1]}%</span>
+          </div>
+        </div>
+
+        {/* Task completion rate */}
+        <div className="border-t pt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-lg bg-muted/50 px-2 py-2 text-center">
+            <p className="text-base font-bold text-green-600">24</p>
+            <p className="text-[10px] text-muted-foreground">Tasks Done</p>
+          </div>
+          <div className="rounded-lg bg-muted/50 px-2 py-2 text-center">
+            <p className="text-base font-bold text-blue-600">13</p>
+            <p className="text-[10px] text-muted-foreground">In Progress</p>
+          </div>
+          <div className="rounded-lg bg-muted/50 px-2 py-2 text-center">
+            <p className="text-base font-bold text-red-600">5</p>
+            <p className="text-[10px] text-muted-foreground">Blocked</p>
+          </div>
+        </div>
+
+        <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => navigate('/time-logging')}>
+          <Clock className="h-3.5 w-3.5 mr-1" /> Full Time Log
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Project Manager Section ──────────────────────────────────────────────────
 
 function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
@@ -1370,6 +1690,7 @@ function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNa
 
   const milestones: any[] = burnItems.length > 0 ? burnItems : PM_MILESTONES;
   const [selectedId, setSelectedId] = useState<string>(milestones[0]?.id ?? '');
+  const [msView, setMsView] = useState<'timeline' | 'kanban'>('timeline');
   const selectedMs = milestones.find((m: any) => m.id === selectedId) ?? milestones[0];
 
   const activeMilestones  = milestones.filter((m: any) => m.status === 'in_progress').length;
@@ -1392,16 +1713,35 @@ function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNa
         <MiniStatChip label="Budget Health"      value={`${budgetPct}%`}   color={budgetPct >= 110 ? 'text-red-600' : budgetPct >= 90 ? 'text-amber-600' : 'text-green-600'} />
       </div>
 
-      {/* Milestone navigator */}
+      {/* Milestone navigator with view toggle */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-            <Flag className="h-4 w-4" /> Milestone Navigator — click to inspect
+            <Flag className="h-4 w-4" /> Milestones
           </h3>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/milestones')}>
-            All milestones <ArrowRight className="h-3 w-3 ml-1" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex rounded-lg border overflow-hidden">
+              <button
+                className={cn('px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1',
+                  msView === 'timeline' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}
+                onClick={() => setMsView('timeline')}>
+                <Layers className="h-3 w-3" /> Timeline
+              </button>
+              <button
+                className={cn('px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1',
+                  msView === 'kanban' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}
+                onClick={() => setMsView('kanban')}>
+                <FolderKanban className="h-3 w-3" /> Kanban
+              </button>
+            </div>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/milestones')}>
+              All <ArrowRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
         </div>
+
+        {/* Milestone cards row (scroll) */}
         <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
           {milestones.slice(0, 8).map((m: any) => (
             <MilestoneNavCard key={m.id} m={m} isSelected={m.id === selectedId} onClick={() => setSelectedId(m.id)} />
@@ -1409,52 +1749,75 @@ function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNa
         </div>
       </div>
 
-      {/* Selected milestone detail: tasks + burn vs plan */}
+      {/* Selected milestone detail */}
       {selectedMs && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2">
+        msView === 'kanban' ? (
+          <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-primary" />
+                  <FolderKanban className="h-4 w-4 text-primary" />
                   <span className="truncate">{selectedMs.title}</span>
                   <Badge variant="outline" className="text-[10px] shrink-0">{selectedMs.projectName}</Badge>
                 </CardTitle>
-                <div className="flex items-center gap-2 shrink-0">
-                  {selectedMs.isOverdue && <Badge className="bg-red-100 text-red-700 text-[10px] border-0">Overdue</Badge>}
-                  <Button variant="outline" size="sm" className="h-7 text-xs"
-                    onClick={() => selectedMs.projectId ? navigate(`/projects/${selectedMs.projectId}/milestones`) : navigate('/milestones')}>
-                    Open <ChevronRight className="h-3 w-3 ml-1" />
-                  </Button>
+                <div className="flex items-center gap-2 shrink-0 text-[11px] text-muted-foreground">
+                  <span>{selectedMs.completedTasks ?? 0}/{selectedMs.totalTasks ?? 0} tasks</span>
+                  <span>·</span>
+                  <span>{selectedMs.progress ?? 0}% complete</span>
+                  <span className="text-[9px] opacity-60 hidden sm:inline">Click card → move status · "→" buttons → move to column</span>
                 </div>
               </div>
-              <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
-                <span>{selectedMs.completedTasks ?? 0}/{selectedMs.totalTasks ?? 0} tasks</span>
-                <span>{selectedMs.progress ?? 0}% complete</span>
-                <span className="capitalize">{(selectedMs.status ?? 'pending').replace('_', ' ')}</span>
-              </div>
             </CardHeader>
             <CardContent>
-              <MilestoneTaskList milestone={selectedMs} navigate={navigate} />
+              <PMKanbanBoard milestone={selectedMs} navigate={navigate} />
             </CardContent>
           </Card>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-primary" />
+                    <span className="truncate">{selectedMs.title}</span>
+                    <Badge variant="outline" className="text-[10px] shrink-0">{selectedMs.projectName}</Badge>
+                  </CardTitle>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedMs.isOverdue && <Badge className="bg-red-100 text-red-700 text-[10px] border-0">Overdue</Badge>}
+                    <Button variant="outline" size="sm" className="h-7 text-xs"
+                      onClick={() => selectedMs.projectId ? navigate(`/projects/${selectedMs.projectId}/milestones`) : navigate('/milestones')}>
+                      Open <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+                  <span>{selectedMs.completedTasks ?? 0}/{selectedMs.totalTasks ?? 0} tasks</span>
+                  <span>{selectedMs.progress ?? 0}% complete</span>
+                  <span className="capitalize">{(selectedMs.status ?? 'pending').replace('_', ' ')}</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <MilestoneTaskList milestone={selectedMs} navigate={navigate} />
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" /> Burn vs Plan
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <BurnVsPlanWidget milestone={selectedMs} />
-            </CardContent>
-          </Card>
-        </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" /> Burn vs Plan
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BurnVsPlanWidget milestone={selectedMs} />
+              </CardContent>
+            </Card>
+          </div>
+        )
       )}
 
-      {/* Time tracking + sprint status */}
+      {/* Effort variance chart + Sprint status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <TimeTrackingAggregates navigate={navigate} />
+        <EffortVarianceChart navigate={navigate} />
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -1663,6 +2026,11 @@ function EnhancedTaskRow({ t, onStatusChange }: { t: any; onStatusChange: (id: s
     critical: 'bg-red-600', high: 'bg-red-400', medium: 'bg-amber-400', low: 'bg-green-400',
   };
 
+  const due = t.due_date || t.dueDate;
+  const dueFmt = due ? new Date(due).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : null;
+  const isOverdue = due && new Date(due) < new Date() && ns !== 'done';
+  const milestone = t.milestone || t.milestoneName;
+
   return (
     <div className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/40 transition-colors group border border-transparent hover:border-border/50">
       <button className="shrink-0 hover:scale-110 transition-transform"
@@ -1676,6 +2044,19 @@ function EnhancedTaskRow({ t, onStatusChange }: { t: any; onStatusChange: (id: s
           <span className={cn('text-sm truncate', ns === 'done' && 'line-through text-muted-foreground')}>{t.title}</span>
           {(t.blockers?.length > 0 || t.depsCount > 0) && (
             <span title="Has blockers"><Link2 className="h-3 w-3 text-red-500 shrink-0" /></span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5 ml-3">
+          {milestone && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+              <Flag className="h-2.5 w-2.5" />{milestone}
+            </span>
+          )}
+          {dueFmt && (
+            <span className={cn('text-[10px] font-medium flex items-center gap-0.5',
+              isOverdue ? 'text-red-600' : 'text-muted-foreground')}>
+              <Calendar className="h-2.5 w-2.5" />{dueFmt}
+            </span>
           )}
         </div>
       </div>
