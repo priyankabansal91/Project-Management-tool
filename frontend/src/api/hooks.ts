@@ -19,6 +19,7 @@ export function useDashboard() {
       const { data } = await api.get<ApiResponse<DashboardData>>('/dashboard/overview');
       return data.data;
     },
+    staleTime: 60_000,
   });
 }
 
@@ -99,6 +100,7 @@ export function useMyTasks(params?: { status?: string; priority?: string; page?:
       const { data } = await api.get('/tasks/my', { params });
       return data.data;
     },
+    staleTime: 30_000,
   });
 }
 
@@ -943,6 +945,7 @@ export function useExecutiveRollup() {
         alerts: { divisionId: string; division: string; severity: string; message: string }[];
       };
     },
+    staleTime: 300_000,
   });
 }
 
@@ -1041,6 +1044,7 @@ export function useWeeklySummary(weekStart?: string) {
         timesheetStatus: string | null;
       };
     },
+    staleTime: 60_000,
   });
 }
 

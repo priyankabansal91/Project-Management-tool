@@ -21,6 +21,8 @@ import {
   useDivisionOverviewMIS, useExecutiveRollup, useApproveStep, useRejectStep,
   useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead,
 } from '@/api/hooks';
+import { DashboardCustomizer } from '@/components/dashboard/DashboardCustomizer';
+import { useDashboardCustomizer } from '@/store/dashboardCustomizerStore';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -456,6 +458,19 @@ function EnhancedApprovalsWidget({ navigate }: { navigate: ReturnType<typeof use
   );
 }
 
+// Delay risk classifier for milestones
+function calcDelayRisk(m: any): { label: string; cls: string } {
+  const dueDate = m.dueDate || m.due_date;
+  const progress = m.progress ?? m.burnRate ?? 0;
+  if (!dueDate) return { label: 'Low', cls: 'bg-green-100 text-green-700 border-green-200' };
+  const days = Math.ceil((new Date(dueDate).getTime() - Date.now()) / 86400000);
+  if (days < 0)                          return { label: 'Critical', cls: 'bg-red-100 text-red-700 border-red-200' };
+  if (days <= 2 && progress < 70)        return { label: 'High',     cls: 'bg-red-100 text-red-700 border-red-200' };
+  if (days <= 7 && progress < 60)        return { label: 'High',     cls: 'bg-orange-100 text-orange-700 border-orange-200' };
+  if (days <= 14 && progress < 50)       return { label: 'Medium',   cls: 'bg-amber-100 text-amber-700 border-amber-200' };
+  return { label: 'Low', cls: 'bg-green-100 text-green-700 border-green-200' };
+}
+
 // ─── Division Admin Section ───────────────────────────────────────────────────
 
 function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
@@ -463,7 +478,8 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
   const divisionItems: any[] = misQ.data ?? [];
   const burnQ = useMilestoneBurnDashboard();
   const burnItems: any[] = burnQ.data?.items ?? burnQ.data ?? [];
-  void useDashboardV2(); // keep cache warm
+  const approvalsQ = usePendingApprovals({ page_size: 1 });
+  void useDashboardV2();
 
   const mockVerticals = [
     { id: 'v1', name: 'Quality Management',  health_score: 78, project_count: 5, member_count: 12, task_completion_rate: 78 },
@@ -490,20 +506,72 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
     : mockMilestones;
 
   const budgetSeed = [6500000, 4800000, 8200000, 3600000, 5100000, 7400000];
+  const actualSeed = [4420000, 3120000, 5330000, 2180000, 3570000, 5180000];
   const onTrack  = verticals.filter((v: any) => (v.task_completion_rate ?? v.health_score ?? 0) >= 70).length;
   const atRisk   = verticals.filter((v: any) => { const p = v.task_completion_rate ?? v.health_score ?? 0; return p >= 40 && p < 70; }).length;
   const critical = verticals.filter((v: any) => (v.task_completion_rate ?? v.health_score ?? 0) < 40).length;
   const totalBudget = verticals.reduce((sum: number, _: any, i: number) => sum + budgetSeed[i % budgetSeed.length], 0);
+  const totalActual = verticals.reduce((sum: number, _: any, i: number) => sum + actualSeed[i % actualSeed.length], 0);
+  const delayedCount = milestones.filter((m: any) => m.isOverdue || calcDelayRisk(m).label !== 'Low').length;
+  const pendingApprovals = approvalsQ.data?.total ?? approvalsQ.data?.items?.length ?? 3;
 
   return (
     <div className="space-y-5">
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <MiniStatChip label="Active Projects" value={verticals.reduce((s: number, v: any) => s + (v.project_count ?? 0), 0)} color="text-blue-600" />
-        <MiniStatChip label="On Track"    value={onTrack}  color="text-green-600" />
-        <MiniStatChip label="At Risk"     value={atRisk}   color="text-amber-600" />
-        <MiniStatChip label="Critical"    value={critical} color={critical > 0 ? 'text-red-600' : 'text-muted-foreground'} />
-        <MiniStatChip label="Total Budget" value={fmtCurrency(totalBudget)} color="text-purple-600" />
+      {/* ── KPI strip ─────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* Total Active Projects */}
+        <MiniStatChip
+          label="Active Projects"
+          value={verticals.reduce((s: number, v: any) => s + (v.project_count ?? 0), 0)}
+          color="text-blue-600" />
+
+        {/* RAG Status Split — combined chip */}
+        <div className="flex flex-col items-center rounded-lg border p-3 gap-1">
+          <span className="text-[11px] text-muted-foreground font-medium">RAG Status</span>
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <span className="flex items-center gap-1 text-xs font-bold text-green-600">
+              <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />{onTrack}
+            </span>
+            <span className="flex items-center gap-1 text-xs font-bold text-amber-600">
+              <span className="h-2 w-2 rounded-full bg-amber-500 inline-block" />{atRisk}
+            </span>
+            <span className="flex items-center gap-1 text-xs font-bold text-red-600">
+              <span className="h-2 w-2 rounded-full bg-red-500 inline-block" />{critical}
+            </span>
+          </div>
+        </div>
+
+        {/* Budget Planned vs Actual */}
+        <div className="flex flex-col rounded-lg border p-3 gap-1 col-span-2 sm:col-span-1">
+          <span className="text-[11px] text-muted-foreground font-medium text-center">Budget</span>
+          <div className="flex items-end justify-center gap-2">
+            <div className="text-center">
+              <p className="text-base font-bold text-purple-600">{fmtCurrency(totalActual)}</p>
+              <p className="text-[9px] text-muted-foreground">Spent</p>
+            </div>
+            <span className="text-muted-foreground text-xs mb-1">/</span>
+            <div className="text-center">
+              <p className="text-base font-bold">{fmtCurrency(totalBudget)}</p>
+              <p className="text-[9px] text-muted-foreground">Planned</p>
+            </div>
+          </div>
+          <div className="h-1 rounded-full bg-secondary overflow-hidden mt-0.5">
+            <div className={cn('h-full rounded-full', totalActual / totalBudget > 0.9 ? 'bg-red-500' : totalActual / totalBudget > 0.75 ? 'bg-amber-500' : 'bg-green-500')}
+              style={{ width: `${Math.min(100, Math.round((totalActual / totalBudget) * 100))}%` }} />
+          </div>
+        </div>
+
+        {/* Delayed Milestones */}
+        <MiniStatChip
+          label="Delayed Milestones"
+          value={delayedCount}
+          color={delayedCount > 0 ? 'text-red-600' : 'text-green-600'} />
+
+        {/* Pending Approvals */}
+        <MiniStatChip
+          label="Pending Approvals"
+          value={pendingApprovals}
+          color={pendingApprovals > 0 ? 'text-amber-600' : 'text-green-600'} />
       </div>
 
       {/* Vertical health cards */}
@@ -529,7 +597,7 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <Flag className="h-4 w-4 text-primary" /> Milestones Due Soon
+                <Flag className="h-4 w-4 text-primary" /> Milestones Due This Month
               </CardTitle>
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/milestones')}>
                 All <ArrowRight className="h-3 w-3 ml-1" />
@@ -548,30 +616,36 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
                   : days !== null && days <= 3 ? 'border-amber-200 bg-amber-50/50' : '';
                 const daysLabel = days === null ? '' : isOverdue ? `${Math.abs(days)}d overdue` : days === 0 ? 'Due today' : `${days}d left`;
                 const burn = m.burnRate ?? m.progress ?? 0;
+                const risk = calcDelayRisk(m);
                 return (
                   <div key={m.id}
-                    className={cn('rounded-lg border px-3 py-2 cursor-pointer hover:shadow-sm transition-all', urgencyClass)}
+                    className={cn('rounded-lg border px-3 py-2.5 cursor-pointer hover:shadow-sm transition-all', urgencyClass)}
                     onClick={() => m.projectId ? navigate(`/projects/${m.projectId}/milestones`) : navigate('/milestones')}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{m.title}</p>
                         <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
-                          <span>{m.projectName || 'Project'}</span>
-                          {m.pmName && <span>· PM: {m.pmName}</span>}
+                          <Badge variant="outline" className="text-[9px] h-4">{m.projectName || '—'}</Badge>
+                          {m.pmName && <span className="flex items-center gap-1"><Users className="h-2.5 w-2.5" />{m.pmName}</span>}
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className={cn('text-[11px] font-semibold',
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-semibold', risk.cls)}>
+                          {risk.label} Risk
+                        </span>
+                        <p className={cn('text-[10px] font-semibold',
                           isOverdue ? 'text-red-600' : days !== null && days <= 3 ? 'text-amber-600' : 'text-muted-foreground')}>
                           {daysLabel}
                         </p>
-                        <p className="text-[11px] font-bold">{burn}%</p>
                       </div>
                     </div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-secondary overflow-hidden">
-                      <div className={cn('h-full rounded-full',
-                        isOverdue ? 'bg-red-500' : burn >= 70 ? 'bg-green-500' : burn >= 40 ? 'bg-blue-500' : 'bg-amber-500')}
-                        style={{ width: `${burn}%` }} />
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div className={cn('h-full rounded-full',
+                          isOverdue ? 'bg-red-500' : burn >= 70 ? 'bg-green-500' : burn >= 40 ? 'bg-blue-500' : 'bg-amber-500')}
+                          style={{ width: `${burn}%` }} />
+                      </div>
+                      <span className="text-[10px] font-bold shrink-0 w-8 text-right">{burn}%</span>
                     </div>
                   </div>
                 );
@@ -2237,8 +2311,16 @@ export function DashboardPage() {
   const { user, currentRole } = useAuthStore();
   const navigate = useNavigate();
   const firstName = user?.first_name || user?.firstName || 'User';
+  const { density, autoRefreshSeconds } = useDashboardCustomizer();
 
   const dashboardQuery = useDashboard();
+
+  // Auto-refresh
+  useEffect(() => {
+    if (autoRefreshSeconds <= 0) return;
+    const id = setInterval(() => { dashboardQuery.refetch(); }, autoRefreshSeconds * 1000);
+    return () => clearInterval(id);
+  }, [autoRefreshSeconds, dashboardQuery]);
   const stats = dashboardQuery.data?.stats ?? {
     total_projects: 5, active_projects: 3, total_tasks: 47, completed_tasks: 18, overdue_tasks: 3, my_open_tasks: 8,
   };
@@ -2257,10 +2339,18 @@ export function DashboardPage() {
   const isProjectRole   = ['project_manager', 'team_lead', 'vertical_head'].includes(currentRole || '');
   const showProjectProgress = !isHighLevelRole;
 
+  const densityClass = density === 'compact' ? 'space-y-3' : density === 'spacious' ? 'space-y-8' : 'space-y-6';
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className={cn(densityClass, 'animate-fade-in')} role="main" aria-label="Dashboard">
+      {/* Skip to main content (accessibility) */}
+      <a href="#dashboard-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 bg-primary text-primary-foreground px-3 py-1.5 rounded text-sm font-medium">
+        Skip to main content
+      </a>
+
       {/* Welcome header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex items-start justify-between gap-4 flex-wrap" id="dashboard-content">
         <div>
           <h1 className="text-2xl font-bold">Welcome back, {firstName}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
@@ -2268,11 +2358,21 @@ export function DashboardPage() {
             Here's what's happening across your projects
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0"
-          onClick={() => dashboardQuery.refetch()}>
-          <RefreshCw className={cn('h-3.5 w-3.5', dashboardQuery.isFetching && 'animate-spin')} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {autoRefreshSeconds > 0 && (
+            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <RefreshCw className="h-3 w-3 animate-spin opacity-50" />
+              Auto {autoRefreshSeconds}s
+            </span>
+          )}
+          <Button variant="outline" size="sm" className="gap-1.5 h-8"
+            onClick={() => dashboardQuery.refetch()}
+            aria-label="Refresh dashboard">
+            <RefreshCw className={cn('h-3.5 w-3.5', dashboardQuery.isFetching && 'animate-spin')} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+          <DashboardCustomizer currentRole={currentRole || ''} />
+        </div>
       </div>
 
       {/* Universal stat cards */}
