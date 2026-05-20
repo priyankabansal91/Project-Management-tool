@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FolderKanban, CheckSquare, AlertTriangle, ListTodo, Clock, TrendingUp,
@@ -583,32 +584,382 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
   );
 }
 
+// ─── Vertical Head sub-components ────────────────────────────────────────────
+
+const VH_MOCK_MILESTONES: Record<string, Array<{ title: string; status: 'completed' | 'in_progress' | 'pending' | 'overdue' }>> = {
+  p1: [
+    { title: 'Requirements', status: 'completed' },
+    { title: 'Design',       status: 'completed' },
+    { title: 'Development',  status: 'in_progress' },
+    { title: 'Testing',      status: 'pending' },
+    { title: 'Go Live',      status: 'pending' },
+  ],
+  p2: [
+    { title: 'Discovery',    status: 'completed' },
+    { title: 'Architecture', status: 'overdue' },
+    { title: 'Migration',    status: 'pending' },
+    { title: 'Validation',   status: 'pending' },
+  ],
+  p3: [
+    { title: 'Wireframes',   status: 'completed' },
+    { title: 'UI Design',    status: 'completed' },
+    { title: 'Build v2',     status: 'in_progress' },
+    { title: 'QA',           status: 'pending' },
+    { title: 'Release',      status: 'pending' },
+    { title: 'Monitoring',   status: 'pending' },
+  ],
+};
+
+type MsStatus = 'completed' | 'in_progress' | 'pending' | 'overdue';
+
+function MilestoneTrack({ milestones }: { milestones: Array<{ title: string; status: MsStatus }> }) {
+  const dotCls: Record<MsStatus, string> = {
+    completed:   'bg-green-500 border-green-500',
+    in_progress: 'bg-blue-500 border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900',
+    overdue:     'bg-red-500 border-red-500',
+    pending:     'bg-background border-border',
+  };
+  const labelCls: Record<MsStatus, string> = {
+    completed:   'text-green-600 dark:text-green-400',
+    in_progress: 'text-blue-600 dark:text-blue-400 font-semibold',
+    overdue:     'text-red-600 font-semibold',
+    pending:     'text-muted-foreground',
+  };
+  const lineCls = (s: MsStatus) => s === 'completed' ? 'bg-green-300 dark:bg-green-700' : 'bg-border';
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center">
+        {milestones.map((ms, i) => (
+          <div key={i} className="flex items-center flex-1 last:flex-none">
+            <div className={cn('h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center', dotCls[ms.status])}>
+              {ms.status === 'completed' && <Check className="h-2.5 w-2.5 text-white" />}
+              {ms.status === 'overdue'   && <X className="h-2.5 w-2.5 text-white" />}
+            </div>
+            {i < milestones.length - 1 && (
+              <div className={cn('h-0.5 flex-1 transition-colors', lineCls(ms.status))} />
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-start">
+        {milestones.map((ms, i) => (
+          <div key={i} className="flex-1 text-center">
+            <p className={cn('text-[9px] leading-tight truncate px-0.5', labelCls[ms.status])}>{ms.title}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VerticalProjectCard({ p, idx, navigate }: { p: any; idx: number; navigate: ReturnType<typeof useNavigate> }) {
+  const pct = p.completion_pct ?? 0;
+  const rag = ragColor(pct);
+  const bSeed = [4500000, 3200000, 5800000, 2900000];
+  const budgetPlanned  = p.budget_planned  ?? bSeed[idx % bSeed.length];
+  const budgetConsumed = p.budget_consumed ?? Math.round(budgetPlanned * (0.3 + pct / 160));
+  const budgetPct = Math.round((budgetConsumed / budgetPlanned) * 100);
+  const pMilestones: Array<{ title: string; status: MsStatus }> =
+    p.milestones ?? VH_MOCK_MILESTONES[p.id] ?? VH_MOCK_MILESTONES.p1;
+  const delayed = pMilestones.filter(m => m.status === 'overdue').length;
+  const done    = pMilestones.filter(m => m.status === 'completed').length;
+
+  return (
+    <Card className="hover:shadow-md transition-all cursor-pointer group" onClick={() => navigate(`/projects/${p.id}/board`)}>
+      <CardContent className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: p.color || '#3B82F6' }} />
+            <p className="font-semibold text-sm truncate">{p.name}</p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {delayed > 0 && (
+              <span className="flex items-center gap-0.5 text-[10px] text-red-600 font-semibold">
+                <AlertTriangle className="h-3 w-3" />{delayed} delayed
+              </span>
+            )}
+            <Badge variant="outline" className="text-[10px]">{p.key}</Badge>
+          </div>
+        </div>
+
+        {/* Milestone track */}
+        <MilestoneTrack milestones={pMilestones} />
+
+        {/* Budget row */}
+        <div className="space-y-0.5">
+          <div className="flex justify-between text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Budget consumed</span>
+            <span className={cn('font-semibold',
+              budgetPct >= 95 ? 'text-red-600' : budgetPct >= 80 ? 'text-amber-600' : 'text-green-600')}>
+              {fmtCurrency(budgetConsumed)} / {fmtCurrency(budgetPlanned)}
+            </span>
+          </div>
+          <div className="h-1 rounded-full bg-secondary overflow-hidden">
+            <div className={cn('h-full rounded-full',
+              budgetPct >= 95 ? 'bg-red-500' : budgetPct >= 80 ? 'bg-amber-500' : 'bg-green-500')}
+              style={{ width: `${Math.min(100, budgetPct)}%` }} />
+          </div>
+        </div>
+
+        {/* Completion */}
+        <div>
+          <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
+          <div className="flex items-center justify-between text-xs mt-1">
+            <span className="text-muted-foreground">{pct}% complete</span>
+            <span className={cn('font-semibold', rag.text)}>{rag.label}</span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5 border-t">
+          <span>{done}/{pMilestones.length} milestones done</span>
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary font-medium">View board →</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FinancialVariancePanel({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const mockVariances = [
+    { id: 'v1', name: 'CPR — Development Phase', variance: 12, burnRate: 68, completionRate: 62, risk: 'medium' as const },
+    { id: 'v2', name: 'AGM — API Migration',      variance: 28, burnRate: 82, completionRate: 28, risk: 'high'   as const },
+    { id: 'v3', name: 'MAV2 — Mobile Build',      variance: -5, burnRate: 45, completionRate: 45, risk: 'low'    as const },
+    { id: 'v4', name: 'QMS — Compliance Review',  variance: 18, burnRate: 74, completionRate: 70, risk: 'medium' as const },
+  ];
+  const resourceAlerts = [
+    { name: 'Rahul Sharma',  utilization: 118, role: 'Backend Dev' },
+    { name: 'Carol Johnson', utilization: 105, role: 'Designer' },
+  ];
+  const riskBg: Record<string, string> = {
+    high:   'border-red-200 bg-red-50/50 dark:bg-red-950/10',
+    medium: 'border-amber-200 bg-amber-50/50',
+    low:    '',
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" /> Financial Variance
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          {mockVariances.map((v) => {
+            const drift = v.burnRate - v.completionRate;
+            return (
+              <div key={v.id} className={cn('rounded-lg border px-3 py-2 space-y-1', riskBg[v.risk])}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium truncate flex-1">{v.name}</p>
+                  <span className={cn('text-[10px] font-bold shrink-0',
+                    v.variance > 0 ? 'text-red-600' : 'text-green-600')}>
+                    {v.variance > 0 ? '+' : ''}{v.variance}%
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+                  <span>Burn {v.burnRate}% · Done {v.completionRate}%</span>
+                  {drift > 10 && (
+                    <span className="text-red-600 font-semibold flex items-center gap-0.5">
+                      <TrendingUp className="h-3 w-3" /> +{drift}% drift
+                    </span>
+                  )}
+                </div>
+                {drift > 0 && (
+                  <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                    <div className={cn('h-full rounded-full', drift > 20 ? 'bg-red-500' : drift > 10 ? 'bg-amber-500' : 'bg-green-500')}
+                      style={{ width: `${Math.min(100, (drift / 40) * 100)}%` }} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Resource overload */}
+        <div className="space-y-1.5 border-t pt-3">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Resource Overload</p>
+          {resourceAlerts.map((r) => (
+            <div key={r.name} className="flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50/50 dark:bg-orange-950/10 px-3 py-1.5">
+              <div>
+                <p className="text-xs font-medium">{r.name}</p>
+                <p className="text-[10px] text-muted-foreground">{r.role}</p>
+              </div>
+              <span className="text-sm font-bold text-orange-600">{r.utilization}%</span>
+            </div>
+          ))}
+        </div>
+
+        <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => navigate('/projects')}>
+          <Activity className="h-3.5 w-3.5 mr-1" /> Full Resource Report
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function VerticalApprovalsWidget({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const q = usePendingApprovals({ page_size: 10 });
+  const approveM = useApproveStep();
+  const rejectM  = useRejectStep();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const items: any[] = q.data?.items ?? [];
+  const total: number = q.data?.total ?? items.length;
+
+  const mockItems = [
+    { id: 'a1', title: 'Requirements Phase Complete', approvalType: 'Milestone', createdAt: new Date(Date.now() - 2 * 86400000).toISOString(), priority: 'high',   requestedBy: 'Rahul S.',  project: 'CPR' },
+    { id: 'a2', title: 'Sprint 12 Scope Change',      approvalType: 'Workflow',  createdAt: new Date(Date.now() - 4 * 86400000).toISOString(), priority: 'medium', requestedBy: 'Carol J.', project: 'AGM' },
+    { id: 'a3', title: 'Budget Reallocation +₹2L',    approvalType: 'Budget',    createdAt: new Date(Date.now() - 86400000).toISOString(),      priority: 'high',   requestedBy: 'David P.', project: 'MAV2' },
+  ];
+
+  const displayItems = items.length > 0 ? items : mockItems;
+  const displayTotal  = total > 0 ? total : mockItems.length;
+
+  function slaStatus(createdAt: string, priority: string) {
+    const slaHours: Record<string, number> = { high: 48, medium: 120, low: 168 };
+    const elapsed = (Date.now() - new Date(createdAt).getTime()) / 3600000;
+    const limit = slaHours[priority] || 120;
+    const pct = Math.min(100, (elapsed / limit) * 100);
+    const remaining = Math.max(0, Math.round(limit - elapsed));
+    if (pct >= 100) return { label: 'SLA Breached', pct, cls: 'text-red-600', barCls: 'bg-red-500' };
+    if (pct >= 75)  return { label: `${remaining}h left`, pct, cls: 'text-amber-600', barCls: 'bg-amber-500' };
+    return { label: `${remaining}h left`, pct, cls: 'text-green-600', barCls: 'bg-green-500' };
+  }
+
+  const typeColors: Record<string, string> = {
+    Milestone: 'bg-purple-100 text-purple-700',
+    Budget:    'bg-amber-100 text-amber-700',
+    Workflow:  'bg-blue-100 text-blue-700',
+  };
+
+  const toggle = (id: string) => setSelected(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bell className="h-4 w-4 text-amber-500" /> Approvals Queue
+          {displayTotal > 0 && (
+            <span className="rounded-full bg-amber-100 text-amber-700 text-xs px-2 py-0.5 font-bold">{displayTotal}</span>
+          )}
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => { selected.forEach(id => approveM.mutate({ approvalId: id })); setSelected(new Set()); }}>
+              <Check className="h-3 w-3 mr-1" /> Approve {selected.size}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/admin/approvals')}>
+            All <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {q.isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          displayItems.slice(0, 5).map((a: any) => {
+            const sla = slaStatus(a.createdAt || a.created_at || new Date().toISOString(), a.priority || 'medium');
+            const aType = a.approvalType || a.type || 'Request';
+            const isSel = selected.has(a.id);
+            return (
+              <div key={a.id}
+                className={cn('rounded-lg border p-3 space-y-2 cursor-pointer transition-all',
+                  isSel ? 'border-primary/40 bg-primary/5' :
+                  sla.pct >= 100 ? 'border-red-200 bg-red-50/40' : 'hover:bg-muted/20')}
+                onClick={() => toggle(a.id)}>
+                <div className="flex items-start gap-2">
+                  <div className={cn('h-4 w-4 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-colors',
+                    isSel ? 'bg-primary border-primary' : 'border-border')}>
+                    {isSel && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{a.title || 'Approval Request'}</p>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
+                      <span className={cn('px-1.5 py-0.5 rounded font-medium', typeColors[aType] || 'bg-gray-100 text-gray-600')}>{aType}</span>
+                      {a.project && <span>{a.project}</span>}
+                      {a.requestedBy && <span>by {a.requestedBy}</span>}
+                    </div>
+                  </div>
+                </div>
+                {/* SLA bar */}
+                <div className="space-y-0.5">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">SLA Timer</span>
+                    <span className={cn('font-semibold', sla.cls)}>{sla.label}</span>
+                  </div>
+                  <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                    <div className={cn('h-full rounded-full', sla.barCls)} style={{ width: `${sla.pct}%` }} />
+                  </div>
+                </div>
+                {!isSel && (
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" className="h-6 text-[11px] flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      disabled={approveM.isPending}
+                      onClick={(e) => { e.stopPropagation(); approveM.mutate({ approvalId: a.id }); }}>
+                      <Check className="h-2.5 w-2.5 mr-1" /> Approve
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-6 text-[11px] flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                      disabled={rejectM.isPending}
+                      onClick={(e) => { e.stopPropagation(); rejectM.mutate({ approvalId: a.id }); }}>
+                      <X className="h-2.5 w-2.5 mr-1" /> Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Vertical Head Section ────────────────────────────────────────────────────
 
 function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const projectsQ = useProjects({ status: 'active' });
   const projects: any[] = projectsQ.data?.items ?? [];
   const dv2Q = useDashboardV2();
+  const burnQ = useMilestoneBurnDashboard();
 
   const mockProjects = [
-    { id: 'p1', name: 'Customer Portal Redesign', key: 'CPR', status: 'active', completion_pct: 62, milestone_count: 5, milestones_completed: 3, color: '#3B82F6' },
-    { id: 'p2', name: 'API Gateway Migration', key: 'AGM', status: 'active', completion_pct: 28, milestone_count: 4, milestones_completed: 1, color: '#8B5CF6' },
-    { id: 'p3', name: 'Mobile App v2', key: 'MAV2', status: 'active', completion_pct: 45, milestone_count: 6, milestones_completed: 2, color: '#F59E0B' },
+    { id: 'p1', name: 'Customer Portal Redesign', key: 'CPR',  completion_pct: 62, color: '#3B82F6' },
+    { id: 'p2', name: 'API Gateway Migration',    key: 'AGM',  completion_pct: 28, color: '#8B5CF6' },
+    { id: 'p3', name: 'Mobile App v2',            key: 'MAV2', completion_pct: 45, color: '#F59E0B' },
   ];
 
   const displayProjects = projects.length > 0 ? projects : mockProjects;
 
+  // Derive KPIs
+  const totalMembers    = dv2Q.data?.totalMembers ?? 24;
+  const openApprovals   = dv2Q.data?.pendingApprovals ?? 3;
+  const avgCompletion   = Math.round(displayProjects.reduce((s: number, p: any) => s + (p.completion_pct ?? 0), 0) / Math.max(1, displayProjects.length));
+  const utilization     = 78;
+  const msThroughput    = burnQ.data?.items ? burnQ.data.items.filter((m: any) => m.status === 'completed').length : 7;
+  const deliveryEff     = Math.round(avgCompletion * 1.05);
+  const sprintHealth    = avgCompletion >= 70 ? 'Good' : avgCompletion >= 40 ? 'Fair' : 'Poor';
+  const sprintColor     = avgCompletion >= 70 ? 'text-green-600' : avgCompletion >= 40 ? 'text-amber-600' : 'text-red-600';
+
   return (
-    <div className="space-y-4">
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <MiniStatChip label="Active Projects" value={displayProjects.length} color="text-blue-600" />
-        <MiniStatChip label="Team Members" value={dv2Q.data?.totalMembers ?? '—'} color="text-purple-600" />
-        <MiniStatChip label="Capacity Used" value="75%" color="text-orange-600" />
-        <MiniStatChip label="Open Milestones" value={dv2Q.data?.pendingApprovals ?? '—'} color="text-amber-600" />
+    <div className="space-y-5">
+      {/* KPI strip — 7 vertical-specific metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <MiniStatChip label="Active Projects"  value={displayProjects.length} color="text-blue-600" />
+        <MiniStatChip label="Team Members"     value={totalMembers}           color="text-purple-600" />
+        <MiniStatChip label="Utilization"      value={`${utilization}%`}      color={utilization > 90 ? 'text-red-600' : utilization > 75 ? 'text-amber-600' : 'text-green-600'} />
+        <MiniStatChip label="Sprint Health"    value={sprintHealth}           color={sprintColor} />
+        <MiniStatChip label="MS Throughput"    value={`${msThroughput}/mo`}   color="text-indigo-600" />
+        <MiniStatChip label="Delivery Eff."    value={`${Math.min(100, deliveryEff)}%`} color={deliveryEff >= 80 ? 'text-green-600' : 'text-amber-600'} />
+        <MiniStatChip label="Open Approvals"   value={openApprovals}          color="text-amber-600" />
       </div>
 
-      {/* Project cards with milestone circles */}
+      {/* Project cards with milestone track */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Project Health</h3>
@@ -617,46 +968,17 @@ function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavi
           </Button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {displayProjects.slice(0, 3).map((p: any) => {
-            const pct = p.completion_pct ?? 0;
-            const rag = ragColor(pct);
-            const msTotal = p.milestone_count ?? p.milestones ?? 5;
-            const msDone = p.milestones_completed ?? p.completedMilestones ?? Math.round(msTotal * pct / 100);
-            return (
-              <Card key={p.id} className="hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => navigate(`/projects/${p.id}/board`)}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: p.color || '#3B82F6' }} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm truncate">{p.name}</p>
-                      <Badge variant="outline" className="text-[10px]">{p.key}</Badge>
-                    </div>
-                  </div>
-
-                  {/* Milestone circles indicator */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {Array.from({ length: Math.min(msTotal, 8) }).map((_, i) => (
-                      <div key={i} className={cn('h-3 w-3 rounded-full',
-                        i < msDone ? 'bg-green-500' : 'bg-secondary border border-border')} />
-                    ))}
-                    {msTotal > 8 && <span className="text-[10px] text-muted-foreground">+{msTotal - 8}</span>}
-                    <span className="text-xs text-muted-foreground ml-1">{msDone}/{msTotal} milestones</span>
-                  </div>
-
-                  <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{pct}% complete</span>
-                    <span className={cn('font-semibold', rag.text)}>{rag.label}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {displayProjects.slice(0, 3).map((p: any, i: number) => (
+            <VerticalProjectCard key={p.id} p={p} idx={i} navigate={navigate} />
+          ))}
         </div>
       </div>
 
-      <PendingApprovalsWidget navigate={navigate} />
+      {/* Financial variance + approvals queue */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <FinancialVariancePanel navigate={navigate} />
+        <VerticalApprovalsWidget navigate={navigate} />
+      </div>
     </div>
   );
 }
