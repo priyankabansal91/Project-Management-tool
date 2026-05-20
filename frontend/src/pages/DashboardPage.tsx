@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FolderKanban, CheckSquare, AlertTriangle, ListTodo, Clock, TrendingUp,
@@ -6,6 +6,7 @@ import {
   Users, Zap, BarChart3, Shield, Flag, Target, Calendar, ArrowRight,
   RefreshCw, ChevronRight, Bell, CheckCircle2, Circle, AlertCircle,
   Layers, Activity, Wallet, Timer,
+  Play, Pause, StopCircle, AtSign, UserPlus, BellRing, Inbox, Moon,
 } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import {
   useDashboard, useDashboardV2, useMilestoneBurnDashboard,
   usePendingApprovals, useMyTasks, useWeeklySummary, useProjects,
   useDivisionOverviewMIS, useExecutiveRollup, useApproveStep, useRejectStep,
+  useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead,
 } from '@/api/hooks';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -1529,182 +1531,572 @@ function TeamLeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate
 
 // ─── Member Section ───────────────────────────────────────────────────────────
 
+// Enriched mock tasks for member view
+const MEMBER_MOCK_TASKS = [
+  { id: 'mt1', title: 'Review API documentation changes',  priority: 'high',   project: 'AGM',  due_date: '2026-05-19', status: 'in_progress', estimatedHours: 3, blockers: ['x1'], depsCount: 1 },
+  { id: 'mt2', title: 'Finalize checkout flow mockups',    priority: 'high',   project: 'CPR',  due_date: '2026-05-20', status: 'todo',        estimatedHours: 4, blockers: [],     depsCount: 0 },
+  { id: 'mt3', title: 'Update sprint board task statuses', priority: 'medium', project: 'CPR',  due_date: '2026-05-20', status: 'todo',        estimatedHours: 1, blockers: [],     depsCount: 0 },
+  { id: 'mt4', title: 'Write unit tests for auth module',  priority: 'medium', project: 'AGM',  due_date: '2026-05-22', status: 'todo',        estimatedHours: 5, blockers: [],     depsCount: 0 },
+  { id: 'mt5', title: 'Code review — frontend PR #42',     priority: 'low',    project: 'CPR',  due_date: '2026-05-23', status: 'in_progress', estimatedHours: 2, blockers: [],     depsCount: 0 },
+  { id: 'mt6', title: 'Prepare demo slides for Thursday',  priority: 'low',    project: 'MAV2', due_date: '2026-05-29', status: 'todo',        estimatedHours: 3, blockers: [],     depsCount: 0 },
+];
+
+// Notification mock data
+type MemberNotifType = 'mention' | 'assignment' | 'approval' | 'deadline' | 'blocker';
+const MEMBER_MOCK_NOTIFS = [
+  { id: 'mn1', type: 'mention'    as MemberNotifType, title: 'Rahul mentioned you',          body: 'in "API Integration Layer" — can you take a look?',       time: '10m ago', read: false, urgent: true  },
+  { id: 'mn2', type: 'assignment' as MemberNotifType, title: 'Task assigned to you',         body: '"Finalize checkout flow mockups" added to CPR',            time: '1h ago',  read: false, urgent: false },
+  { id: 'mn3', type: 'deadline'   as MemberNotifType, title: 'Deadline in 2 hours',          body: '"Review API documentation" is due today at 5 PM',          time: '2h ago',  read: false, urgent: true  },
+  { id: 'mn4', type: 'blocker'    as MemberNotifType, title: 'Your task is now unblocked',   body: '"Review API documentation" blocker resolved by Rahul S.',  time: '3h ago',  read: true,  urgent: false },
+  { id: 'mn5', type: 'approval'   as MemberNotifType, title: 'Approval request resolved',    body: 'CPR Sprint 12 scope approved by Division Head',            time: '5h ago',  read: true,  urgent: false },
+  { id: 'mn6', type: 'mention'    as MemberNotifType, title: 'Carol mentioned you',           body: 'in "Design System Tokens" — please review comments',       time: '1d ago',  read: true,  urgent: false },
+];
+
+// Project context mock data
+const MEMBER_MOCK_PROJECTS = [
+  {
+    id: 'mp1', name: 'Customer Portal Redesign', key: 'CPR', color: '#3B82F6',
+    milestoneDone: 2, milestoneTotal: 5, completion: 62, myTasks: 3,
+    recentActivity: [
+      { who: 'Carol J.',  action: 'completed "Design Tokens"',    time: '2h ago' },
+      { who: 'Rahul S.',  action: 'pushed PR #45 for review',     time: '4h ago' },
+    ],
+    blockingMyTask: null,
+  },
+  {
+    id: 'mp2', name: 'API Gateway Migration', key: 'AGM', color: '#8B5CF6',
+    milestoneDone: 1, milestoneTotal: 4, completion: 28, myTasks: 2,
+    recentActivity: [
+      { who: 'David P.',  action: 'commented on "Auth module setup"', time: '30m ago' },
+    ],
+    blockingMyTask: 'Waiting on external vendor API keys',
+  },
+];
+
+// Inline task row with status cycling
+function EnhancedTaskRow({ t, onStatusChange }: { t: any; onStatusChange: (id: string, s: string) => void }) {
+  const cycle: Record<string, string> = { todo: 'in_progress', in_progress: 'done', done: 'todo' };
+  const raw = (t.status ?? '').toLowerCase();
+  const ns = ['done', 'completed', 'closed'].includes(raw) ? 'done'
+    : ['in_progress', 'in progress', 'active'].includes(raw) ? 'in_progress' : 'todo';
+
+  const statusIcon: Record<string, React.ReactNode> = {
+    done:        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />,
+    in_progress: <Clock className="h-4 w-4 text-blue-500 shrink-0" />,
+    todo:        <Circle className="h-4 w-4 text-muted-foreground shrink-0" />,
+  };
+  const priorityDot: Record<string, string> = {
+    critical: 'bg-red-600', high: 'bg-red-400', medium: 'bg-amber-400', low: 'bg-green-400',
+  };
+
+  return (
+    <div className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/40 transition-colors group border border-transparent hover:border-border/50">
+      <button className="shrink-0 hover:scale-110 transition-transform"
+        onClick={() => onStatusChange(t.id, cycle[ns])}
+        title="Click to cycle status">
+        {statusIcon[ns]}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', priorityDot[t.priority ?? 'medium'] ?? priorityDot.medium)} />
+          <span className={cn('text-sm truncate', ns === 'done' && 'line-through text-muted-foreground')}>{t.title}</span>
+          {(t.blockers?.length > 0 || t.depsCount > 0) && (
+            <span title="Has blockers"><Link2 className="h-3 w-3 text-red-500 shrink-0" /></span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+        <Badge variant="outline" className="text-[10px] h-4">{t.project || t.projectKey || '—'}</Badge>
+        {t.estimatedHours && (
+          <span className="text-[10px] text-muted-foreground hidden sm:inline">{t.estimatedHours}h</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Timer + daily breakdown + utilization
+function TimeThisWeekPanel({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const weekQ = useWeeklySummary();
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerElapsed, setTimerElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = setInterval(() => setTimerElapsed(s => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [timerRunning]);
+
+  const fmtTimer = (s: number) => {
+    const h = String(Math.floor(s / 3600)).padStart(2, '0');
+    const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    return `${h}:${m}:${sec}`;
+  };
+
+  const weeklyHours = weekQ.data?.totalHours ?? 0;
+  const targetHours = weekQ.data?.targetHours ?? 40;
+  const byDay = weekQ.data?.byDay ?? {};
+
+  const todayDate = new Date();
+  const dow = todayDate.getDay(); // 0=Sun
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  // Generate Mon–Fri ISO date strings for current week
+  const dayKeys = [1, 2, 3, 4, 5].map(d => {
+    const dt = new Date(todayDate);
+    dt.setDate(todayDate.getDate() - (dow === 0 ? 6 : dow - d));
+    return dt.toISOString().split('T')[0];
+  });
+  const todayIdx = dow === 0 ? -1 : dow - 1; // index 0=Mon
+  const dailyRaw = dayKeys.map(k => byDay[k] ?? 0);
+  const dailyDisplay = dailyRaw.some(v => v > 0) ? dailyRaw : [6.5, 7.0, 8.0, 5.0, 0];
+  const displayTotal = weeklyHours > 0 ? weeklyHours : dailyDisplay.reduce((a, b) => a + b, 0);
+  const utilPct = targetHours > 0 ? Math.round((displayTotal / targetHours) * 100) : 0;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Timer className="h-4 w-4 text-primary" /> Time This Week
+          </CardTitle>
+          <span className="text-xs text-muted-foreground">{displayTotal}h / {targetHours}h target</span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Timer widget */}
+        <div className={cn('rounded-lg border p-3 space-y-2 transition-colors',
+          timerRunning ? 'border-green-300 bg-green-50/50 dark:bg-green-950/20' : 'border-border')}>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground truncate flex-1">
+              {timerRunning ? 'Timer running…' : 'Start a work timer'}
+            </span>
+            <span className={cn('font-mono text-sm font-bold tabular-nums',
+              timerRunning ? 'text-green-600 dark:text-green-400' : 'text-foreground')}>
+              {fmtTimer(timerElapsed)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm"
+              className={cn('h-7 text-xs flex-1',
+                timerRunning ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white')}
+              onClick={() => setTimerRunning(r => !r)}>
+              {timerRunning
+                ? <><Pause className="h-3 w-3 mr-1" />Pause</>
+                : <><Play className="h-3 w-3 mr-1" />Start Timer</>}
+            </Button>
+            {timerElapsed > 0 && (
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2"
+                title="Stop & discard"
+                onClick={() => { setTimerRunning(false); setTimerElapsed(0); }}>
+                <StopCircle className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => navigate('/time-tracking')}>
+              Manual
+            </Button>
+          </div>
+        </div>
+
+        {/* Daily bar chart */}
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Daily Breakdown</p>
+          <div className="flex items-end gap-1.5" style={{ height: '52px' }}>
+            {DAYS.map((day, i) => {
+              const h = dailyDisplay[i];
+              const pct = Math.min(100, (h / 8) * 100);
+              const isToday = i === todayIdx;
+              const barH = pct > 0 ? Math.max(6, pct * 0.38) : 3;
+              return (
+                <div key={day} className="flex flex-col items-center gap-0.5 flex-1">
+                  <div className="w-full flex flex-col justify-end" style={{ height: '38px' }}>
+                    <div className={cn('w-full rounded-t transition-all',
+                      isToday ? 'bg-primary' : pct >= 80 ? 'bg-green-400 dark:bg-green-600' : pct > 0 ? 'bg-blue-300 dark:bg-blue-700' : 'bg-muted')}
+                      style={{ height: `${barH}px` }} />
+                  </div>
+                  <span className={cn('text-[10px]', isToday ? 'font-bold text-primary' : 'text-muted-foreground')}>{day}</span>
+                  <span className="text-[9px] text-muted-foreground leading-none">{h > 0 ? `${h}h` : '—'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Utilization bar */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Weekly utilization</span>
+            <span className={cn('font-bold',
+              utilPct >= 100 ? 'text-orange-600' : utilPct >= 60 ? 'text-green-600' : 'text-amber-600')}>
+              {utilPct}%
+            </span>
+          </div>
+          <ProgressBar value={utilPct}
+            colorClass={utilPct >= 100 ? 'bg-orange-500' : utilPct >= 60 ? 'bg-green-500' : 'bg-amber-500'} />
+        </div>
+
+        {/* Productivity summary */}
+        <div className="grid grid-cols-2 gap-2 border-t pt-3">
+          <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
+            <p className="text-lg font-bold text-green-600">5</p>
+            <p className="text-[10px] text-muted-foreground">Tasks closed</p>
+          </div>
+          <div className="rounded-lg bg-muted/50 px-3 py-2 text-center">
+            <p className="text-lg font-bold text-blue-600">+2</p>
+            <p className="text-[10px] text-muted-foreground">vs last week</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// My Projects — milestone context + dep warnings + activity
+function MyProjectsPanel({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const projectsQ = useProjects({ status: 'active' });
+  const apiProjects: any[] = projectsQ.data?.items ?? [];
+  const displayProjects = apiProjects.length > 0
+    ? apiProjects.slice(0, 2).map((p: any) => ({
+        ...p, milestoneDone: 0, milestoneTotal: 0,
+        completion: p.completion_pct ?? 0, myTasks: 0,
+        recentActivity: [], blockingMyTask: null,
+      }))
+    : MEMBER_MOCK_PROJECTS;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <FolderKanban className="h-4 w-4 text-primary" /> My Projects
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/projects')}>
+            All <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {displayProjects.map((p: any, idx: number) => {
+          const rag = ragColor(p.completion ?? 0);
+          return (
+            <div key={p.id} className={cn('space-y-2', idx < displayProjects.length - 1 && 'pb-3 border-b')}>
+              {/* Project header */}
+              <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => navigate('/projects')}>
+                <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color || '#3B82F6' }} />
+                <span className="text-sm font-semibold flex-1 truncate">{p.name}</span>
+                <Badge variant="outline" className="text-[10px]">{p.key}</Badge>
+              </div>
+
+              {/* Milestone progress */}
+              {p.milestoneTotal > 0 && (
+                <div className="flex items-center gap-1.5 pl-4 text-[11px] text-muted-foreground">
+                  <Flag className="h-3 w-3 shrink-0" />
+                  <span>{p.milestoneDone}/{p.milestoneTotal} milestones done</span>
+                </div>
+              )}
+
+              {/* Completion bar */}
+              <div className="pl-4 space-y-1">
+                <ProgressBar value={p.completion ?? 0}
+                  colorClass={(p.completion ?? 0) >= 70 ? 'bg-green-500' : (p.completion ?? 0) >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-muted-foreground">{p.completion ?? 0}% complete</span>
+                  <span className={rag.text}>{rag.label}</span>
+                </div>
+              </div>
+
+              {/* Dependency blocker alert */}
+              {p.blockingMyTask && (
+                <div className="ml-4 flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 px-2 py-1.5">
+                  <AlertCircle className="h-3 w-3 text-amber-600 shrink-0" />
+                  <span className="text-[10px] text-amber-700 dark:text-amber-300">{p.blockingMyTask}</span>
+                </div>
+              )}
+
+              {/* Recent activity feed */}
+              {(p.recentActivity ?? []).slice(0, 2).map((a: any, ai: number) => (
+                <div key={ai} className="ml-4 flex items-start gap-1.5">
+                  <Activity className="h-2.5 w-2.5 shrink-0 text-muted-foreground mt-0.5" />
+                  <span className="text-[10px] text-muted-foreground">
+                    <strong className="text-foreground/70">{a.who}</strong> {a.action}
+                    <span className="ml-1 text-muted-foreground/60">· {a.time}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+        {displayProjects.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">No active projects</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Notifications panel — grouped, read/unread, snooze, tabs
+function NotificationsPanelMember({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const notifQ = useNotifications({ unread_only: false, page: 1 });
+  const markReadM = useMarkNotificationRead();
+  const markAllM  = useMarkAllNotificationsRead();
+  const [snoozed, setSnoozed] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<'all' | 'mentions' | 'assigned'>('all');
+
+  const rawItems: any[] = notifQ.data?.items ?? [];
+  const unreadCount = rawItems.length > 0 ? (notifQ.data?.unreadCount ?? 0) : MEMBER_MOCK_NOTIFS.filter(n => !n.read).length;
+  const items = rawItems.length > 0 ? rawItems : MEMBER_MOCK_NOTIFS;
+  const visible = items.filter((n: any) => !snoozed.has(n.id));
+
+  const tabVisible = visible.filter((n: any) => {
+    if (activeTab === 'mentions') return n.type === 'mention';
+    if (activeTab === 'assigned') return n.type === 'assignment';
+    return true;
+  });
+
+  const urgentItems = tabVisible.filter((n: any) => n.urgent && !n.read);
+  const normalItems = tabVisible.filter((n: any) => !n.urgent || n.read);
+
+  const typeCfg: Record<string, { Icon: React.ComponentType<{ className?: string }>; color: string; bg: string }> = {
+    mention:    { Icon: AtSign,       color: 'text-blue-600',   bg: 'bg-blue-100 dark:bg-blue-900/40' },
+    assignment: { Icon: UserPlus,     color: 'text-green-600',  bg: 'bg-green-100 dark:bg-green-900/40' },
+    approval:   { Icon: CheckCircle2, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/40' },
+    deadline:   { Icon: Clock,        color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/40' },
+    blocker:    { Icon: Link2,        color: 'text-red-600',    bg: 'bg-red-100 dark:bg-red-900/40' },
+  };
+  const defaultCfg = { Icon: Bell, color: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-800' };
+
+  const NotifRow = ({ n }: { n: any }) => {
+    const cfg = typeCfg[n.type as string] ?? defaultCfg;
+    const Icon = cfg.Icon;
+    return (
+      <div className={cn(
+        'flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors group',
+        !n.read && 'bg-blue-50/50 dark:bg-blue-950/10'
+      )}
+        onClick={() => { if (rawItems.length > 0) markReadM.mutate(n.id); navigate('/notifications'); }}>
+        <div className={cn('h-7 w-7 rounded-full flex items-center justify-center shrink-0 mt-0.5', cfg.bg)}>
+          <Icon className={cn('h-3.5 w-3.5', cfg.color)} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0 inline-block" />}
+            <p className="text-xs font-semibold leading-tight truncate">{n.title}</p>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 leading-tight">{n.body}</p>
+          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{n.time || timeAgo(n.createdAt || n.created_at)}</p>
+        </div>
+        <button
+          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-1 rounded hover:bg-muted mt-0.5"
+          title="Snooze"
+          onClick={(e) => { e.stopPropagation(); setSnoozed(s => new Set([...s, n.id])); }}>
+          <Moon className="h-3 w-3 text-muted-foreground" />
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <Card className="flex flex-col min-h-0">
+      <CardHeader className="pb-2 shrink-0">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BellRing className="h-4 w-4 text-primary" /> Notifications
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-blue-600 text-white text-[10px] px-1.5 py-0.5 font-bold leading-none">
+                {unreadCount}
+              </span>
+            )}
+          </CardTitle>
+          <Button variant="ghost" size="sm" className="h-6 text-[11px] text-muted-foreground"
+            onClick={() => markAllM.mutate()}>
+            Mark all read
+          </Button>
+        </div>
+        {/* Filter tabs */}
+        <div className="flex gap-1 mt-2">
+          {(['all', 'mentions', 'assigned'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={cn('px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors',
+                activeTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}>
+              {tab === 'all' ? 'All' : tab === 'mentions' ? '@Mentions' : 'Assigned'}
+            </button>
+          ))}
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-1 overflow-y-auto" style={{ maxHeight: '320px' }}>
+        {urgentItems.length > 0 && (
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1.5 px-2 py-1">
+              <AlertCircle className="h-3 w-3 text-red-500" />
+              <span className="text-[11px] font-bold text-red-600 uppercase tracking-wide">Urgent</span>
+            </div>
+            {urgentItems.map((n: any) => <NotifRow key={n.id} n={n} />)}
+          </div>
+        )}
+        {normalItems.length > 0 && (
+          <div className="space-y-0.5">
+            {urgentItems.length > 0 && (
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-2 pt-2">Earlier</p>
+            )}
+            {normalItems.map((n: any) => <NotifRow key={n.id} n={n} />)}
+          </div>
+        )}
+        {tabVisible.length === 0 && (
+          <div className="text-center py-8">
+            <BellRing className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-30" />
+            <p className="text-sm text-muted-foreground">No notifications</p>
+          </div>
+        )}
+      </CardContent>
+
+      <div className="px-4 pb-3 pt-2 border-t shrink-0">
+        <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => navigate('/notifications')}>
+          View all <ArrowRight className="h-3 w-3 ml-1" />
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function MemberSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const myTasksQ = useMyTasks();
-  const weekQ = useWeeklySummary();
   const tasks: any[] = myTasksQ.data?.items ?? myTasksQ.data ?? [];
+  const weekQ = useWeeklySummary();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Local status overrides (optimistic UI without mutation)
+  const [taskStatuses, setTaskStatuses] = useState<Record<string, string>>({});
+  const handleStatusChange = (id: string, next: string) =>
+    setTaskStatuses(prev => ({ ...prev, [id]: next }));
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
   const todayEnd = new Date(today); todayEnd.setHours(23, 59, 59);
-  const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekEnd  = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
 
-  const overdue = tasks.filter((t: any) => {
+  const isDone = (t: any) => {
+    const s = (taskStatuses[t.id] ?? t.status ?? '').toLowerCase();
+    return ['done', 'completed', 'closed'].includes(s);
+  };
+
+  const overdue = tasks.filter(t => {
+    if (isDone(t)) return false;
     const due = t.due_date || t.dueDate;
-    if (!due) return false;
-    return new Date(due) < today && !['completed', 'done', 'closed'].includes(t.statusName?.toLowerCase() || t.status?.toLowerCase() || '');
+    return due && new Date(due) < today;
   });
-
-  const dueToday = tasks.filter((t: any) => {
+  const dueToday = tasks.filter(t => {
+    if (isDone(t)) return false;
     const due = t.due_date || t.dueDate;
     if (!due) return false;
     const d = new Date(due);
-    return d >= today && d <= todayEnd && !overdue.includes(t);
+    return d >= today && d <= todayEnd;
   });
-
-  const dueThisWeek = tasks.filter((t: any) => {
+  const dueThisWeek = tasks.filter(t => {
+    if (isDone(t)) return false;
     const due = t.due_date || t.dueDate;
     if (!due) return false;
     const d = new Date(due);
-    return d > todayEnd && d <= weekEnd && !overdue.includes(t);
+    return d > todayEnd && d <= weekEnd;
   });
-
-  const later = tasks.filter((t: any) => {
+  const later = tasks.filter(t => {
+    if (isDone(t)) return false;
     const due = t.due_date || t.dueDate;
     if (!due) return true;
-    const d = new Date(due);
-    return d > weekEnd && !overdue.includes(t);
+    return new Date(due) > weekEnd;
   });
 
-  // Mock data for empty state
   const mockGroups = {
-    overdue:      [{ id: 't1', title: 'Review API documentation', priority: 'high',   project: 'AGM' }],
-    dueToday:     [{ id: 't2', title: 'Finalize design mockups', priority: 'high',   project: 'CPR' }, { id: 't3', title: 'Update project status', priority: 'medium', project: 'CPR' }],
-    dueThisWeek:  [{ id: 't4', title: 'Code review — backend', priority: 'medium', project: 'AGM' }, { id: 't5', title: 'Write unit tests', priority: 'low',    project: 'MAV2' }],
-    later:        [{ id: 't6', title: 'Prepare sprint retrospective', priority: 'low', project: 'CPR' }],
+    overdue:     [MEMBER_MOCK_TASKS[0]],
+    dueToday:    [MEMBER_MOCK_TASKS[1], MEMBER_MOCK_TASKS[2]],
+    dueThisWeek: [MEMBER_MOCK_TASKS[3], MEMBER_MOCK_TASKS[4]],
+    later:       [MEMBER_MOCK_TASKS[5]],
   };
 
   const groups = tasks.length > 0
     ? { overdue, dueToday, dueThisWeek, later }
     : mockGroups;
 
+  const totalVisible = groups.overdue.length + groups.dueToday.length + groups.dueThisWeek.length + groups.later.length;
   const weeklyHours = weekQ.data?.totalHours ?? 0;
-  const targetHours = weekQ.data?.targetHours ?? 40;
-  const hoursDisplay = weeklyHours > 0 ? `${weeklyHours}h` : '—';
 
-  const priorityClass: Record<string, string> = {
-    critical: 'bg-red-100 text-red-700 border-red-200',
-    high:     'bg-red-100 text-red-700 border-red-200',
-    medium:   'bg-orange-100 text-orange-700 border-orange-200',
-    low:      'bg-green-100 text-green-700 border-green-200',
-  };
-
-  const TaskRow = ({ t }: { t: any }) => (
-    <div
-      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors border border-transparent hover:border-border/50"
-      onClick={() => navigate('/my-tasks')}
-    >
-      <div className="flex items-center gap-2 min-w-0">
-        <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="text-sm truncate">{t.title}</span>
-      </div>
-      <div className="flex items-center gap-2 ml-2 shrink-0">
-        <Badge variant="outline" className="text-[10px]">{t.project || t.projectKey}</Badge>
-        <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', priorityClass[t.priority] || priorityClass.medium)}>
-          {t.priority}
-        </span>
-      </div>
-    </div>
-  );
-
-  const GroupSection = ({ label, items, dotColor, emptyMsg }: { label: string; items: any[]; dotColor: string; emptyMsg: string }) => {
+  const GroupSection = ({
+    label, items, dotColor, accentClass,
+  }: { label: string; items: any[]; dotColor: string; accentClass?: string }) => {
     if (items.length === 0) return null;
     return (
-      <div className="space-y-1">
-        <div className="flex items-center gap-2 px-1 mb-1">
-          <div className={cn('h-2 w-2 rounded-full', dotColor)} />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
+      <div className="space-y-0.5">
+        <div className={cn('flex items-center gap-2 px-2 py-1.5 rounded-md mb-0.5', accentClass ?? 'bg-muted/30')}>
+          <div className={cn('h-2 w-2 rounded-full shrink-0', dotColor)} />
+          <span className="text-xs font-semibold uppercase tracking-wide">{label}</span>
           <span className="text-xs font-bold text-foreground">{items.length}</span>
         </div>
-        {items.map((t: any) => <TaskRow key={t.id} t={t} />)}
+        {items.map((t: any) => (
+          <EnhancedTaskRow key={t.id}
+            t={{ ...t, status: taskStatuses[t.id] ?? t.status }}
+            onStatusChange={handleStatusChange} />
+        ))}
       </div>
     );
   };
 
   return (
     <div className="space-y-4">
-      {/* Time + stats strip */}
+      {/* KPI strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <MiniStatChip label="Due Today" value={groups.dueToday.length} color="text-orange-600" />
-        <MiniStatChip label="Due This Week" value={groups.dueThisWeek.length} color="text-blue-600" />
-        <MiniStatChip label="Overdue" value={groups.overdue.length} color={groups.overdue.length > 0 ? 'text-red-600' : 'text-green-600'} />
-        <MiniStatChip label="Hrs This Week" value={hoursDisplay} color="text-purple-600" />
+        <MiniStatChip label="Due Today"  value={groups.dueToday.length + groups.overdue.length} color="text-orange-600" />
+        <MiniStatChip label="This Week"  value={groups.dueThisWeek.length}                       color="text-blue-600" />
+        <MiniStatChip label="Overdue"    value={groups.overdue.length}  color={groups.overdue.length > 0 ? 'text-red-600' : 'text-green-600'} />
+        <MiniStatChip label="Hrs Logged" value={weeklyHours > 0 ? `${weeklyHours}h` : '—'}      color="text-purple-600" />
       </div>
 
+      {/* Row 1: Task inbox (2 cols) + Notifications (1 col) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Task inbox */}
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <ListTodo className="h-4 w-4 text-primary" /> My Task Inbox
+              <Inbox className="h-4 w-4 text-primary" /> My Tasks
+              {totalVisible > 0 && (
+                <span className="rounded-full bg-primary/10 text-primary text-[11px] px-2 py-0.5 font-semibold">
+                  {totalVisible}
+                </span>
+              )}
             </CardTitle>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/my-tasks')}>
-              All tasks <ArrowRight className="h-3 w-3 ml-1" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground hidden sm:block opacity-60">
+                Click ⊙ to cycle status
+              </span>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/my-tasks')}>
+                Full view <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {groups.overdue.length === 0 && groups.dueToday.length === 0 && groups.dueThisWeek.length === 0 && groups.later.length === 0 ? (
+          <CardContent className="space-y-2">
+            {totalVisible === 0 ? (
               <div className="text-center py-8">
                 <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
-                <p className="font-medium">All tasks complete!</p>
+                <p className="font-medium">All caught up!</p>
                 <p className="text-sm text-muted-foreground mt-1">Nothing in your queue right now.</p>
               </div>
             ) : (
               <>
-                <GroupSection label="Overdue" items={groups.overdue} dotColor="bg-red-500" emptyMsg="" />
-                <GroupSection label="Due Today" items={groups.dueToday} dotColor="bg-orange-500" emptyMsg="" />
-                <GroupSection label="Due This Week" items={groups.dueThisWeek} dotColor="bg-blue-500" emptyMsg="" />
-                <GroupSection label="Later" items={groups.later} dotColor="bg-gray-400" emptyMsg="" />
+                <GroupSection label="Overdue"   items={groups.overdue}     dotColor="bg-red-500"
+                  accentClass="bg-red-50/60 dark:bg-red-950/20 text-red-700 dark:text-red-300" />
+                <GroupSection label="Due Today"  items={groups.dueToday}    dotColor="bg-orange-500"
+                  accentClass="bg-orange-50/60 dark:bg-orange-950/20 text-orange-700 dark:text-orange-300" />
+                <GroupSection label="This Week"  items={groups.dueThisWeek} dotColor="bg-blue-400" />
+                <GroupSection label="Later"      items={groups.later}       dotColor="bg-gray-300" />
               </>
             )}
           </CardContent>
         </Card>
 
-        {/* Time this week */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Timer className="h-4 w-4 text-primary" /> Time This Week
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-primary">{hoursDisplay}</p>
-                <p className="text-xs text-muted-foreground mt-1">of {targetHours}h target</p>
-              </div>
-              <ProgressBar value={targetHours > 0 ? (weeklyHours / targetHours) * 100 : 0} />
-              <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => navigate('/time-logging')}>
-                <Clock className="h-3.5 w-3.5 mr-1" /> Log Time
-              </Button>
-            </CardContent>
-          </Card>
+        <NotificationsPanelMember navigate={navigate} />
+      </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FolderKanban className="h-4 w-4 text-primary" /> My Projects
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {(weekQ.data?.byProject ?? []).slice(0, 3).map((p: any) => (
-                  <div key={p.projectKey} className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-muted/40 cursor-pointer"
-                    onClick={() => navigate('/projects')}>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-primary" />
-                      <span className="text-sm truncate max-w-[120px]">{p.projectName}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{p.hours}h</span>
-                  </div>
-                ))}
-                {(weekQ.data?.byProject ?? []).length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-2">No time logged yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Row 2: Time This Week + My Projects */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TimeThisWeekPanel navigate={navigate} />
+        <MyProjectsPanel navigate={navigate} />
       </div>
     </div>
   );
