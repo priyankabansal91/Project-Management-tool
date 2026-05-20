@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   FolderKanban, CheckSquare, AlertTriangle, ListTodo, Clock, TrendingUp,
+  TrendingDown, Check, X, Flame, Building2,
   Users, Zap, BarChart3, Shield, Flag, Target, Calendar, ArrowRight,
   RefreshCw, ChevronRight, Bell, CheckCircle2, Circle, AlertCircle,
   Layers, Activity, Wallet, Timer,
@@ -15,7 +16,7 @@ import { cn, timeAgo, priorityColor } from '@/lib/utils';
 import {
   useDashboard, useDashboardV2, useMilestoneBurnDashboard,
   usePendingApprovals, useMyTasks, useWeeklySummary, useProjects,
-  useDivisionOverviewMIS, useExecutiveRollup,
+  useDivisionOverviewMIS, useExecutiveRollup, useApproveStep, useRejectStep,
 } from '@/api/hooks';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -68,6 +69,21 @@ function MiniStatChip({ label, value, color = 'text-foreground' }: { label: stri
       <span className="text-[11px] text-muted-foreground mt-0.5 text-center">{label}</span>
     </div>
   );
+}
+
+function fmtCurrency(n: number): string {
+  if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
+  if (n >= 100000)   return `₹${(n / 100000).toFixed(1)}L`;
+  if (n >= 1000)     return `₹${(n / 1000).toFixed(0)}K`;
+  return `₹${n}`;
+}
+
+function agingBadge(createdAt?: string): { label: string; cls: string; isEscalated: boolean } {
+  if (!createdAt) return { label: 'New', cls: 'bg-gray-100 text-gray-600 border-gray-200', isEscalated: false };
+  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
+  if (days >= 7) return { label: `${days}d — Escalate`, cls: 'bg-red-100 text-red-700 border-red-200', isEscalated: true };
+  if (days >= 3) return { label: `${days}d`, cls: 'bg-amber-100 text-amber-700 border-amber-200', isEscalated: false };
+  return { label: days === 0 ? 'Today' : `${days}d`, cls: 'bg-green-100 text-green-700 border-green-200', isEscalated: false };
 }
 
 // ─── Pending Approvals widget (shared across roles) ───────────────────────────
@@ -221,105 +237,347 @@ function OrgAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate
   );
 }
 
+// ─── Division Admin sub-components ───────────────────────────────────────────
+
+function VerticalHealthCard({ v, idx, navigate }: { v: any; idx: number; navigate: ReturnType<typeof useNavigate> }) {
+  const pct = v.task_completion_rate ?? v.health_score ?? 0;
+  const rag = ragColor(pct);
+  const budgetSeed = [6500000, 4800000, 8200000, 3600000, 5100000, 7400000];
+  const budgetPlanned = v.budget_planned ?? budgetSeed[idx % budgetSeed.length];
+  const budgetConsumed = v.budget_consumed ?? Math.round(budgetPlanned * (0.3 + pct / 180));
+  const budgetPct = Math.round((budgetConsumed / budgetPlanned) * 100);
+  const budgetBar = budgetPct >= 95 ? 'bg-red-500' : budgetPct >= 80 ? 'bg-amber-500' : 'bg-green-500';
+  const delayed = v.delayed_milestones ?? Math.max(0, Math.round((100 - pct) / 20));
+  const msTotal = v.milestone_count ?? (v.project_count ?? 3) * 3;
+  const msDone = v.milestones_completed ?? Math.round(msTotal * pct / 100);
+  const burnTrend = v.burn_trend ?? (pct >= 70 ? 6 : pct >= 40 ? -3 : -14);
+  const isHighRisk = delayed > 2 || budgetPct > 90;
+
+  return (
+    <Card className={cn('border-l-4 transition-all hover:shadow-lg cursor-pointer', rag.border)}
+      onClick={() => navigate('/admin/divisions')}>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {isHighRisk && <Flame className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+            <span className="font-semibold text-sm leading-tight truncate">{v.name}</span>
+          </div>
+          <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 border', rag.text, rag.bg, rag.border)}>
+            {rag.label}
+          </span>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Budget</span>
+            <span className="font-semibold">{fmtCurrency(budgetConsumed)} <span className="text-muted-foreground font-normal">/ {fmtCurrency(budgetPlanned)}</span></span>
+          </div>
+          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+            <div className={cn('h-full rounded-full transition-all', budgetBar)} style={{ width: `${Math.min(100, budgetPct)}%` }} />
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>{budgetPct}% consumed</span>
+            <span className={cn(budgetPct >= 90 ? 'text-red-600 font-medium' : '')}>{fmtCurrency(budgetPlanned - budgetConsumed)} left</span>
+          </div>
+        </div>
+
+        <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
+
+        <div className="grid grid-cols-3 gap-1 pt-1 border-t text-center">
+          <div>
+            <p className={cn('text-sm font-bold', rag.text)}>{pct}%</p>
+            <p className="text-[9px] text-muted-foreground">Done</p>
+          </div>
+          <div className="border-x">
+            <p className={cn('text-sm font-bold', delayed > 0 ? 'text-red-600' : 'text-green-600')}>{delayed}</p>
+            <p className="text-[9px] text-muted-foreground">Delayed</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-blue-600">{msDone}/{msTotal}</p>
+            <p className="text-[9px] text-muted-foreground">Milestones</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] pt-1 border-t">
+          <span className="text-muted-foreground">{v.project_count ?? 0}p · {v.member_count ?? 0}m</span>
+          <span className={cn('flex items-center gap-0.5 font-semibold', burnTrend >= 0 ? 'text-green-600' : 'text-red-500')}>
+            {burnTrend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {burnTrend > 0 ? '+' : ''}{burnTrend}%/wk
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MilestoneCalendarStrip({ milestones }: { milestones: any[] }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  return (
+    <div className="flex gap-1 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+      {days.map((d, i) => {
+        const isToday = i === 0;
+        const dayMs = milestones.filter((m: any) => {
+          const due = m.dueDate || m.due_date;
+          if (!due) return false;
+          const dd = new Date(due);
+          dd.setHours(0, 0, 0, 0);
+          return dd.getTime() === d.getTime();
+        });
+        const hasOverdue = dayMs.some((m: any) => m.isOverdue);
+        return (
+          <div key={i} className={cn(
+            'flex flex-col items-center gap-0.5 rounded-md px-2 py-1.5 min-w-[38px] shrink-0 transition-colors',
+            isToday ? 'bg-primary/10 border border-primary/40' :
+            dayMs.length > 0 ? 'bg-muted/60 border border-border' : 'border border-transparent'
+          )}>
+            <span className={cn('text-[9px] font-medium uppercase', isToday ? 'text-primary' : 'text-muted-foreground')}>
+              {d.toLocaleDateString('en', { weekday: 'short' })}
+            </span>
+            <span className={cn('text-xs font-bold', isToday ? 'text-primary' : 'text-foreground')}>
+              {d.getDate()}
+            </span>
+            <div className="flex gap-0.5 flex-wrap justify-center min-h-[8px]">
+              {dayMs.slice(0, 3).map((_, j) => (
+                <div key={j} className={cn('h-1.5 w-1.5 rounded-full', hasOverdue ? 'bg-red-500' : 'bg-blue-500')} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EnhancedApprovalsWidget({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const q = usePendingApprovals({ page_size: 8 });
+  const approveM = useApproveStep();
+  const rejectM  = useRejectStep();
+  const items: any[] = q.data?.items ?? [];
+  const total: number = q.data?.total ?? items.length;
+
+  const mockItems = [
+    { id: 'm1', title: 'Phase 2 Milestone Closure',  approvalType: 'Milestone', createdAt: new Date(Date.now() - 8 * 86400000).toISOString(), priority: 'high',   requestedBy: 'Rahul Sharma' },
+    { id: 'm2', title: 'Budget Increase — CPR',      approvalType: 'Budget',    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), priority: 'medium', requestedBy: 'Carol Johnson' },
+    { id: 'm3', title: 'New Member Access Request',  approvalType: 'Access',    createdAt: new Date(Date.now() - 86400000).toISOString(),      priority: 'low',    requestedBy: 'Admin' },
+  ];
+
+  const displayItems = items.length > 0 ? items : mockItems;
+  const displayTotal = total > 0 ? total : mockItems.length;
+
+  const typeColors: Record<string, string> = {
+    Milestone: 'bg-purple-100 text-purple-700',
+    Budget:    'bg-amber-100 text-amber-700',
+    Access:    'bg-blue-100 text-blue-700',
+    Workflow:  'bg-green-100 text-green-700',
+  };
+  const priorityDot: Record<string, string> = { high: 'bg-red-500', medium: 'bg-amber-500', low: 'bg-green-500' };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bell className="h-4 w-4 text-amber-500" /> Pending Approvals
+          {displayTotal > 0 && (
+            <span className="rounded-full bg-amber-100 text-amber-700 text-xs px-2 py-0.5 font-bold">{displayTotal}</span>
+          )}
+        </CardTitle>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/admin/approvals')}>
+          View all <ArrowRight className="h-3 w-3 ml-1" />
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {q.isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : displayItems.length === 0 ? (
+          <div className="text-center py-4">
+            <CheckCircle2 className="h-8 w-8 text-green-500 mx-auto mb-1" />
+            <p className="text-sm text-muted-foreground">All caught up!</p>
+          </div>
+        ) : (
+          displayItems.slice(0, 5).map((a: any) => {
+            const age = agingBadge(a.createdAt || a.created_at);
+            const aType = a.approvalType || a.approval_type || a.type || 'Request';
+            const priority = a.priority || 'medium';
+            return (
+              <div key={a.id} className={cn(
+                'rounded-lg border p-3 space-y-2',
+                age.isEscalated ? 'border-red-200 bg-red-50/60 dark:bg-red-950/10' : 'border-border hover:bg-muted/20'
+              )}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className={cn('h-2 w-2 rounded-full shrink-0 mt-0.5', priorityDot[priority] || 'bg-amber-500')} />
+                    <p className="text-sm font-medium truncate">{a.title || a.description || 'Approval Request'}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {age.isEscalated && <AlertTriangle className="h-3.5 w-3.5 text-red-500" />}
+                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', age.cls)}>{age.label}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium', typeColors[aType] || 'bg-gray-100 text-gray-600')}>
+                    {aType}
+                  </span>
+                  {a.requestedBy && <span>by {a.requestedBy}</span>}
+                </div>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <Button size="sm"
+                    className="h-7 text-xs flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    disabled={approveM.isPending}
+                    onClick={(e) => { e.stopPropagation(); approveM.mutate({ approvalId: a.id }); }}>
+                    <Check className="h-3 w-3 mr-1" /> Approve
+                  </Button>
+                  <Button size="sm" variant="outline"
+                    className="h-7 text-xs flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                    disabled={rejectM.isPending}
+                    onClick={(e) => { e.stopPropagation(); rejectM.mutate({ approvalId: a.id }); }}>
+                    <X className="h-3 w-3 mr-1" /> Reject
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0"
+                    onClick={() => navigate('/admin/approvals')}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Division Admin Section ───────────────────────────────────────────────────
 
 function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const misQ = useDivisionOverviewMIS();
   const divisionItems: any[] = misQ.data ?? [];
+  const burnQ = useMilestoneBurnDashboard();
+  const burnItems: any[] = burnQ.data?.items ?? burnQ.data ?? [];
+  void useDashboardV2(); // keep cache warm
 
   const mockVerticals = [
-    { id: 'v1', name: 'Quality Management', health_score: 78, project_count: 5, member_count: 12, task_completion_rate: 78 },
-    { id: 'v2', name: 'Accreditation', health_score: 54, project_count: 3, member_count: 8, task_completion_rate: 54 },
-    { id: 'v3', name: 'Standards & Testing', health_score: 35, project_count: 4, member_count: 10, task_completion_rate: 35 },
+    { id: 'v1', name: 'Quality Management',  health_score: 78, project_count: 5, member_count: 12, task_completion_rate: 78 },
+    { id: 'v2', name: 'Accreditation',        health_score: 54, project_count: 3, member_count: 8,  task_completion_rate: 54 },
+    { id: 'v3', name: 'Standards & Testing',  health_score: 35, project_count: 4, member_count: 10, task_completion_rate: 35 },
+    { id: 'v4', name: 'Training & Capacity',  health_score: 72, project_count: 2, member_count: 6,  task_completion_rate: 72 },
   ];
 
   const verticals = divisionItems.length > 0 ? divisionItems : mockVerticals;
 
-  // Milestones due this month (mocked — real data comes from dashboardV2)
-  const dv2Q = useDashboardV2();
-  const milestoneBurnQ = useMilestoneBurnDashboard();
-  const burnItems: any[] = milestoneBurnQ.data?.items ?? milestoneBurnQ.data ?? [];
+  const mockMilestones = [
+    { id: 'ms1', title: 'Design Approval Gate',  projectName: 'CPR',  dueDate: new Date(Date.now() + 2 * 86400000).toISOString(),  progress: 85, isOverdue: false, pmName: 'Rahul S.' },
+    { id: 'ms2', title: 'API Integration Phase', projectName: 'AGM',  dueDate: new Date(Date.now() - 86400000).toISOString(),      progress: 60, isOverdue: true,  pmName: 'Carol J.' },
+    { id: 'ms3', title: 'UAT Sign-off',          projectName: 'CPR',  dueDate: new Date(Date.now() + 8 * 86400000).toISOString(),  progress: 30, isOverdue: false, pmName: 'Rahul S.' },
+    { id: 'ms4', title: 'Mobile Build v2.1',     projectName: 'MAV2', dueDate: new Date(Date.now() + 12 * 86400000).toISOString(), progress: 45, isOverdue: false, pmName: 'David P.' },
+    { id: 'ms5', title: 'Compliance Review',     projectName: 'QMS',  dueDate: new Date(Date.now() + 5 * 86400000).toISOString(),  progress: 70, isOverdue: false, pmName: 'Priya S.' },
+  ];
 
-  const milestoneDueThisMonth = burnItems.filter((m: any) => {
-    if (!m.dueDate) return false;
-    const d = new Date(m.dueDate);
-    const now = new Date();
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  }).slice(0, 5);
+  const milestones = burnItems.length > 0
+    ? burnItems.filter((m: any) => {
+        const d = m.dueDate || m.due_date;
+        return d && Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) <= 30;
+      }).slice(0, 8)
+    : mockMilestones;
+
+  const budgetSeed = [6500000, 4800000, 8200000, 3600000, 5100000, 7400000];
+  const onTrack  = verticals.filter((v: any) => (v.task_completion_rate ?? v.health_score ?? 0) >= 70).length;
+  const atRisk   = verticals.filter((v: any) => { const p = v.task_completion_rate ?? v.health_score ?? 0; return p >= 40 && p < 70; }).length;
+  const critical = verticals.filter((v: any) => (v.task_completion_rate ?? v.health_score ?? 0) < 40).length;
+  const totalBudget = verticals.reduce((sum: number, _: any, i: number) => sum + budgetSeed[i % budgetSeed.length], 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <MiniStatChip label="Active Projects" value={verticals.reduce((s: number, v: any) => s + (v.project_count ?? 0), 0)} color="text-blue-600" />
+        <MiniStatChip label="On Track"    value={onTrack}  color="text-green-600" />
+        <MiniStatChip label="At Risk"     value={atRisk}   color="text-amber-600" />
+        <MiniStatChip label="Critical"    value={critical} color={critical > 0 ? 'text-red-600' : 'text-muted-foreground'} />
+        <MiniStatChip label="Total Budget" value={fmtCurrency(totalBudget)} color="text-purple-600" />
+      </div>
+
       {/* Vertical health cards */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Verticals at a Glance</h3>
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <Building2 className="h-4 w-4" /> Verticals Health
+          </h3>
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/admin/divisions')}>
             Manage <ArrowRight className="h-3 w-3 ml-1" />
           </Button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {verticals.slice(0, 6).map((v: any) => {
-            const pct = v.task_completion_rate ?? v.health_score ?? 0;
-            const rag = ragColor(pct);
-            return (
-              <Card key={v.id} className={cn('border-l-4 transition-shadow hover:shadow-md cursor-pointer', rag.border)}
-                onClick={() => navigate('/admin/divisions')}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-semibold text-sm leading-tight">{v.name}</span>
-                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap', rag.text, rag.bg)}>{rag.label}</span>
-                  </div>
-                  <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{v.project_count ?? 0} projects</span>
-                    <span>{v.member_count ?? 0} members</span>
-                    <span className="font-semibold text-foreground">{pct}%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {verticals.slice(0, 8).map((v: any, i: number) => (
+            <VerticalHealthCard key={v.id} v={v} idx={i} navigate={navigate} />
+          ))}
         </div>
       </div>
 
+      {/* Milestones + Approvals row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Milestones due this month */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Flag className="h-4 w-4 text-primary" /> Milestones Due This Month
-            </CardTitle>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Flag className="h-4 w-4 text-primary" /> Milestones Due Soon
+              </CardTitle>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/milestones')}>
+                All <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
-            {milestoneDueThisMonth.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-400" />
-                <p className="text-sm">No milestones due this month</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {milestoneDueThisMonth.map((m: any) => (
-                  <div key={m.id} className="flex items-center justify-between rounded-lg border px-3 py-2 hover:bg-muted/40 cursor-pointer"
-                    onClick={() => m.projectId ? navigate(`/projects/${m.projectId}/milestones`) : navigate('/projects')}>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{m.title}</p>
-                      <p className="text-xs text-muted-foreground">{m.projectName || 'Project'}</p>
+          <CardContent className="space-y-3">
+            <MilestoneCalendarStrip milestones={milestones} />
+            <div className="space-y-2 pt-1">
+              {milestones.slice(0, 5).map((m: any) => {
+                const dueDate = m.dueDate || m.due_date;
+                const days = dueDate ? Math.ceil((new Date(dueDate).getTime() - Date.now()) / 86400000) : null;
+                const isOverdue = m.isOverdue || (days !== null && days < 0);
+                const urgencyClass = isOverdue
+                  ? 'border-red-200 bg-red-50/50 dark:bg-red-950/10'
+                  : days !== null && days <= 3 ? 'border-amber-200 bg-amber-50/50' : '';
+                const daysLabel = days === null ? '' : isOverdue ? `${Math.abs(days)}d overdue` : days === 0 ? 'Due today' : `${days}d left`;
+                const burn = m.burnRate ?? m.progress ?? 0;
+                return (
+                  <div key={m.id}
+                    className={cn('rounded-lg border px-3 py-2 cursor-pointer hover:shadow-sm transition-all', urgencyClass)}
+                    onClick={() => m.projectId ? navigate(`/projects/${m.projectId}/milestones`) : navigate('/milestones')}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{m.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
+                          <span>{m.projectName || 'Project'}</span>
+                          {m.pmName && <span>· PM: {m.pmName}</span>}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={cn('text-[11px] font-semibold',
+                          isOverdue ? 'text-red-600' : days !== null && days <= 3 ? 'text-amber-600' : 'text-muted-foreground')}>
+                          {daysLabel}
+                        </p>
+                        <p className="text-[11px] font-bold">{burn}%</p>
+                      </div>
                     </div>
-                    <div className="ml-2 shrink-0 text-right">
-                      <div className="text-xs font-semibold">{m.burnRate ?? m.progress ?? 0}%</div>
-                      <Badge variant="outline" className={cn('text-[10px]',
-                        m.isOverdue ? 'border-red-300 text-red-600' : 'border-blue-300 text-blue-600')}>
-                        {m.isOverdue ? 'Overdue' : m.status || 'Active'}
-                      </Badge>
+                    <div className="mt-1.5 h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className={cn('h-full rounded-full',
+                        isOverdue ? 'bg-red-500' : burn >= 70 ? 'bg-green-500' : burn >= 40 ? 'bg-blue-500' : 'bg-amber-500')}
+                        style={{ width: `${burn}%` }} />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
-        <PendingApprovalsWidget navigate={navigate} />
+        <EnhancedApprovalsWidget navigate={navigate} />
       </div>
     </div>
   );
