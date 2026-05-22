@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { SlidersHorizontal, X, Check, Trash2 } from 'lucide-react';
+import { SlidersHorizontal, X, Check, Trash2, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,27 +10,15 @@ import {
   type WidgetId,
 } from '@/store/dashboardCustomizerStore';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface DashboardCustomizerProps {
   currentRole: string;
 }
 
-// ---------------------------------------------------------------------------
-// Density options metadata
-// ---------------------------------------------------------------------------
-
 const DENSITY_OPTIONS: { value: Density; label: string; description: string }[] = [
-  { value: 'compact', label: 'Compact', description: 'Smaller cards, more info at once' },
-  { value: 'comfortable', label: 'Normal', description: 'Balanced spacing (default)' },
-  { value: 'spacious', label: 'Spacious', description: 'Larger cards, easier to read' },
+  { value: 'compact', label: 'Compact', description: 'More info at once' },
+  { value: 'comfortable', label: 'Normal', description: 'Balanced (default)' },
+  { value: 'spacious', label: 'Spacious', description: 'Easier to read' },
 ];
-
-// ---------------------------------------------------------------------------
-// Auto-refresh options
-// ---------------------------------------------------------------------------
 
 const REFRESH_OPTIONS: { label: string; seconds: number }[] = [
   { label: 'Off', seconds: 0 },
@@ -40,13 +28,11 @@ const REFRESH_OPTIONS: { label: string; seconds: number }[] = [
   { label: '10 min', seconds: 600 },
 ];
 
-// ---------------------------------------------------------------------------
-// DashboardCustomizer
-// ---------------------------------------------------------------------------
-
 export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
   const [open, setOpen] = React.useState(false);
   const [viewName, setViewName] = React.useState('');
+  const [search, setSearch] = React.useState('');
+  const [collapsedSections, setCollapsedSections] = React.useState<Set<string>>(new Set());
 
   const {
     hiddenWidgets,
@@ -64,27 +50,57 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
     isWidgetVisible,
   } = useDashboardCustomizer();
 
-  // Filter widgets visible to the current role
+  // Widgets available for the current role
   const roleWidgets = WIDGET_DEFINITIONS.filter(
     (w) => w.roles.includes('all') || w.roles.includes(currentRole)
   );
+
+  // Apply search filter
+  const filteredWidgets = search.trim()
+    ? roleWidgets.filter(
+        (w) =>
+          w.label.toLowerCase().includes(search.toLowerCase()) ||
+          w.description.toLowerCase().includes(search.toLowerCase()) ||
+          w.section.toLowerCase().includes(search.toLowerCase())
+      )
+    : roleWidgets;
+
+  // Group by section (preserve insertion order)
+  const sections = React.useMemo(() => {
+    const map = new Map<string, typeof filteredWidgets>();
+    for (const w of filteredWidgets) {
+      const arr = map.get(w.section) ?? [];
+      arr.push(w);
+      map.set(w.section, arr);
+    }
+    return map;
+  }, [filteredWidgets]);
+
   const visibleCount = roleWidgets.filter((w) => isWidgetVisible(w.id)).length;
 
-  // Close on Escape key
+  const toggleSection = (section: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  };
+
   React.useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [open]);
 
-  // Prevent body scroll when panel is open
   React.useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [open]);
+
+  // Reset search when closed
+  React.useEffect(() => { if (!open) setSearch(''); }, [open]);
 
   const handleSaveView = () => {
     if (!viewName.trim()) return;
@@ -92,22 +108,13 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
     setViewName('');
   };
 
-  const handleViewNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleSaveView();
-  };
-
   const handleWidgetKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, id: WidgetId) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      toggleWidget(id);
-    }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleWidget(id); }
   };
 
   return (
     <>
-      {/* ------------------------------------------------------------------ */}
-      {/* Trigger button                                                       */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Trigger */}
       <Button
         variant="outline"
         size="sm"
@@ -120,9 +127,7 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
         <span className="hidden sm:inline">Customize</span>
       </Button>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Backdrop                                                             */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
@@ -131,15 +136,13 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
         />
       )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Slide-over panel                                                     */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Slide-over — widened to max-w-md */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Dashboard customization panel"
         className={cn(
-          'fixed inset-y-0 right-0 z-50 w-full max-w-sm',
+          'fixed inset-y-0 right-0 z-50 w-full max-w-md',
           'bg-background border-l border-border shadow-xl',
           'flex flex-col',
           'transition-transform duration-300 ease-in-out',
@@ -151,7 +154,7 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
           <div>
             <h2 className="text-base font-semibold text-foreground">Customize Dashboard</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Choose widgets and layout preferences
+              {visibleCount} of {roleWidgets.length} widgets shown
             </p>
           </div>
           <button
@@ -166,14 +169,9 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
 
-          {/* ---------------------------------------------------------------- */}
-          {/* A. Display Density                                                */}
-          {/* ---------------------------------------------------------------- */}
+          {/* A. Display Density */}
           <section aria-labelledby="density-heading">
-            <h3
-              id="density-heading"
-              className="text-sm font-medium text-foreground mb-3"
-            >
+            <h3 id="density-heading" className="text-sm font-medium text-foreground mb-3">
               Display Density
             </h3>
             <div className="grid grid-cols-3 gap-2">
@@ -192,41 +190,29 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
                         : 'border-border bg-background hover:bg-accent text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    {/* Active indicator dot */}
                     <span
                       className={cn(
                         'mb-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2',
-                        isActive
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-muted-foreground/40'
+                        isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40'
                       )}
                       aria-hidden="true"
                     >
                       {isActive && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
                     </span>
                     <span className="text-xs font-medium leading-none">{opt.label}</span>
-                    <span className="mt-1 text-[10px] leading-snug opacity-70">
-                      {opt.description}
-                    </span>
+                    <span className="mt-1 text-[10px] leading-snug opacity-70">{opt.description}</span>
                   </button>
                 );
               })}
             </div>
           </section>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* B. Auto-Refresh                                                   */}
-          {/* ---------------------------------------------------------------- */}
+          {/* B. Auto-Refresh */}
           <section aria-labelledby="refresh-heading">
-            <h3
-              id="refresh-heading"
-              className="text-sm font-medium text-foreground mb-1"
-            >
+            <h3 id="refresh-heading" className="text-sm font-medium text-foreground mb-1">
               Auto-Refresh
             </h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              Automatically reload dashboard data
-            </p>
+            <p className="text-xs text-muted-foreground mb-3">Automatically reload dashboard data</p>
             <div className="flex flex-wrap gap-2">
               {REFRESH_OPTIONS.map((opt) => {
                 const isActive = autoRefreshSeconds === opt.seconds;
@@ -250,99 +236,153 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
             </div>
             {autoRefreshSeconds > 0 && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Dashboard refreshes every{' '}
+                Refreshes every{' '}
                 {autoRefreshSeconds < 60
                   ? `${autoRefreshSeconds} seconds`
-                  : `${autoRefreshSeconds / 60} minute${autoRefreshSeconds > 60 ? 's' : ''}`}
-                .
+                  : `${autoRefreshSeconds / 60} minute${autoRefreshSeconds > 60 ? 's' : ''}`}.
               </p>
             )}
           </section>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* C. Widgets                                                        */}
-          {/* ---------------------------------------------------------------- */}
+          {/* C. Widgets — grouped by section with search */}
           <section aria-labelledby="widgets-heading">
             <div className="flex items-center justify-between mb-3">
-              <h3
-                id="widgets-heading"
-                className="text-sm font-medium text-foreground"
-              >
+              <h3 id="widgets-heading" className="text-sm font-medium text-foreground">
                 Widgets
               </h3>
-              <span className="text-xs text-muted-foreground">
-                {visibleCount} / {roleWidgets.length} shown
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {visibleCount} / {roleWidgets.length} on
+                </span>
+              </div>
             </div>
-            <div className="space-y-2">
-              {roleWidgets.map((widget) => {
-                const visible = isWidgetVisible(widget.id);
-                return (
-                  <div
-                    key={widget.id}
-                    role="checkbox"
-                    aria-checked={visible}
-                    tabIndex={0}
-                    onClick={() => toggleWidget(widget.id)}
-                    onKeyDown={(e) => handleWidgetKeyDown(e, widget.id)}
-                    className={cn(
-                      'flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5 cursor-pointer',
-                      'transition-colors select-none',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      visible
-                        ? 'border-border bg-background hover:bg-accent/50'
-                        : 'border-border/50 bg-muted/30 hover:bg-muted/60'
-                    )}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={cn(
-                          'text-xs font-medium leading-none truncate',
-                          visible ? 'text-foreground' : 'text-muted-foreground'
-                        )}
+
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" aria-hidden="true" />
+              <input
+                type="search"
+                placeholder="Search widgets…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={cn(
+                  'w-full rounded-md border border-border bg-background',
+                  'pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                )}
+                aria-label="Filter widgets by name or section"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+
+            {filteredWidgets.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4 italic">
+                No widgets match "{search}".
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {Array.from(sections.entries()).map(([sectionName, widgets]) => {
+                  const isCollapsed = collapsedSections.has(sectionName);
+                  const onCount = widgets.filter((w) => isWidgetVisible(w.id)).length;
+                  return (
+                    <div key={sectionName}>
+                      {/* Section header */}
+                      <button
+                        onClick={() => toggleSection(sectionName)}
+                        className="flex w-full items-center justify-between py-1 text-left group"
+                        aria-expanded={!isCollapsed}
                       >
-                        {widget.label}
-                      </p>
-                      <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
-                        {widget.description}
-                      </p>
-                    </div>
-                    {/* Toggle pill */}
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors',
-                        visible
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted-foreground/30 text-muted-foreground'
+                        <span className="flex items-center gap-2">
+                          {isCollapsed
+                            ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                            : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                          }
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">
+                            {sectionName}
+                          </span>
+                        </span>
+                        <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">
+                          {onCount}/{widgets.length}
+                        </span>
+                      </button>
+
+                      {/* Widget rows */}
+                      {!isCollapsed && (
+                        <div className="mt-1.5 space-y-1.5 pl-5">
+                          {widgets.map((widget) => {
+                            const visible = isWidgetVisible(widget.id);
+                            return (
+                              <div
+                                key={widget.id}
+                                role="checkbox"
+                                aria-checked={visible}
+                                tabIndex={0}
+                                onClick={() => toggleWidget(widget.id)}
+                                onKeyDown={(e) => handleWidgetKeyDown(e, widget.id)}
+                                className={cn(
+                                  'flex items-center justify-between gap-3 rounded-lg border px-3 py-2 cursor-pointer',
+                                  'transition-colors select-none',
+                                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                  visible
+                                    ? 'border-border bg-background hover:bg-accent/50'
+                                    : 'border-border/50 bg-muted/30 hover:bg-muted/60'
+                                )}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className={cn(
+                                    'text-xs font-medium leading-none truncate',
+                                    visible ? 'text-foreground' : 'text-muted-foreground'
+                                  )}>
+                                    {widget.label}
+                                  </p>
+                                  <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug line-clamp-1">
+                                    {widget.description}
+                                  </p>
+                                </div>
+                                {/* Toggle switch */}
+                                <div
+                                  aria-hidden="true"
+                                  className={cn(
+                                    'relative shrink-0 h-5 w-9 rounded-full transition-colors',
+                                    visible ? 'bg-primary' : 'bg-muted-foreground/30'
+                                  )}
+                                >
+                                  <span className={cn(
+                                    'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+                                    visible ? 'translate-x-4' : 'translate-x-0.5'
+                                  )} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
-                    >
-                      {visible ? 'On' : 'Off'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* D. Saved Views                                                    */}
-          {/* ---------------------------------------------------------------- */}
+          {/* D. Saved Views */}
           <section aria-labelledby="views-heading">
-            <h3
-              id="views-heading"
-              className="text-sm font-medium text-foreground mb-3"
-            >
+            <h3 id="views-heading" className="text-sm font-medium text-foreground mb-3">
               Saved Views
             </h3>
-
-            {/* Save current config */}
             <div className="flex gap-2 mb-3">
               <Input
                 placeholder="Name this view…"
                 value={viewName}
                 onChange={(e) => setViewName(e.target.value)}
-                onKeyDown={handleViewNameKeyDown}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveView(); }}
                 className="h-8 text-xs"
                 aria-label="Saved view name"
                 maxLength={40}
@@ -356,11 +396,9 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
                 Save
               </Button>
             </div>
-
-            {/* View list */}
             {savedViews.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">
-                No saved views yet. Configure and save your first view above.
+                No saved views yet. Configure your dashboard and save a view above.
               </p>
             ) : (
               <ul className="space-y-1.5" role="list" aria-label="Saved dashboard views">
@@ -368,14 +406,10 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
                   const isActive = activeViewId === view.id;
                   return (
                     <li key={view.id}>
-                      <div
-                        className={cn(
-                          'flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors',
-                          isActive
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:bg-accent/50'
-                        )}
-                      >
+                      <div className={cn(
+                        'flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors',
+                        isActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/50'
+                      )}>
                         <button
                           onClick={() => loadView(view.id)}
                           className={cn(
@@ -389,8 +423,7 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
                             {view.hiddenWidgets.length === 0
                               ? 'All widgets visible'
                               : `${view.hiddenWidgets.length} widget${view.hiddenWidgets.length !== 1 ? 's' : ''} hidden`}
-                            {' · '}
-                            {view.density}
+                            {' · '}{view.density}
                           </span>
                         </button>
                         <button
@@ -406,22 +439,17 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
                 })}
               </ul>
             )}
-
             {savedViews.length >= 8 && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Maximum of 8 saved views reached. Delete one to add more.
+                Maximum 8 saved views reached. Delete one to add more.
               </p>
             )}
           </section>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* E. Accessibility tips                                             */}
-          {/* ---------------------------------------------------------------- */}
+          {/* E. Keyboard shortcuts */}
           <section aria-label="Keyboard navigation shortcuts">
             <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5">
-              <p className="text-[11px] font-medium text-foreground mb-1.5">
-                Keyboard navigation
-              </p>
+              <p className="text-[11px] font-medium text-foreground mb-1.5">Keyboard navigation</p>
               <ul className="space-y-1 text-[11px] text-muted-foreground">
                 <li>
                   <kbd className="rounded border border-border bg-background px-1 py-0.5 font-mono text-[10px]">Tab</kbd>
@@ -429,13 +457,13 @@ export function DashboardCustomizer({ currentRole }: DashboardCustomizerProps) {
                 </li>
                 <li>
                   <kbd className="rounded border border-border bg-background px-1 py-0.5 font-mono text-[10px]">Enter</kbd>
-                  {' '}/ {' '}
+                  {' / '}
                   <kbd className="rounded border border-border bg-background px-1 py-0.5 font-mono text-[10px]">Space</kbd>
-                  {' '}— toggle widget or activate button
+                  {' '}— toggle widget
                 </li>
                 <li>
                   <kbd className="rounded border border-border bg-background px-1 py-0.5 font-mono text-[10px]">Esc</kbd>
-                  {' '}— close this panel
+                  {' '}— close panel
                 </li>
               </ul>
             </div>

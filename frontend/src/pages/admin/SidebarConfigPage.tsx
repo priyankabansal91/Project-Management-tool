@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, Settings, BarChart3,
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSidebarConfigStore } from '@/store/sidebarConfigStore';
-import { useDashboardCustomizer } from '@/store/dashboardCustomizerStore';
+import { useDashboardCustomizer, WIDGET_DEFINITIONS } from '@/store/dashboardCustomizerStore';
 import type { OrgRole } from '@/types';
 
 // ── Nav item registry (mirrors Sidebar.tsx) ──────────────────────────────────
@@ -110,34 +110,6 @@ const ROLE_COLORS: Record<string, string> = {
   viewer: 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
-// ── Dashboard Widget Definitions ─────────────────────────────────────────────
-
-const WIDGET_ROLE_MAP: Record<string, string[]> = {
-  'kpi-strip':         ['org_admin','division_admin','vertical_head','project_manager','team_lead','member','executive'],
-  'project-health':    ['org_admin','division_admin','vertical_head','project_manager'],
-  'milestone-nav':     ['project_manager','team_lead','vertical_head'],
-  'financial-panel':   ['org_admin','division_admin','vertical_head','executive'],
-  'approvals-queue':   ['org_admin','division_admin','vertical_head','project_manager','team_lead'],
-  'active-risks':      ['org_admin','division_admin','vertical_head','executive'],
-  'time-tracking':     ['project_manager','team_lead','member'],
-  'sprint-status':     ['project_manager','team_lead'],
-  'my-tasks-inbox':    ['member','team_lead'],
-  'notifications':     ['member','team_lead','project_manager'],
-  'my-projects':       ['member'],
-  'time-this-week':    ['member'],
-  'executive-rollup':  ['org_admin','executive'],
-  'team-workload':     ['team_lead'],
-};
-
-const WIDGET_LABELS: Record<string, string> = {
-  'kpi-strip': 'KPI Strip', 'project-health': 'Project Health Cards',
-  'milestone-nav': 'Milestone Navigator', 'financial-panel': 'Financial Variance',
-  'approvals-queue': 'Approvals Queue', 'active-risks': 'Active Risks Panel',
-  'time-tracking': 'Time Tracking Chart', 'sprint-status': 'Sprint Status',
-  'my-tasks-inbox': 'My Tasks Inbox', 'notifications': 'Notifications Panel',
-  'my-projects': 'My Projects', 'time-this-week': 'Time This Week',
-  'executive-rollup': 'Executive Rollup', 'team-workload': 'Team Workload',
-};
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
@@ -167,6 +139,16 @@ export function SidebarConfigPage() {
     setSavedMsg(true);
     setTimeout(() => setSavedMsg(false), 2000);
   };
+
+  // Build widget section groups for Dashboard Widgets tab
+  const widgetSections = useMemo(() => {
+    const grouped: Record<string, typeof WIDGET_DEFINITIONS> = {};
+    for (const w of WIDGET_DEFINITIONS) {
+      if (!grouped[w.section]) grouped[w.section] = [];
+      grouped[w.section].push(w);
+    }
+    return Object.entries(grouped);
+  }, []);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -332,43 +314,51 @@ export function SidebarConfigPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Object.entries(WIDGET_LABELS).map(([widgetId, label]) => {
-              const applicableRoles = WIDGET_ROLE_MAP[widgetId] ?? [];
-              const isHidden = hiddenWidgets.includes(widgetId as any);
-              return (
-                <div key={widgetId}
-                  className={cn('rounded-xl border p-4 space-y-3 transition-all',
-                    isHidden ? 'opacity-60 border-dashed bg-muted/20' : 'hover:shadow-sm')}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className={cn('text-sm font-semibold', isHidden && 'line-through text-muted-foreground')}>
-                        {label}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 capitalize">
-                        Widget ID: {widgetId}
-                      </p>
+          {/* Group by section */}
+          {widgetSections.map(([sectionName, widgets]) => (
+            <div key={sectionName} className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b pb-1">
+                {sectionName}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {widgets.map((widget) => {
+                  const isHidden = hiddenWidgets.includes(widget.id);
+                  const rolesLabel: string[] = widget.roles.includes('all') ? ALL_ROLES : widget.roles;
+                  return (
+                    <div key={widget.id}
+                      className={cn('rounded-xl border p-3.5 space-y-2.5 transition-all',
+                        isHidden ? 'opacity-60 border-dashed bg-muted/20' : 'hover:shadow-sm')}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className={cn('text-sm font-semibold leading-snug', isHidden && 'line-through text-muted-foreground')}>
+                            {widget.label}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2 leading-snug">
+                            {widget.description}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => toggleWidget(widget.id)}
+                          className={cn('shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all',
+                            isHidden
+                              ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100'
+                              : 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100')}>
+                          {isHidden ? <><Eye className="h-3 w-3" />Show</> : <><EyeOff className="h-3 w-3" />Hide</>}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {rolesLabel.map((r: string) => (
+                          <span key={r} className={cn('text-[9px] px-1.5 py-0.5 rounded-full border font-medium', ROLE_COLORS[r] ?? 'bg-muted text-muted-foreground')}>
+                            {ROLE_LABELS[r] ?? r}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <button
-                      onClick={() => toggleWidget(widgetId as any)}
-                      className={cn('shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all',
-                        isHidden
-                          ? 'border-green-200 text-green-700 bg-green-50 hover:bg-green-100'
-                          : 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100')}>
-                      {isHidden ? <><Eye className="h-3 w-3" />Show</> : <><EyeOff className="h-3 w-3" />Hide</>}
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {applicableRoles.map((r) => (
-                      <span key={r} className={cn('text-[9px] px-1.5 py-0.5 rounded-full border font-medium', ROLE_COLORS[r])}>
-                        {ROLE_LABELS[r]}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
