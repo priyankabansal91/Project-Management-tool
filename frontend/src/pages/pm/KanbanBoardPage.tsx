@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink, Flag } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
-import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask, useMembers } from '@/api/hooks';
+import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask, useMembers, useMilestones } from '@/api/hooks';
 import type { Task, KanbanColumn, WorkflowStatus } from '@/types';
 
 // ─── Fallback mock data (used when API is unavailable) ──
@@ -215,6 +215,7 @@ export function KanbanBoardPage() {
   const kanbanQuery = useKanbanTasks(projectId || '');
   const projectQuery = useProject(projectId || '');
   const membersQuery = useMembers();
+  const milestonesQuery = useMilestones(projectId || '');
   const createTask = useCreateTask(projectId || '');
   const moveTask = useMoveTask();
   const deleteTask = useDeleteTask();
@@ -368,6 +369,7 @@ export function KanbanBoardPage() {
         priority: formData.priority,
         status_id: formData.status_id || modalStatusId,
         assignee_id: formData.assignee_id || undefined,
+        milestone_id: formData.milestone_id || undefined,
         due_date: formData.due_date || undefined,
         start_date: formData.start_date || undefined,
         estimated_hours: formData.estimated_hours ? parseFloat(formData.estimated_hours) : undefined,
@@ -497,7 +499,9 @@ export function KanbanBoardPage() {
         projectKey={projectData?.key || 'CPR'}
         statuses={modalStatuses}
         members={modalMembers}
+        milestones={(milestonesQuery.data ?? []).map((m: any) => ({ id: m.id, title: m.title, waterfall_status: m.waterfallStatus || m.waterfall_status }))}
         saving={createTask.isPending}
+        error={(createTask.error as any)?.response?.data?.error?.message}
       />
     </div>
   );

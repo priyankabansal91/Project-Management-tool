@@ -69,6 +69,17 @@ export function useDeleteProject() {
   });
 }
 
+export function useUpdateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, ...body }: { projectId: string } & Record<string, unknown>) => {
+      const { data } = await api.patch(`/projects/${projectId}`, body);
+      return data.data;
+    },
+    onSuccess: () => qc.refetchQueries({ queryKey: ['projects'] }),
+  });
+}
+
 // ─── Tasks ──────────────────────────────────────────────
 
 export function useProjectTasks(projectId: string, params?: { view?: string; status_id?: string; assignee_id?: string; priority?: string; search?: string }) {
@@ -1435,7 +1446,7 @@ export function useDivisionOverviewMIS() {
 export function useMilestones(projectId: string) {
   return useQuery({
     queryKey: ['milestones', projectId],
-    queryFn: () => api.get(`/projects/${projectId}/milestones`).then((r) => r.data.data),
+    queryFn: () => api.get(`/projects/${projectId}/milestones`).then((r) => r.data.data?.items ?? r.data.data ?? []),
     enabled: !!projectId,
   });
 }

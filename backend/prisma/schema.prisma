@@ -10,6 +10,40 @@ datasource db {
 
 // ─── ENUMS ───────────────────────────────────────────────
 
+// Waterfall governance lifecycle enums
+enum DivisionLifecycle {
+  DRAFT
+  CONFIGURING
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+}
+
+enum VerticalLifecycle {
+  DRAFT
+  CONFIGURING
+  ACTIVE
+  SUSPENDED
+}
+
+enum ProjectPhase {
+  DRAFT
+  SETUP_PENDING
+  PENDING_APPROVAL
+  ACTIVE
+  ON_HOLD
+  CLOSED
+}
+
+enum MilestoneWaterfallStatus {
+  NOT_STARTED
+  BLOCKED
+  IN_PROGRESS
+  PENDING_APPROVAL
+  APPROVED
+  COMPLETED
+}
+
 enum UserStatus {
   active
   inactive
@@ -125,12 +159,15 @@ model Division {
   budget       Decimal?
   headCount    Int?      @map("head_count")
   managerId    String?   @map("manager_id")
-  isActive     Boolean   @default(true) @map("is_active")
-  displayOrder Int       @default(0) @map("display_order")
-  createdBy    String    @map("created_by")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
+  isActive           Boolean           @default(true) @map("is_active")
+  displayOrder       Int               @default(0) @map("display_order")
+  createdBy          String            @map("created_by")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  deletedAt          DateTime?         @map("deleted_at")
+  setupStatus        DivisionLifecycle @default(ACTIVE) @map("setup_status")
+  setupChecklist     Json              @default("{}") @map("setup_checklist")
+  setupCompletedAt   DateTime?         @map("setup_completed_at")
 
   organization Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   parent       Division?        @relation("DivisionHierarchy", fields: [parentId], references: [id])
@@ -149,12 +186,14 @@ model Vertical {
   name        String
   description String?
   color       String   @default("#3B82F6")
-  status      String   @default("active")
-  orgId       String   @map("org_id")
-  divisionId  String?  @map("division_id")
-  headId      String?  @map("head_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  status           String            @default("active")
+  orgId            String            @map("org_id")
+  divisionId       String?           @map("division_id")
+  headId           String?           @map("head_id")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  lifecycleStatus  VerticalLifecycle @default(ACTIVE) @map("lifecycle_status")
+  setupChecklist   Json              @default("{}") @map("setup_checklist")
 
   org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   division    Division?    @relation(fields: [divisionId], references: [id], onDelete: SetNull)
@@ -404,6 +443,7 @@ model Project {
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
   deletedAt        DateTime?         @map("deleted_at")
+  phase            ProjectPhase      @default(ACTIVE) @map("phase")
 
   organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   division       Division?       @relation(fields: [divisionId], references: [id])
@@ -438,12 +478,18 @@ model Milestone {
   effortEstimate   Decimal?  @map("effort_estimate")
   actualEffort     Decimal   @default(0) @map("actual_effort")
   milestoneType    String    @default("general") @map("milestone_type")
-  approvalRequired Boolean   @default(false) @map("approval_required")
-  approvalId       String?   @map("approval_id")
-  currency         String    @default("INR") @map("currency")
+  approvalRequired Boolean                  @default(false) @map("approval_required")
+  approvalId       String?                  @map("approval_id")
+  currency         String                   @default("INR") @map("currency")
+  waterfallStatus  MilestoneWaterfallStatus @default(NOT_STARTED) @map("waterfall_status")
+  sequenceOrder    Int?                     @map("sequence_order")
+  predecessorId    String?                  @map("predecessor_id")
+  blockedReason    String?                  @map("blocked_reason")
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  predecessor  Milestone?   @relation("MilestoneDependency", fields: [predecessorId], references: [id])
+  successors   Milestone[]  @relation("MilestoneDependency")
   tasks        Task[]
 
   @@map("milestones")
@@ -500,6 +546,8 @@ model Task {
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
   deletedAt          DateTime?    @map("deleted_at")
+  dependsOnId        String?      @map("depends_on_id")
+  blockedReason      String?      @map("blocked_reason")
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -507,6 +555,8 @@ model Task {
   sprint       Sprint?      @relation(fields: [sprintId], references: [id])
   parentTask   Task?        @relation("Subtasks", fields: [parentTaskId], references: [id])
   subtasks     Task[]       @relation("Subtasks")
+  dependsOn    Task?        @relation("TaskDependency", fields: [dependsOnId], references: [id])
+  dependents   Task[]       @relation("TaskDependency")
   assignee     User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
   reporter     User         @relation("TaskReporter", fields: [reporterId], references: [id])
   creator      User         @relation("TaskCreator", fields: [createdBy], references: [id])

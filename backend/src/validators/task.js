@@ -5,6 +5,7 @@ const createTaskSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(['critical', 'high', 'medium', 'low', 'none']).optional().default('medium'),
   assignee_id: z.string().optional().nullable(),
+  milestone_id: z.string().optional().nullable(),
   due_date: z.string().optional().nullable(),
   start_date: z.string().optional().nullable(),
   estimated_hours: z.union([z.number().min(0), z.string().transform(v => v !== '' ? parseFloat(v) : null)]).optional().nullable(),
@@ -15,7 +16,10 @@ const createTaskSchema = z.object({
   parent_task_id: z.string().optional().nullable(),
 });
 
-const updateTaskSchema = createTaskSchema.partial();
+const updateTaskSchema = createTaskSchema.partial().extend({
+  depends_on_id: z.string().optional().nullable(),
+  blocked_reason: z.string().optional().nullable(),
+});
 
 const moveTaskSchema = z.object({
   status_id: z.string(),

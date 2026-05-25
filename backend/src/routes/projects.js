@@ -3,6 +3,7 @@ const projectService = require('../services/projectService');
 const { createProjectSchema, updateProjectSchema } = require('../validators/project');
 const { authenticate, authorize } = require('../middleware/auth');
 const divisionScope = require('../middleware/divisionScope');
+const { requireParentReady } = require('../middleware/waterfallGuard');
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.get('/:projectId', async (req, res, next) => {
   }
 });
 
-router.post('/', authorize('org_admin', 'division_admin', 'project_manager'), async (req, res, next) => {
+router.post('/', authorize('org_admin', 'division_admin', 'project_manager'), requireParentReady('project'), async (req, res, next) => {
   try {
     const data = createProjectSchema.parse(req.body);
     const divisionId = data.division_id || req.currentDivisionId;

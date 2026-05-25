@@ -40,6 +40,13 @@ router.get('/:taskId', async (req, res, next) => {
 // Create task
 router.post('/project/:projectId', async (req, res, next) => {
   try {
+    // Milestone is required for waterfall governance
+    if (!req.body.milestone_id && !req.body.milestoneId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MILESTONE_REQUIRED', message: 'Tasks must be assigned to a milestone. Please select a milestone before creating the task.' },
+      });
+    }
     const data = createTaskSchema.parse(req.body);
     const task = await taskService.create(req.user.orgId, req.params.projectId, req.user.id, data);
     res.status(201).json({ success: true, data: task });

@@ -6,26 +6,96 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   Building2, Plus, Edit2, Trash2, ChevronRight, ChevronDown, Users,
-  FolderKanban, Crown, Loader2, Network, List,
+  FolderKanban, Crown, Loader2, Network, List, ShieldAlert, ShieldCheck,
+  CheckCircle2, Circle, PlayCircle, Settings, PauseCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
 const DIV_COLORS = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#06B6D4','#EC4899'];
 
+const SETUP_STATUS_CFG: Record<string, { label: string; cls: string }> = {
+  DRAFT:            { label: 'Draft',            cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+  CONFIGURING:      { label: 'Configuring',       cls: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  PENDING_APPROVAL: { label: 'Pending Approval',  cls: 'bg-purple-100 text-purple-700 border-purple-200' },
+  ACTIVE:           { label: 'Active',            cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  SUSPENDED:        { label: 'Suspended',         cls: 'bg-red-100 text-red-700 border-red-200' },
+};
+
+const DIVISION_LIFECYCLE_NEXT: Record<string, { next: string; label: string; icon: React.ElementType } | null> = {
+  DRAFT:            { next: 'CONFIGURING', label: 'Start Setup',  icon: Settings },
+  CONFIGURING:      { next: 'ACTIVE',      label: 'Activate',     icon: PlayCircle },
+  PENDING_APPROVAL: null,
+  ACTIVE:           { next: 'SUSPENDED',   label: 'Suspend',      icon: PauseCircle },
+  SUSPENDED:        { next: 'ACTIVE',      label: 'Reactivate',   icon: PlayCircle },
+};
+
+const CHECKLIST_KEYS = ['admin_assigned', 'workflow_configured', 'budget_allocated', 'approval_routing', 'notification_setup'];
+const CHECKLIST_LABELS: Record<string, string> = {
+  admin_assigned: 'Admin',
+  workflow_configured: 'Workflow',
+  budget_allocated: 'Budget',
+  approval_routing: 'Approvals',
+  notification_setup: 'Notifications',
+};
+
+function ReadinessBar({ checklist, setupStatus }: { checklist?: Record<string, boolean>; setupStatus?: string }) {
+  if (!checklist && !setupStatus) return null;
+  const done = CHECKLIST_KEYS.filter((k) => checklist?.[k]).length;
+  const pct = Math.round((done / CHECKLIST_KEYS.length) * 100);
+  const isActive = setupStatus === 'ACTIVE';
+
+  return (
+    <div className="mt-2 space-y-1">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          {isActive
+            ? <ShieldCheck className="h-3 w-3 text-emerald-500" />
+            : <ShieldAlert className="h-3 w-3 text-yellow-500" />
+          }
+          Setup readiness
+        </span>
+        <span className={cn('font-semibold', isActive ? 'text-emerald-600' : pct >= 60 ? 'text-yellow-600' : 'text-red-500')}>{pct}%</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+        <div
+          className={cn('h-full rounded-full transition-all', isActive ? 'bg-emerald-500' : pct >= 60 ? 'bg-yellow-500' : 'bg-red-400')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex gap-1 flex-wrap">
+        {CHECKLIST_KEYS.map((k) => {
+          const done = checklist?.[k];
+          return (
+            <span key={k} className={cn('text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5',
+              done ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'
+            )}>
+              {done ? <CheckCircle2 className="h-2 w-2" /> : <Circle className="h-2 w-2" />}
+              {CHECKLIST_LABELS[k]}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function getColor(index: number) { return DIV_COLORS[index % DIV_COLORS.length]; }
 
 interface DivisionFormData { name: string; code: string; description: string; budget: string; head_count: string; [key: string]: unknown; }
 
 function DivisionNode({
-  division, depth, index, onEdit, onDelete,
+  division, depth, index, onEdit, onDelete, onLifecycleChange,
 }: {
   division: any; depth: number; index: number;
   onEdit: (d: any) => void; onDelete: (id: string) => void;
+  onLifecycleChange: (id: string, status: string) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = division.children && division.children.length > 0;
   const color = getColor(index);
+  const currentStatus: string = division.setupStatus || 'ACTIVE';
+  const lifecycleNext = DIVISION_LIFECYCLE_NEXT[currentStatus];
 
   return (
     <div className={cn('relative', depth > 0 && 'ml-8')}>
@@ -52,11 +122,16 @@ function DivisionNode({
                 {division.code?.slice(0, 2) || division.name?.charAt(0)}
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-semibold text-sm sm:text-base">{division.name}</h3>
                   <Badge variant="outline" className="text-xs">{division.code}</Badge>
                   {depth === 0 && <Badge className="text-[10px] bg-primary/10 text-primary border-0">Root</Badge>}
+                  {division.setupStatus && division.setupStatus !== 'ACTIVE' && (
+                    <Badge variant="outline" className={cn('text-[10px] border', SETUP_STATUS_CFG[division.setupStatus]?.cls)}>
+                      {SETUP_STATUS_CFG[division.setupStatus]?.label ?? division.setupStatus}
+                    </Badge>
+                  )}
                 </div>
                 {division.description && (
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{division.description}</p>
@@ -72,6 +147,27 @@ function DivisionNode({
                     <span className="font-medium text-green-600">₹{Number(division.budget).toLocaleString()}</span>
                   )}
                 </div>
+                {(division.setupChecklist || division.setupStatus) && (
+                  <ReadinessBar
+                    checklist={typeof division.setupChecklist === 'string'
+                      ? JSON.parse(division.setupChecklist)
+                      : division.setupChecklist}
+                    setupStatus={division.setupStatus}
+                  />
+                )}
+                {lifecycleNext && (
+                  <div className="mt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => onLifecycleChange(division.id, lifecycleNext.next)}
+                    >
+                      <lifecycleNext.icon className="h-3 w-3 mr-1.5" />
+                      {lifecycleNext.label}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -92,7 +188,7 @@ function DivisionNode({
         <div className="relative ml-4">
           <div className="absolute left-0 top-0 bottom-4 w-px bg-border" />
           {division.children.map((child: any, i: number) => (
-            <DivisionNode key={child.id} division={child} depth={depth + 1} index={index + i + 1} onEdit={onEdit} onDelete={onDelete} />
+            <DivisionNode key={child.id} division={child} depth={depth + 1} index={index + i + 1} onEdit={onEdit} onDelete={onDelete} onLifecycleChange={onLifecycleChange} />
           ))}
         </div>
       )}
@@ -121,6 +217,10 @@ export function DivisionsPage() {
     if (confirm('Delete this division and all sub-divisions? This cannot be undone.')) {
       await deleteDivision.mutateAsync(id).catch(() => {});
     }
+  };
+
+  const handleLifecycleChange = async (id: string, status: string) => {
+    await updateDivision.mutateAsync({ divisionId: id, setupStatus: status } as any).catch(() => {});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -246,7 +346,7 @@ export function DivisionsPage() {
       ) : viewMode === 'tree' ? (
         <div className="space-y-1">
           {divisions.map((div: any, i: number) => (
-            <DivisionNode key={div.id} division={div} depth={0} index={i} onEdit={handleEdit} onDelete={handleDelete} />
+            <DivisionNode key={div.id} division={div} depth={0} index={i} onEdit={handleEdit} onDelete={handleDelete} onLifecycleChange={handleLifecycleChange} />
           ))}
         </div>
       ) : (

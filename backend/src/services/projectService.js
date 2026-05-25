@@ -9,6 +9,7 @@ function fmt(p) {
     key: p.key,
     description: p.description,
     status: p.status,
+    phase: p.phase || 'ACTIVE',
     visibility: p.visibility,
     color: p.color,
     owner_id: p.ownerId,
@@ -137,6 +138,7 @@ class ProjectService {
         ...(data.start_date   !== undefined && { startDate: data.start_date ? new Date(data.start_date) : null }),
         ...(data.division_id  !== undefined && { divisionId: data.division_id || null }),
         ...(data.vertical_id  !== undefined && { verticalId: data.vertical_id || null }),
+        ...(data.phase        !== undefined && { phase: data.phase }),
       },
       include: { ...TASK_INCLUDE, ...MEMBER_INCLUDE },
     });

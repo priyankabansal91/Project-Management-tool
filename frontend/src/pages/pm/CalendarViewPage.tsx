@@ -6,7 +6,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { ChevronLeft, ChevronRight, Plus, Filter, Eye, EyeOff } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
-import { useMyTasks, useCreateTask, useProjects, useWorkflows } from '@/api/hooks';
+import { useMyTasks, useCreateTask, useProjects, useWorkflows, useMilestones } from '@/api/hooks';
 
 interface CalendarTask {
   id: string;
@@ -94,6 +94,7 @@ export function CalendarViewPage() {
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const createTaskMutation = useCreateTask(selectedProjectId || '');
+  const milestonesQuery = useMilestones(selectedProjectId || '');
 
   const today = dateKey(new Date());
   const monthLabel = currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
@@ -123,6 +124,7 @@ export function CalendarViewPage() {
       const taskData = {
         ...data,
         due_date: selectedDateForTask || data.due_date,
+        milestone_id: data.milestone_id || undefined,
         estimated_hours: data.estimated_hours ? parseFloat(data.estimated_hours) : null,
       };
       await createTaskMutation.mutateAsync(taskData);
@@ -175,7 +177,9 @@ export function CalendarViewPage() {
         onSave={handleCreateTask}
         projectKey={selectedProject?.key}
         statuses={projectWorkflow?.statuses || []}
+        milestones={(milestonesQuery.data ?? []).map((m: any) => ({ id: m.id, title: m.title }))}
         saving={createTaskMutation.isPending}
+        error={(createTaskMutation.error as any)?.response?.data?.error?.message}
       />
 
       <div className="flex gap-5">

@@ -7,12 +7,22 @@ import { Avatar } from '@/components/ui/avatar';
 import {
   Network, Plus, Edit2, Trash2, Users, FolderKanban, X,
   ChevronDown, Search, Building2, UserCheck, Loader2,
+  PlayCircle, Settings, PauseCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical } from '@/api/hooks';
 
 // ─── Seed Data ───────────────────────────────────────────
+
+type VerticalLifecycle = 'DRAFT' | 'CONFIGURING' | 'ACTIVE' | 'SUSPENDED';
+
+const LIFECYCLE_CFG: Record<VerticalLifecycle, { label: string; color: string; next: VerticalLifecycle | null; nextLabel: string; icon: React.ElementType }> = {
+  DRAFT:       { label: 'Draft',       color: 'bg-gray-100 text-gray-500',   next: 'CONFIGURING', nextLabel: 'Start Setup',  icon: Settings },
+  CONFIGURING: { label: 'Setting Up',  color: 'bg-yellow-100 text-yellow-700', next: 'ACTIVE',    nextLabel: 'Activate',    icon: PlayCircle },
+  ACTIVE:      { label: 'Active',      color: 'bg-emerald-100 text-emerald-700', next: 'SUSPENDED', nextLabel: 'Suspend',   icon: PauseCircle },
+  SUSPENDED:   { label: 'Suspended',   color: 'bg-red-100 text-red-700',     next: 'ACTIVE',    nextLabel: 'Reactivate',   icon: PlayCircle },
+};
 
 interface Vertical {
   id: string;
@@ -25,6 +35,8 @@ interface Vertical {
   member_count: number;
   project_count: number;
   status: 'active' | 'inactive';
+  lifecycleStatus?: VerticalLifecycle;
+  lifecycle_status?: VerticalLifecycle;
 }
 
 const SEED_VERTICALS: Vertical[] = [
@@ -85,18 +97,23 @@ function StatCard({ label, value, icon: Icon, colorClass, bgClass }: {
 
 // ─── Vertical Card ───────────────────────────────────────
 
-function VerticalCard({ vertical, onEdit, onDelete }: {
+function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
   vertical: Vertical;
   onEdit: (v: Vertical) => void;
   onDelete: (id: string) => void;
+  onLifecycleChange: (id: string, status: VerticalLifecycle) => void;
 }) {
+  const lifecycle: VerticalLifecycle = vertical.lifecycleStatus || vertical.lifecycle_status || 'ACTIVE';
+  const cfg = LIFECYCLE_CFG[lifecycle];
+  const NextIcon = cfg.icon;
+
   return (
     <Card
       className="overflow-hidden border-l-4 hover:shadow-md transition-shadow"
       style={{ borderLeftColor: vertical.color }}
     >
       <CardContent className="p-4">
-        {/* Name + Status + Actions */}
+        {/* Name + Actions */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -129,21 +146,27 @@ function VerticalCard({ vertical, onEdit, onDelete }: {
           </div>
         </div>
 
-        {/* Division badge */}
-        <div className="flex items-center gap-1.5 mb-3">
+        {/* Division badge + lifecycle badge */}
+        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
           <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           <Badge variant="outline" className="text-[10px] font-medium">{vertical.division}</Badge>
-          <Badge
-            className={cn(
-              'text-[10px] ml-auto',
-              vertical.status === 'active'
-                ? 'bg-green-100 text-green-700 border-0'
-                : 'bg-gray-100 text-gray-500 border-0',
-            )}
-          >
-            {vertical.status === 'active' ? 'Active' : 'Inactive'}
-          </Badge>
+          <Badge className={cn('text-[10px] border-0 ml-auto', cfg.color)}>{cfg.label}</Badge>
         </div>
+
+        {/* Lifecycle transition button */}
+        {cfg.next && (
+          <div className="mb-3">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs w-full"
+              onClick={() => onLifecycleChange(vertical.id, cfg.next!)}
+            >
+              <NextIcon className="h-3 w-3 mr-1.5" />
+              {cfg.nextLabel}
+            </Button>
+          </div>
+        )}
 
         {/* Vertical Head */}
         <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-muted/30">
@@ -392,6 +415,14 @@ export function VerticalsPage() {
     }
   };
 
+  const handleLifecycleChange = (id: string, newStatus: VerticalLifecycle) => {
+    if (apiVerticals.length > 0) {
+      updateMutation.mutate({ id, lifecycleStatus: newStatus } as any);
+    } else {
+      setLocalVerticals((prev) => prev.map((v) => v.id === id ? { ...v, lifecycleStatus: newStatus } : v));
+    }
+  };
+
   const handleSave = (id: string | null, data: VerticalFormData) => {
     const payload = {
       name: data.name,
@@ -531,6 +562,7 @@ export function VerticalsPage() {
               vertical={v}
               onEdit={openEdit}
               onDelete={handleDelete}
+              onLifecycleChange={handleLifecycleChange}
             />
           ))}
         </div>

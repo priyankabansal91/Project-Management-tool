@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import {
   Plus, Edit2, Trash2, ChevronRight, Flag, Calendar,
   CheckCircle2, Circle, Clock, AlertCircle, Loader2, X,
-  Wallet, Activity, Lock, CheckSquare2,
+  Wallet, Activity, Lock, CheckSquare2, Ban, PlayCircle,
+  ArrowRight, ShieldCheck, Hash,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMilestones, useCreateMilestone, useUpdateMilestone, useDeleteMilestone, useProject } from '@/api/hooks';
@@ -16,6 +17,7 @@ import api from '@/api/client';
 // ─── Types ────────────────────────────────────────────────
 
 type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'review';
+type WaterfallStatus = 'NOT_STARTED' | 'BLOCKED' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
 
 interface Milestone {
   id: string;
@@ -38,6 +40,11 @@ interface Milestone {
   milestoneType?: string;
   approvalRequired?: boolean;
   currency?: string;
+  // Waterfall fields
+  waterfallStatus?: WaterfallStatus;
+  sequenceOrder?: number;
+  predecessorId?: string | null;
+  blockedReason?: string | null;
 }
 
 interface MilestoneFormData {
@@ -86,6 +93,17 @@ function statusConfig(status: MilestoneStatus) {
   }
 }
 
+function waterfallConfig(ws: WaterfallStatus) {
+  switch (ws) {
+    case 'COMPLETED':        return { label: 'Completed',        bg: 'bg-green-100 text-green-700 border-green-200',   dot: 'bg-green-500',  Icon: CheckCircle2 };
+    case 'IN_PROGRESS':      return { label: 'In Progress',      bg: 'bg-blue-100 text-blue-700 border-blue-200',      dot: 'bg-blue-500',   Icon: Clock };
+    case 'PENDING_APPROVAL': return { label: 'Pending Approval', bg: 'bg-purple-100 text-purple-700 border-purple-200',dot: 'bg-purple-500', Icon: Lock };
+    case 'APPROVED':         return { label: 'Approved',         bg: 'bg-teal-100 text-teal-700 border-teal-200',      dot: 'bg-teal-500',   Icon: ShieldCheck };
+    case 'BLOCKED':          return { label: 'Blocked',          bg: 'bg-red-100 text-red-700 border-red-200',         dot: 'bg-red-500',    Icon: Ban };
+    default:                 return { label: 'Not Started',      bg: 'bg-gray-100 text-gray-500 border-gray-200',      dot: 'bg-gray-400',   Icon: Circle };
+  }
+}
+
 function fmtDate(ds?: string) {
   if (!ds) return '—';
   return new Date(ds).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -98,42 +116,91 @@ function fmtCurrency(amount?: number | null, currency = 'INR') {
 
 // ─── Milestone Card ───────────────────────────────────────
 
+function WaterfallBadge({ ws }: { ws: WaterfallStatus }) {
+  const cfg = waterfallConfig(ws);
+  const Icon = cfg.Icon;
+  return (
+    <span className={cn('text-[10px] border px-2 py-0.5 rounded-full flex items-center gap-1 font-medium', cfg.bg)}>
+      <Icon className="h-2.5 w-2.5" />
+      {cfg.label}
+    </span>
+  );
+}
+
 function MilestoneCard({
-  milestone, isLast, onEdit, onDelete, onClose,
+  milestone, isLast, onEdit, onDelete, onClose, onStart,
 }: {
   milestone: Milestone;
   isLast: boolean;
   onEdit: (m: Milestone) => void;
   onDelete: (id: string) => void;
   onClose: (m: Milestone) => void;
+  onStart: (m: Milestone) => void;
 }) {
   const cfg = statusConfig(milestone.status);
+  const ws = milestone.waterfallStatus ?? 'NOT_STARTED';
+  const wCfg = waterfallConfig(ws);
   const StatusIcon = cfg.Icon;
   const startDate = milestone.start_date || milestone.startDate;
   const dueDate = milestone.due_date || milestone.dueDate;
   const taskCount = milestone.taskCount ?? milestone.task_count ?? 0;
   const burn = milestone.burnRate ?? milestone.progress ?? 0;
   const canClose = ['in_progress', 'pending', 'on_hold'].includes(milestone.status);
+  const isBlocked = ws === 'BLOCKED';
+  const canStart = ws === 'NOT_STARTED' && !isBlocked;
 
   return (
     <div className="flex gap-4">
       {/* Timeline column */}
       <div className="flex flex-col items-center">
-        <div className={cn('h-8 w-8 rounded-full flex items-center justify-center text-white flex-shrink-0 shadow-sm', cfg.color)}>
-          <StatusIcon className="h-4 w-4" />
+        <div className={cn(
+          'h-8 w-8 rounded-full flex items-center justify-center text-white flex-shrink-0 shadow-sm',
+          isBlocked ? 'bg-red-400' : cfg.color,
+        )}>
+          {isBlocked ? <Ban className="h-4 w-4" /> : <StatusIcon className="h-4 w-4" />}
         </div>
-        {!isLast && <div className="w-0.5 bg-border flex-1 mt-2 min-h-[32px]" />}
+        {!isLast && (
+          <div className="relative w-0.5 flex-1 mt-2 min-h-[32px]">
+            <div className="absolute inset-0 bg-border" />
+            {milestone.sequenceOrder != null && (
+              <ArrowRight className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-3 w-3 text-muted-foreground" />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Card */}
-      <Card className="flex-1 mb-6 hover:shadow-md transition-shadow">
+      <Card className={cn(
+        'flex-1 mb-6 transition-shadow',
+        isBlocked
+          ? 'border-red-200 bg-red-50/40 dark:bg-red-950/10 opacity-80'
+          : 'hover:shadow-md',
+      )}>
         <CardContent className="p-4 space-y-3">
+          {/* Blocked banner */}
+          {isBlocked && (
+            <div className="flex items-center gap-2 rounded-md bg-red-100 dark:bg-red-950/30 border border-red-200 px-3 py-2 text-xs text-red-700">
+              <Ban className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="font-medium">Blocked</span>
+              {milestone.blockedReason
+                ? <span className="text-red-600">— {milestone.blockedReason}</span>
+                : <span className="text-red-500">Predecessor milestone must be completed first</span>
+              }
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-sm">{milestone.title}</h3>
+                {milestone.sequenceOrder != null && (
+                  <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono flex items-center gap-0.5">
+                    <Hash className="h-2.5 w-2.5" />{milestone.sequenceOrder}
+                  </span>
+                )}
+                <h3 className={cn('font-semibold text-sm', isBlocked && 'text-muted-foreground')}>{milestone.title}</h3>
                 <Badge className={cn('text-[10px] border-0', cfg.badgeClass)}>{cfg.label}</Badge>
+                <WaterfallBadge ws={ws} />
                 {taskCount > 0 && (
                   <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">{taskCount} tasks</span>
                 )}
@@ -151,7 +218,14 @@ function MilestoneCard({
               )}
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              {canClose && (
+              {canStart && (
+                <Button size="sm" variant="ghost"
+                  className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  onClick={() => onStart(milestone)} title="Start milestone">
+                  <PlayCircle className="h-3.5 w-3.5 mr-1" /> Start
+                </Button>
+              )}
+              {canClose && !isBlocked && (
                 <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
                   onClick={() => onClose(milestone)} title="Close milestone">
                   <CheckSquare2 className="h-3.5 w-3.5" />
@@ -206,6 +280,7 @@ function MilestoneCard({
             <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
               <div
                 className={cn('h-full rounded-full transition-all',
+                  isBlocked ? 'bg-red-300' :
                   milestone.status === 'completed' ? 'bg-green-500' :
                   burn > 90 ? 'bg-red-500' :
                   burn > 70 ? 'bg-orange-500' : 'bg-blue-500'
@@ -433,6 +508,7 @@ export function MilestonesPage() {
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [closingMilestone, setClosingMilestone] = useState<Milestone | null>(null);
   const [closingSaving, setClosingSaving] = useState(false);
+  const [startingSaving, setStartingSaving] = useState(false);
 
   const apiMilestones: Milestone[] = (milestonesQuery.data ?? []) as Milestone[];
   const milestones = apiMilestones.length > 0 ? apiMilestones : localMilestones;
@@ -442,6 +518,7 @@ export function MilestonesPage() {
   const completed = milestones.filter((m) => m.status === 'completed').length;
   const inProgress = milestones.filter((m) => m.status === 'in_progress').length;
   const pending = milestones.filter((m) => m.status === 'pending').length;
+  const blocked = milestones.filter((m) => m.waterfallStatus === 'BLOCKED').length;
   const totalBudget = milestones.reduce((s, m) => s + (m.budget ?? 0), 0);
 
   // ── Handlers ─────────────────────────────────────────────
@@ -520,6 +597,25 @@ export function MilestonesPage() {
     }
   };
 
+  const handleStartMilestone = async (m: Milestone) => {
+    setStartingSaving(true);
+    try {
+      if (apiMilestones.length > 0) {
+        await api.patch(`/projects/${projectId}/milestones/${m.id}`, {
+          waterfallStatus: 'IN_PROGRESS',
+          status: 'in_progress',
+        });
+        milestonesQuery.refetch?.();
+      } else {
+        setLocalMilestones((prev) => prev.map((ms) =>
+          ms.id === m.id ? { ...ms, waterfallStatus: 'IN_PROGRESS' as WaterfallStatus, status: 'in_progress' } : ms
+        ));
+      }
+    } finally {
+      setStartingSaving(false);
+    }
+  };
+
   const panelInitial: MilestoneFormData = editingMilestone
     ? {
         title: editingMilestone.title,
@@ -563,12 +659,13 @@ export function MilestonesPage() {
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         {[
           { label: 'Total', value: total, cls: 'text-foreground', bg: '' },
           { label: 'Completed', value: completed, cls: 'text-green-600', bg: 'bg-green-50 dark:bg-green-950/20' },
           { label: 'In Progress', value: inProgress, cls: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/20' },
           { label: 'Pending', value: pending, cls: 'text-gray-500', bg: 'bg-gray-50 dark:bg-gray-900/30' },
+          { label: 'Blocked', value: blocked, cls: blocked > 0 ? 'text-red-600' : 'text-gray-400', bg: blocked > 0 ? 'bg-red-50 dark:bg-red-950/20' : '' },
         ].map(({ label, value, cls, bg }) => (
           <Card key={label} className={cn('p-4', bg)}>
             <p className={cn('text-2xl font-bold', cls)}>{value}</p>
@@ -590,7 +687,7 @@ export function MilestonesPage() {
         <div className="mt-2">
           {milestones.map((m, i) => (
             <MilestoneCard key={m.id} milestone={m} isLast={i === milestones.length - 1}
-              onEdit={openEdit} onDelete={handleDelete} onClose={setClosingMilestone} />
+              onEdit={openEdit} onDelete={handleDelete} onClose={setClosingMilestone} onStart={handleStartMilestone} />
           ))}
         </div>
       ) : (

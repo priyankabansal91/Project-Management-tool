@@ -7,11 +7,21 @@ import { Input } from '@/components/ui/input';
 import {
   Flag, Search, CheckCircle2, Clock, Circle, AlertCircle,
   Calendar, ChevronRight, Lock, Wallet, Activity, Filter,
+  Ban, PlayCircle, ShieldCheck, Hash,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjects, useMilestones } from '@/api/hooks';
 
 type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'review';
+
+const WATERFALL_CFG: Record<string, { label: string; cls: string; Icon: React.ComponentType<{ className?: string }> }> = {
+  NOT_STARTED:      { label: 'Not Started',      cls: 'bg-gray-100 text-gray-500',         Icon: Circle },
+  BLOCKED:          { label: 'Blocked',           cls: 'bg-red-100 text-red-700',            Icon: Ban },
+  IN_PROGRESS:      { label: 'In Progress',       cls: 'bg-blue-100 text-blue-700',          Icon: PlayCircle },
+  PENDING_APPROVAL: { label: 'Awaiting Approval', cls: 'bg-purple-100 text-purple-700',      Icon: Clock },
+  APPROVED:         { label: 'Approved',          cls: 'bg-teal-100 text-teal-700',           Icon: ShieldCheck },
+  COMPLETED:        { label: 'Completed',         cls: 'bg-emerald-100 text-emerald-700',     Icon: CheckCircle2 },
+};
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; badgeClass: string; Icon: React.ComponentType<{ className?: string }> }> = {
   completed:   { label: 'Completed',       color: 'bg-green-500',  badgeClass: 'bg-green-100 text-green-700',   Icon: CheckCircle2 },
@@ -58,13 +68,25 @@ function ProjectMilestones({ project }: { project: any }) {
             const isOverdue = dueDate && new Date(dueDate) < new Date() && status !== 'completed';
             const burn = m.burnRate ?? m.progress ?? 0;
 
+            const wfStatus: string = m.waterfallStatus || m.waterfall_status || 'NOT_STARTED';
+            const wfCfg = WATERFALL_CFG[wfStatus] || WATERFALL_CFG.NOT_STARTED;
+            const WfIcon = wfCfg.Icon;
+
             return (
               <div key={m.id}
-                className="flex items-center gap-3 rounded-lg border px-3 py-2 hover:bg-muted/40 cursor-pointer transition-colors"
+                className={cn(
+                  'flex items-center gap-3 rounded-lg border px-3 py-2 hover:bg-muted/40 cursor-pointer transition-colors',
+                  wfStatus === 'BLOCKED' && 'bg-red-50/50 border-red-200'
+                )}
                 onClick={() => navigate(`/projects/${project.id}/milestones`)}>
                 <StatusIcon className={cn('h-4 w-4 shrink-0', cfg.color.replace('bg-', 'text-'))} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {m.sequenceOrder != null && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground font-mono">
+                        <Hash className="h-2.5 w-2.5" />{m.sequenceOrder}
+                      </span>
+                    )}
                     <p className="text-sm font-medium truncate">{m.title}</p>
                     {m.approvalRequired && <Lock className="h-3 w-3 text-purple-500 shrink-0" />}
                   </div>
@@ -84,6 +106,11 @@ function ProjectMilestones({ project }: { project: any }) {
                   </div>
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
+                  {/* Waterfall status badge */}
+                  <Badge className={cn('text-[10px] border-0 flex items-center gap-1', wfCfg.cls)}>
+                    <WfIcon className="h-2.5 w-2.5" />
+                    <span className="hidden md:inline">{wfCfg.label}</span>
+                  </Badge>
                   {/* Progress pill */}
                   <div className="flex items-center gap-1.5">
                     <div className="w-16 h-1.5 rounded-full bg-secondary overflow-hidden">
@@ -120,6 +147,7 @@ export function MilestonesOverviewPage() {
     { value: 'pending',     label: 'Pending' },
     { value: 'completed',   label: 'Completed' },
     { value: 'review',      label: 'Pending Approval' },
+    { value: 'BLOCKED',     label: 'Blocked' },
   ];
 
   return (

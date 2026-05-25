@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const divisionService = require('../services/divisionService');
 const { authenticate, authorize } = require('../middleware/auth');
+const { getDivisionReadiness, updateChecklistItem, getVerticalReadiness } = require('../services/setupReadinessService');
 
 const router = Router();
 
@@ -133,6 +134,36 @@ router.delete('/:divisionId/members/:userId', authorize('org_admin'), async (req
   try {
     await divisionService.removeMember(req.user.orgId, req.params.divisionId, req.params.userId);
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /v1/divisions/:divisionId/readiness — setup readiness check
+ */
+router.get('/:divisionId/readiness', async (req, res, next) => {
+  try {
+    const readiness = await getDivisionReadiness(req.params.divisionId);
+    if (!readiness) {
+      return res.status(404).json({ success: false, error: 'Division not found' });
+    }
+    res.json({ success: true, data: readiness });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /v1/divisions/:divisionId/readiness — update a checklist item
+ */
+router.patch('/:divisionId/readiness', authorize('org_admin', 'division_admin'), async (req, res, next) => {
+  try {
+    const { key, value } = req.body;
+    if (!key) return res.status(400).json({ success: false, error: 'key is required' });
+    const division = await updateChecklistItem(req.params.divisionId, key, value !== false);
+    const readiness = await getDivisionReadiness(req.params.divisionId);
+    res.json({ success: true, data: readiness });
   } catch (err) {
     next(err);
   }

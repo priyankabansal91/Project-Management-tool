@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Calendar, Clock, Send, Loader, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Send, Loader, CheckCircle2, Link2, Unlink, AlertTriangle, ArrowRight, Search, X } from 'lucide-react';
 import { cn, priorityColor, formatDate, timeAgo } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/api/client';
-import { useComments, useCreateComment, useLogTime, useUpdateTask, useProject } from '@/api/hooks';
+import { useComments, useCreateComment, useLogTime, useUpdateTask, useProject, useProjectTasks } from '@/api/hooks';
 
 const mockComments = [
   {
@@ -26,6 +26,158 @@ const mockActivityLog = [
   { actor: 'Bob Martinez', action: 'Assigned to', detail: 'Carol Johnson', at: '2026-02-01T10:00:00Z' },
   { actor: 'Bob Martinez', action: 'Created task', detail: '', at: '2026-01-15T10:00:00Z' },
 ];
+
+// ─── Dependencies Card ───────────────────────────────────────────────────────
+
+function DependencyCard({ task, projectId }: { task: any; projectId: string }) {
+  const qc = useQueryClient();
+  const updateTask = useUpdateTask();
+  const [search, setSearch] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Fetch project tasks for the search picker
+  const tasksQuery = useProjectTasks(projectId, { search: search || undefined });
+  const candidates: any[] = (tasksQuery.data?.items ?? []).filter(
+    (t: any) => t.id !== task.id && t.id !== task.depends_on?.id
+  );
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowSearch(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const link = (dependsOnId: string | null) => {
+    updateTask.mutate(
+      { taskId: task.id, depends_on_id: dependsOnId } as any,
+      { onSuccess: () => { qc.invalidateQueries({ queryKey: ['task', task.id] }); setShowSearch(false); setSearch(''); } }
+    );
+  };
+
+  const depOn = task.depends_on;
+  const isBlocked = !!depOn && !depOn.is_done;
+  const dependentsCount = task.dependents_count ?? 0;
+
+  return (
+    <Card className={cn(isBlocked && 'border-red-300')}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Link2 className="h-4 w-4" /> Dependencies
+          {dependentsCount > 0 && (
+            <Badge variant="outline" className="text-[10px] ml-auto">
+              {dependentsCount} task{dependentsCount > 1 ? 's' : ''} blocked by this
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Blocked banner */}
+        {isBlocked && (
+          <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+            <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">This task is blocked</p>
+              <p className="text-xs mt-0.5">
+                Waiting on <span className="font-mono">{depOn.task_key}</span> to be completed.
+                {task.blocked_reason && <> Reason: {task.blocked_reason}</>}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Current dependency */}
+        <div>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Depends On</p>
+          {depOn ? (
+            <div className={cn(
+              'flex items-center gap-2 rounded-lg border px-3 py-2',
+              depOn.is_done ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50/60 border-red-200'
+            )}>
+              {depOn.is_done
+                ? <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                : <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-xs text-muted-foreground">{depOn.task_key}</span>
+                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-sm font-medium truncate">{depOn.title}</span>
+                </div>
+                <p className={cn('text-xs mt-0.5', depOn.is_done ? 'text-emerald-600' : 'text-red-600')}>
+                  {depOn.is_done ? 'Completed — no longer blocking' : `Incomplete (${depOn.status_name ?? 'open'})`}
+                </p>
+              </div>
+              <button
+                title="Remove dependency"
+                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex-shrink-0"
+                onClick={() => link(null)}
+                disabled={updateTask.isPending}
+              >
+                <Unlink className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">No dependency set</p>
+          )}
+        </div>
+
+        {/* Add dependency picker */}
+        <div ref={searchRef} className="relative">
+          {!showSearch ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-8 text-xs"
+              onClick={() => setShowSearch(true)}
+            >
+              <Search className="h-3 w-3 mr-1.5" />
+              {depOn ? 'Change dependency' : 'Add dependency'}
+            </Button>
+          ) : (
+            <div>
+              <div className="flex items-center gap-1 border rounded-md overflow-hidden">
+                <Search className="h-3.5 w-3.5 ml-2 text-muted-foreground flex-shrink-0" />
+                <input
+                  autoFocus
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search tasks by title..."
+                  className="flex-1 py-2 px-2 text-sm bg-background outline-none"
+                />
+                <button onClick={() => { setShowSearch(false); setSearch(''); }} className="p-1.5 hover:bg-muted">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+              {search.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 rounded-md border bg-popover shadow-lg z-20 max-h-48 overflow-y-auto">
+                  {tasksQuery.isLoading && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">Searching...</p>
+                  )}
+                  {!tasksQuery.isLoading && candidates.length === 0 && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground">No tasks found</p>
+                  )}
+                  {candidates.map((t: any) => (
+                    <button
+                      key={t.id}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted text-left"
+                      onClick={() => link(t.id)}
+                    >
+                      <span className="font-mono text-xs text-muted-foreground flex-shrink-0">{t.task_key}</span>
+                      <span className="truncate">{t.title}</span>
+                      {t.completed_at && <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0 ml-auto" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function TaskDetailPage() {
   const { taskId } = useParams();
@@ -129,6 +281,11 @@ export function TaskDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Dependencies */}
+          {task?.project?.id && (
+            <DependencyCard task={task} projectId={task.project.id} />
+          )}
 
           {/* Comments */}
           <Card>

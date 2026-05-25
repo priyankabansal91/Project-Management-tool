@@ -1,5 +1,6 @@
 const ApiError = require('../utils/ApiError');
 const APPROVAL_WORKFLOWS = require('../utils/approvalWorkflows');
+const prisma = require('../config/prisma');
 
 // In-memory storage for development (until database is set up)
 const approvalsStore = new Map();
@@ -95,69 +96,99 @@ class ApprovalService {
 
   /**
    * List all approvals for a user (created by or assigned to)
+   * Merges in-memory workflow approvals with DB milestone-closure approvals
    */
   async listApprovals(orgId, userId, { status, page = 1, page_size = 20 } = {}) {
     page = parseInt(page) || 1;
     page_size = parseInt(page_size) || 20;
-    let approvals = Array.from(approvalsStore.values())
-      .filter(a => a.orgId === orgId);
 
-    if (status) {
-      approvals = approvals.filter(a => a.status === status);
-    }
+    // In-memory workflow approvals
+    let memApprovals = Array.from(approvalsStore.values()).filter(a => a.orgId === orgId);
+    if (status) memApprovals = memApprovals.filter(a => a.status === status);
 
-    approvals.sort((a, b) => b.createdAt - a.createdAt);
+    // DB-based approvals (milestone closures, etc.)
+    let dbApprovals = [];
+    try {
+      const where = { orgId };
+      if (status) where.status = status;
+      const rows = await prisma.approval.findMany({
+        where,
+        include: { requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      });
+      dbApprovals = rows.map((r) => this._formatDbApproval(r));
+    } catch (_) { /* DB not available */ }
 
-    const total = approvals.length;
-    const items = approvals.slice((page - 1) * page_size, page * page_size);
+    const all = [...memApprovals.map((a) => this._formatApproval(a)), ...dbApprovals]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
+    const total = all.length;
     return {
-      items: items.map((a) => this._formatApproval(a)),
+      items: all.slice((page - 1) * page_size, page * page_size),
       pagination: { page, page_size, total, total_pages: Math.ceil(total / page_size) },
     };
   }
 
   /**
    * Approve an approval step
+   * Handles both in-memory workflow approvals and DB milestone-closure approvals
    */
   async approveStep(orgId, userId, approvalId, data) {
     const { reason } = data;
 
+    // Try DB approval first (milestone closures)
+    let dbApproval = null;
+    try {
+      dbApproval = await prisma.approval.findFirst({ where: { id: approvalId, orgId } });
+    } catch (_) {}
+
+    if (dbApproval) {
+      if (dbApproval.status !== 'pending') throw ApiError.badRequest('Approval is not pending');
+
+      const updated = await prisma.approval.update({
+        where: { id: approvalId },
+        data: { status: 'approved', updatedAt: new Date() },
+        include: { requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } } },
+      }).catch(() => null);
+
+      // Auto-advance milestone waterfallStatus when a milestone_closure approval is approved
+      if (dbApproval.workflowType === 'milestone_closure' && dbApproval.relatedMilestoneId) {
+        const milestone = await prisma.milestone.findUnique({ where: { id: dbApproval.relatedMilestoneId } }).catch(() => null);
+        if (milestone) {
+          await prisma.milestone.update({
+            where: { id: milestone.id },
+            data: { waterfallStatus: 'COMPLETED', status: 'completed', progress: 100, completedAt: new Date() },
+          }).catch(() => {});
+          // Unblock next milestone
+          await prisma.milestone.updateMany({
+            where: { predecessorId: milestone.id, waterfallStatus: 'BLOCKED' },
+            data: { waterfallStatus: 'NOT_STARTED', blockedReason: null },
+          }).catch(() => {});
+        }
+      }
+
+      return this._formatDbApproval(updated || dbApproval);
+    }
+
+    // Fall back to in-memory store
     const approval = approvalsStore.get(approvalId);
-    if (!approval || approval.orgId !== orgId) {
-      throw ApiError.notFound('Approval not found');
-    }
+    if (!approval || approval.orgId !== orgId) throw ApiError.notFound('Approval not found');
+    if (approval.status !== 'pending') throw ApiError.badRequest('Approval is not pending');
 
-    if (approval.status !== 'pending') {
-      throw ApiError.badRequest('Approval is not pending');
-    }
-
-    // Find the first pending step
     const currentStep = approval.steps.find((s) => s.status === 'pending');
-    if (!currentStep) {
-      throw ApiError.forbidden('No pending step found');
-    }
+    if (!currentStep) throw ApiError.forbidden('No pending step found');
 
-    // Update the step
     currentStep.status = 'approved';
 
-    // Create approval record
     const recordId = `record_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     approvalRecordsStore.set(recordId, {
-      id: recordId,
-      approvalId,
-      approvedBy: userId,
-      action: 'approved',
-      reason,
-      stepId: currentStep.id,
-      createdAt: new Date(),
+      id: recordId, approvalId, approvedBy: userId, action: 'approved',
+      reason, stepId: currentStep.id, createdAt: new Date(),
     });
 
-    // Check if all steps are approved
     const allApproved = approval.steps.every((s) => s.status === 'approved');
-    if (allApproved) {
-      approval.status = 'approved';
-    }
+    if (allApproved) approval.status = 'approved';
 
     approval.updatedAt = new Date();
     approvalsStore.set(approvalId, approval);
@@ -171,37 +202,46 @@ class ApprovalService {
   async rejectStep(orgId, userId, approvalId, data) {
     const { reason } = data;
 
+    // Try DB approval first
+    let dbApproval = null;
+    try {
+      dbApproval = await prisma.approval.findFirst({ where: { id: approvalId, orgId } });
+    } catch (_) {}
+
+    if (dbApproval) {
+      if (dbApproval.status !== 'pending') throw ApiError.badRequest('Approval is not pending');
+      const updated = await prisma.approval.update({
+        where: { id: approvalId },
+        data: { status: 'rejected', updatedAt: new Date() },
+        include: { requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } } },
+      }).catch(() => null);
+
+      // Revert milestone back to IN_PROGRESS if rejected
+      if (dbApproval.workflowType === 'milestone_closure' && dbApproval.relatedMilestoneId) {
+        await prisma.milestone.update({
+          where: { id: dbApproval.relatedMilestoneId },
+          data: { waterfallStatus: 'IN_PROGRESS', status: 'in_progress', approvalId: null },
+        }).catch(() => {});
+      }
+
+      return this._formatDbApproval(updated || dbApproval);
+    }
+
+    // Fall back to in-memory store
     const approval = approvalsStore.get(approvalId);
-    if (!approval || approval.orgId !== orgId) {
-      throw ApiError.notFound('Approval not found');
-    }
+    if (!approval || approval.orgId !== orgId) throw ApiError.notFound('Approval not found');
+    if (approval.status !== 'pending') throw ApiError.badRequest('Approval is not pending');
 
-    if (approval.status !== 'pending') {
-      throw ApiError.badRequest('Approval is not pending');
-    }
-
-    // Find the first pending step
     const currentStep = approval.steps.find((s) => s.status === 'pending');
-    if (!currentStep) {
-      throw ApiError.forbidden('No pending step found');
-    }
+    if (!currentStep) throw ApiError.forbidden('No pending step found');
 
-    // Update the step
     currentStep.status = 'rejected';
-
-    // Create approval record
     const recordId = `record_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     approvalRecordsStore.set(recordId, {
-      id: recordId,
-      approvalId,
-      approvedBy: userId,
-      action: 'rejected',
-      reason,
-      stepId: currentStep.id,
-      createdAt: new Date(),
+      id: recordId, approvalId, approvedBy: userId, action: 'rejected',
+      reason, stepId: currentStep.id, createdAt: new Date(),
     });
 
-    // Update approval status
     approval.status = 'rejected';
     approval.updatedAt = new Date();
     approvalsStore.set(approvalId, approval);
@@ -210,7 +250,34 @@ class ApprovalService {
   }
 
   /**
-   * Format approval for response
+   * Format a Prisma DB approval for API response
+   */
+  _formatDbApproval(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      workflow_id: row.workflowId || null,
+      title: row.title,
+      description: row.description,
+      content: row.content || null,
+      status: row.status,
+      current_step: row.currentStep || 1,
+      workflow_type: row.workflowType,
+      entity_type: row.entityType,
+      entity_id: row.entityId,
+      related_milestone_id: row.relatedMilestoneId,
+      related_project_id: row.relatedProjectId,
+      hierarchy_level: row.hierarchyLevel,
+      requested_by: row.requestedByUser || { id: row.requestedBy },
+      steps: [],
+      approvals: [],
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    };
+  }
+
+  /**
+   * Format in-memory approval for response
    */
   _formatApproval(approval) {
     return {

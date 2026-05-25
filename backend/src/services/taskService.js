@@ -30,6 +30,17 @@ function formatTask(t) {
     comment_count: t._count?.comments ?? 0,
     subtask_count: t._count?.subtasks ?? 0,
     sprint_id: t.sprintId ?? null,
+    milestone_id: t.milestoneId ?? null,
+    depends_on_id: t.dependsOnId ?? null,
+    blocked_reason: t.blockedReason ?? null,
+    depends_on: t.dependsOn ? {
+      id: t.dependsOn.id,
+      task_key: `${t.dependsOn.project?.key ?? '?'}-${t.dependsOn.seqNumber}`,
+      title: t.dependsOn.title,
+      status_name: t.dependsOn.statusName,
+      is_done: !!t.dependsOn.completedAt,
+    } : null,
+    dependents_count: t._count?.dependents ?? 0,
     is_archived: t.isArchived,
     completed_at: t.completedAt,
     created_at: t.createdAt,
@@ -38,10 +49,11 @@ function formatTask(t) {
 }
 
 const TASK_INCLUDE = {
-  project: { select: { key: true, name: true, color: true } },
+  project: { select: { key: true, name: true, color: true, id: true } },
   assignee: { select: USER_SELECT },
   reporter: { select: USER_SELECT },
-  _count: { select: { comments: { where: { deletedAt: null } }, subtasks: true } },
+  dependsOn: { select: { id: true, seqNumber: true, title: true, statusName: true, completedAt: true, project: { select: { key: true } } } },
+  _count: { select: { comments: { where: { deletedAt: null } }, subtasks: true, dependents: true } },
 };
 
 class TaskService {
@@ -173,6 +185,7 @@ class TaskService {
         estimatedHours: data.estimated_hours || null,
         tags: data.tags || [],
         customFields: data.custom_fields || {},
+        milestoneId: data.milestone_id || null,
         parentTaskId: data.parent_task_id || null,
         position,
         createdBy: userId,
@@ -199,6 +212,9 @@ class TaskService {
         ...(data.status_id        !== undefined && { statusId: data.status_id, statusName: data.status_name || null }),
         ...(data.status_id        === undefined && data.status_name !== undefined && { statusName: data.status_name }),
         ...(data.completed_at     !== undefined && { completedAt: data.completed_at ? new Date(data.completed_at) : null }),
+        ...(data.depends_on_id    !== undefined && { dependsOnId: data.depends_on_id }),
+        ...(data.blocked_reason   !== undefined && { blockedReason: data.blocked_reason }),
+        ...(data.milestone_id     !== undefined && { milestoneId: data.milestone_id }),
       },
       include: TASK_INCLUDE,
     });

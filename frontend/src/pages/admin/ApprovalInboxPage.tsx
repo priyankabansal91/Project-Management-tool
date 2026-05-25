@@ -2,14 +2,15 @@ import { useState, useMemo } from 'react';
 import {
   CheckCircle2, XCircle, CornerUpLeft, Users2, Clock,
   AlertTriangle, MessageSquare, ChevronDown, ChevronUp,
-  ArrowRight, Send, UserMinus, Building2, Calendar,
+  ArrowRight, Send, UserMinus, Building2, Calendar, Flag, Loader2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useApprovals, useApproveStep, useRejectStep } from '@/api/hooks';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -208,19 +209,36 @@ function DelegateModal({
 
 // ── Approval Card ─────────────────────────────────────────────────────────────
 
-function ApprovalCard({ approval, canAct }: { approval: typeof ALL_APPROVALS[0]; canAct: boolean }) {
+function ApprovalCard({ approval, canAct }: { approval: any; canAct: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const [action, setAction] = useState<'approve' | 'reject' | 'send_back' | null>(null);
   const [comment, setComment] = useState('');
   const [showDelegate, setShowDelegate] = useState(false);
   const [done, setDone] = useState<string | null>(null);
 
-  const sla = getSlaInfo(approval.stepStartedAt, approval.slaThreshold);
+  const approveStep = useApproveStep();
+  const rejectStep = useRejectStep();
+  const saving = approveStep.isPending || rejectStep.isPending;
 
-  const handleSubmit = () => {
+  const isDbApproval = !approval.stepStartedAt; // DB approvals don't have SLA fields
+  const sla = !isDbApproval ? getSlaInfo(approval.stepStartedAt, approval.slaThreshold) : null;
+  const isMilestoneClosure = approval.workflow_type === 'milestone_closure' || approval.workflowType === 'milestone_closure';
+
+  const handleSubmit = async () => {
     if (!action) return;
-    const label = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'Sent Back';
-    setDone(label);
+    try {
+      if (action === 'approve') {
+        await approveStep.mutateAsync({ approvalId: approval.id, reason: comment });
+      } else if (action === 'reject') {
+        await rejectStep.mutateAsync({ approvalId: approval.id, reason: comment });
+      }
+      const label = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'Sent Back';
+      setDone(label);
+    } catch (err: any) {
+      // show inline error — don't clear action
+      alert(err?.response?.data?.error?.message || 'Action failed. Please try again.');
+      return;
+    }
     setAction(null);
     setComment('');
   };
@@ -230,15 +248,17 @@ function ApprovalCard({ approval, canAct }: { approval: typeof ALL_APPROVALS[0];
     high: 'border-l-4 border-l-orange-400',
     medium: 'border-l-4 border-l-blue-400',
   };
+  const borderClass = approval.priority ? priorityStyles[approval.priority] : 'border-l-4 border-l-purple-400';
+  const displayTitle = approval.projectName || approval.title || 'Approval Request';
 
   if (done) {
     return (
-      <Card className={cn('overflow-hidden', priorityStyles[approval.priority])}>
+      <Card className={cn('overflow-hidden', borderClass)}>
         <CardContent className="p-5">
           <div className="flex items-center gap-3 text-emerald-600">
             <CheckCircle2 className="h-5 w-5" />
             <div>
-              <p className="font-semibold">{approval.projectName} — {done}</p>
+              <p className="font-semibold">{displayTitle} — {done}</p>
               <p className="text-xs text-muted-foreground mt-0.5">Action recorded in audit trail. Relevant stakeholders notified.</p>
             </div>
           </div>
@@ -259,33 +279,50 @@ function ApprovalCard({ approval, canAct }: { approval: typeof ALL_APPROVALS[0];
           }}
         />
       )}
-      <Card className={cn('overflow-hidden transition-shadow hover:shadow-md', priorityStyles[approval.priority])}>
+      <Card className={cn('overflow-hidden transition-shadow hover:shadow-md', borderClass)}>
         <CardContent className="p-5 space-y-4">
           {/* Header row */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                <h3 className="font-semibold text-base leading-tight">{approval.projectName}</h3>
-                <Badge variant="outline" className="text-[10px] font-mono">{approval.projectKey}</Badge>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    'text-[10px]',
-                    approval.priority === 'critical' ? 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30' :
-                    approval.priority === 'high' ? 'text-orange-600 border-orange-300 bg-orange-50 dark:bg-orange-950/30' :
-                    'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950/30'
-                  )}
-                >
-                  {approval.priority.toUpperCase()}
-                </Badge>
+                <h3 className="font-semibold text-base leading-tight">{displayTitle}</h3>
+                {approval.projectKey && <Badge variant="outline" className="text-[10px] font-mono">{approval.projectKey}</Badge>}
+                {isMilestoneClosure && (
+                  <Badge className="text-[10px] bg-purple-100 text-purple-700 border border-purple-200">
+                    <Flag className="h-2.5 w-2.5 mr-1" /> Milestone Closure
+                  </Badge>
+                )}
+                {approval.priority && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px]',
+                      approval.priority === 'critical' ? 'text-red-600 border-red-300 bg-red-50 dark:bg-red-950/30' :
+                      approval.priority === 'high' ? 'text-orange-600 border-orange-300 bg-orange-50 dark:bg-orange-950/30' :
+                      'text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-950/30'
+                    )}
+                  >
+                    {approval.priority.toUpperCase()}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-                <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{approval.division}</span>
-                <span className="flex items-center gap-1"><Users2 className="h-3 w-3" />By {approval.submittedBy} ({approval.submittedByRole})</span>
-                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{relativeTime(approval.previousActions[0].at)}</span>
-                <span className="flex items-center gap-1 font-medium text-foreground">
-                  Step {approval.currentStep}/{approval.totalSteps}: {approval.currentStepName}
+                {approval.division && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{approval.division}</span>}
+                {(approval.submittedBy || approval.requested_by) && (
+                  <span className="flex items-center gap-1">
+                    <Users2 className="h-3 w-3" />
+                    By {approval.submittedBy || `${approval.requested_by?.firstName ?? ''} ${approval.requested_by?.lastName ?? ''}`.trim()}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {relativeTime(approval.previousActions?.[0]?.at || approval.created_at || new Date().toISOString())}
                 </span>
+                {approval.currentStepName && (
+                  <span className="flex items-center gap-1 font-medium text-foreground">
+                    Step {approval.currentStep}/{approval.totalSteps}: {approval.currentStepName}
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -296,48 +333,56 @@ function ApprovalCard({ approval, canAct }: { approval: typeof ALL_APPROVALS[0];
             </button>
           </div>
 
-          {/* SLA */}
-          <SlaBadge stepStartedAt={approval.stepStartedAt} threshold={approval.slaThreshold} />
+          {/* SLA (mock approvals only) */}
+          {sla && <SlaBadge stepStartedAt={approval.stepStartedAt} threshold={approval.slaThreshold} />}
 
           {/* Description */}
-          <p className="text-sm text-muted-foreground leading-relaxed">{approval.description}</p>
+          {approval.description && <p className="text-sm text-muted-foreground leading-relaxed">{approval.description}</p>}
 
-          {/* Meta */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-3">
-            <span className="flex items-center gap-1"><span className="font-medium text-foreground">Budget:</span> {approval.budget}</span>
-            <span className="flex items-center gap-1"><span className="font-medium text-foreground">Timeline:</span> {approval.timeline}</span>
-          </div>
+          {/* Meta (mock approvals) */}
+          {(approval.budget || approval.timeline) && (
+            <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-3">
+              {approval.budget && <span className="flex items-center gap-1"><span className="font-medium text-foreground">Budget:</span> {approval.budget}</span>}
+              {approval.timeline && <span className="flex items-center gap-1"><span className="font-medium text-foreground">Timeline:</span> {approval.timeline}</span>}
+            </div>
+          )}
 
           {/* Audit trail (expanded) */}
-          {expanded && (
+          {expanded && (approval.previousActions?.length > 0 || approval.related_milestone_id) && (
             <div className="pt-2 border-t">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Audit Trail</p>
-              <div className="relative pl-4 space-y-3">
-                <div className="absolute left-1.5 top-0 bottom-0 w-px bg-border" />
-                {approval.previousActions.map((a, idx) => (
-                  <div key={idx} className="relative">
-                    <div className="absolute -left-[11px] top-1 h-2 w-2 rounded-full bg-primary border-2 border-background" />
-                    <p className="text-xs font-medium">
-                      {a.actor} <span className="text-muted-foreground font-normal">({a.role})</span>
-                      <span className={cn(
-                        'ml-2 font-semibold',
-                        a.action === 'APPROVED' ? 'text-emerald-600' :
-                        a.action === 'REJECTED' ? 'text-red-600' : 'text-blue-600'
-                      )}>
-                        {a.action === 'SUBMITTED' ? '→ Submitted' : a.action === 'APPROVED' ? '✓ Approved' : '✗ Rejected'}
-                      </span>
-                      <span className="text-muted-foreground font-normal ml-2">{relativeTime(a.at)}</span>
-                    </p>
-                    {a.comment && (
-                      <p className="text-xs text-muted-foreground mt-0.5 italic">"{a.comment}"</p>
-                    )}
-                  </div>
-                ))}
-                <div className="relative">
-                  <div className="absolute -left-[11px] top-1 h-2 w-2 rounded-full bg-amber-400 border-2 border-background animate-pulse" />
-                  <p className="text-xs font-medium text-amber-600">Awaiting {approval.currentStepName}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Details</p>
+              {approval.previous_actions?.length > 0 && (
+                <div className="relative pl-4 space-y-3">
+                  <div className="absolute left-1.5 top-0 bottom-0 w-px bg-border" />
+                  {(approval.previousActions || []).map((a: any, idx: number) => (
+                    <div key={idx} className="relative">
+                      <div className="absolute -left-[11px] top-1 h-2 w-2 rounded-full bg-primary border-2 border-background" />
+                      <p className="text-xs font-medium">
+                        {a.actor} <span className="text-muted-foreground font-normal">({a.role})</span>
+                        <span className={cn('ml-2 font-semibold',
+                          a.action === 'APPROVED' ? 'text-emerald-600' :
+                          a.action === 'REJECTED' ? 'text-red-600' : 'text-blue-600'
+                        )}>
+                          {a.action === 'SUBMITTED' ? '→ Submitted' : a.action === 'APPROVED' ? '✓ Approved' : '✗ Rejected'}
+                        </span>
+                        <span className="text-muted-foreground font-normal ml-2">{relativeTime(a.at)}</span>
+                      </p>
+                      {a.comment && <p className="text-xs text-muted-foreground mt-0.5 italic">"{a.comment}"</p>}
+                    </div>
+                  ))}
+                  {approval.currentStepName && (
+                    <div className="relative">
+                      <div className="absolute -left-[11px] top-1 h-2 w-2 rounded-full bg-amber-400 border-2 border-background animate-pulse" />
+                      <p className="text-xs font-medium text-amber-600">Awaiting {approval.currentStepName}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+              {approval.related_milestone_id && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Milestone ID: <span className="font-mono">{approval.related_milestone_id}</span>
+                </p>
+              )}
             </div>
           )}
 
@@ -407,7 +452,7 @@ function ApprovalCard({ approval, canAct }: { approval: typeof ALL_APPROVALS[0];
                 className="w-full rounded-lg border bg-background text-sm px-3 py-2 h-24 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setAction(null)}>
+                <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setAction(null)} disabled={saving}>
                   Cancel
                 </Button>
                 <Button
@@ -418,10 +463,10 @@ function ApprovalCard({ approval, canAct }: { approval: typeof ALL_APPROVALS[0];
                     action === 'reject' ? 'bg-red-600 hover:bg-red-700 text-white' :
                     'bg-amber-500 hover:bg-amber-600 text-white'
                   )}
-                  disabled={action !== 'approve' && !comment.trim()}
+                  disabled={(action !== 'approve' && !comment.trim()) || saving}
                   onClick={handleSubmit}
                 >
-                  <Send className="h-3.5 w-3.5 mr-1.5" />
+                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
                   Confirm {action === 'approve' ? 'Approval' : action === 'reject' ? 'Rejection' : 'Send Back'}
                 </Button>
               </div>
@@ -449,18 +494,33 @@ export function ApprovalInboxPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('mine');
 
+  const { data: approvalsData, isLoading: loadingApi } = useApprovals({ status: 'pending' });
+  const apiApprovals: any[] = approvalsData?.items || [];
+
+  // Merge real API approvals with mock data (API approvals take priority, dedup by id)
+  const allApprovals = useMemo(() => {
+    const apiIds = new Set(apiApprovals.map((a: any) => a.id));
+    return [...apiApprovals, ...ALL_APPROVALS.filter((a) => !apiIds.has(a.id))];
+  }, [apiApprovals]);
+
+  const canActOn = (a: any) =>
+    a.requiredRole
+      ? a.requiredRole === currentRole
+      : ['org_admin', 'division_admin', 'executive'].includes(currentRole || '');
+
   const displayed = useMemo(() => {
-    if (tab === 'mine') return ALL_APPROVALS.filter((a) => a.requiredRole === currentRole);
-    if (tab === 'overdue') return ALL_APPROVALS.filter(
-      (a) => getSlaInfo(a.stepStartedAt, a.slaThreshold).status === 'overdue'
+    if (tab === 'mine') return allApprovals.filter(canActOn);
+    if (tab === 'overdue') return allApprovals.filter(
+      (a) => a.stepStartedAt && getSlaInfo(a.stepStartedAt, a.slaThreshold).status === 'overdue'
     );
-    return ALL_APPROVALS;
-  }, [tab, currentRole]);
+    return allApprovals;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, allApprovals, currentRole]);
 
   const counts = {
-    mine: ALL_APPROVALS.filter((a) => a.requiredRole === currentRole).length,
-    all: ALL_APPROVALS.length,
-    overdue: ALL_APPROVALS.filter((a) => getSlaInfo(a.stepStartedAt, a.slaThreshold).status === 'overdue').length,
+    mine: allApprovals.filter(canActOn).length,
+    all: allApprovals.length,
+    overdue: allApprovals.filter((a) => a.stepStartedAt && getSlaInfo(a.stepStartedAt, a.slaThreshold).status === 'overdue').length,
   };
 
   const tabs: { key: Tab; label: string; count?: number; color?: string }[] = [
@@ -521,6 +581,13 @@ export function ApprovalInboxPage() {
         </div>
       )}
 
+      {/* Loading indicator */}
+      {loadingApi && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading approvals...
+        </div>
+      )}
+
       {/* Content */}
       {tab === 'completed' ? (
         <div className="rounded-2xl border-2 border-dashed border-border p-16 text-center">
@@ -551,7 +618,7 @@ export function ApprovalInboxPage() {
             <ApprovalCard
               key={a.id}
               approval={a}
-              canAct={a.requiredRole === currentRole}
+              canAct={canActOn(a)}
             />
           ))}
         </div>

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { cn, priorityColor } from '@/lib/utils';
-import { X, Bold, Italic, List, Link2, Eye, Code, ChevronDown, Paperclip, FileText, FileSpreadsheet, Image, File, Upload } from 'lucide-react';
+import { X, Bold, Italic, List, Link2, Eye, Code, ChevronDown, Paperclip, FileText, FileSpreadsheet, Image, File, Upload, Flag, AlertCircle } from 'lucide-react';
 import type { Task, WorkflowStatus } from '@/types';
 
 const ACCEPTED_TYPES = '.doc,.docx,.xls,.xlsx,.csv,.pdf,.jpg,.jpeg,.png,.gif,.webp';
@@ -32,6 +32,13 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+export interface MilestoneOption {
+  id: string;
+  title: string;
+  status?: string;
+  waterfall_status?: string;
+}
+
 interface TaskModalProps {
   open: boolean;
   onClose: () => void;
@@ -40,7 +47,9 @@ interface TaskModalProps {
   projectKey?: string;
   statuses?: WorkflowStatus[];
   members?: { id: string; name: string; avatar_url: string | null }[];
+  milestones?: MilestoneOption[];
   saving?: boolean;
+  error?: string;
 }
 
 export interface TaskFormData {
@@ -50,6 +59,7 @@ export interface TaskFormData {
   status_id: string;
   status_name: string;
   assignee_id: string | null;
+  milestone_id: string;
   due_date: string;
   start_date: string;
   estimated_hours: string;
@@ -60,7 +70,7 @@ export interface TaskFormData {
 
 const PRIORITIES = ['critical', 'high', 'medium', 'low', 'none'] as const;
 
-export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = [], members = [], saving }: TaskModalProps) {
+export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = [], members = [], milestones, saving, error }: TaskModalProps) {
   const isEdit = !!task;
 
   const [form, setForm] = useState<TaskFormData>({
@@ -70,6 +80,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
     status_id: '',
     status_name: '',
     assignee_id: null,
+    milestone_id: '',
     due_date: '',
     start_date: '',
     estimated_hours: '',
@@ -77,6 +88,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
     custom_fields: {},
     attachments: [],
   });
+  const [milestoneError, setMilestoneError] = useState('');
 
   const [tagInput, setTagInput] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
@@ -87,6 +99,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
 
   // Populate form when editing
   useEffect(() => {
+    setMilestoneError('');
     if (task) {
       setForm({
         title: task.title,
@@ -95,6 +108,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
         status_id: task.status_id || '',
         status_name: task.status_name || '',
         assignee_id: task.assignee?.id || null,
+        milestone_id: (task as any).milestone_id || '',
         due_date: task.due_date ? task.due_date.split('T')[0] : '',
         start_date: task.start_date ? task.start_date.split('T')[0] : '',
         estimated_hours: task.estimated_hours?.toString() || '',
@@ -103,8 +117,9 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
         attachments: [],
       });
     } else {
-      // Default for new task
       const initialStatus = statuses.find((s) => s.is_initial) || statuses[0];
+      // Auto-select if only one active milestone available
+      const defaultMilestone = milestones?.length === 1 ? milestones[0].id : '';
       setForm({
         title: '',
         description: '',
@@ -112,6 +127,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
         status_id: initialStatus?.id || '',
         status_name: initialStatus?.name || '',
         assignee_id: null,
+        milestone_id: defaultMilestone,
         due_date: '',
         start_date: '',
         estimated_hours: '',
@@ -120,7 +136,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
         attachments: [],
       });
     }
-  }, [task, statuses]);
+  }, [task, statuses, milestones]);
 
   const handleFiles = (files: File[]) => {
     setFileError('');
@@ -176,6 +192,11 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return;
+    if (!isEdit && milestones && milestones.length > 0 && !form.milestone_id) {
+      setMilestoneError('A milestone is required. Please select one before creating the task.');
+      return;
+    }
+    setMilestoneError('');
     onSave(form);
   };
 
@@ -384,6 +405,39 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
 
             {/* Sidebar (Right) */}
             <div className="p-4 space-y-4 bg-secondary/20">
+              {/* Milestone — required on create */}
+              {milestones !== undefined && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <Flag className="h-3 w-3" /> Milestone
+                    {!isEdit && <span className="text-destructive">*</span>}
+                  </label>
+                  <select
+                    value={form.milestone_id}
+                    onChange={(e) => { updateField('milestone_id', e.target.value); setMilestoneError(''); }}
+                    className={cn(
+                      'w-full rounded-md border p-2 text-sm bg-card',
+                      milestoneError ? 'border-destructive ring-1 ring-destructive' : ''
+                    )}
+                  >
+                    <option value="">— Select milestone —</option>
+                    {milestones.map((m) => (
+                      <option key={m.id} value={m.id}>{m.title}</option>
+                    ))}
+                  </select>
+                  {milestoneError && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {milestoneError}
+                    </p>
+                  )}
+                  {milestones.length === 0 && (
+                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> No milestones exist yet. Create one first.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Status */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</label>
@@ -490,15 +544,26 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t bg-secondary/30">
-            <p className="text-xs text-muted-foreground">
-              {isEdit ? `Editing ${task?.task_key}` : 'New task'}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={!form.title.trim() || saving}>
-                {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Task'}
-              </Button>
+          <div className="px-6 py-4 border-t bg-secondary/30 space-y-2">
+            {(error || milestoneError) && (
+              <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2 text-xs text-destructive">
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                <span>{error || milestoneError}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {isEdit ? `Editing ${task?.task_key}` : 'New task'}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+                <Button
+                  type="submit"
+                  disabled={!form.title.trim() || saving || (!isEdit && milestones && milestones.length > 0 && !form.milestone_id)}
+                >
+                  {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Task'}
+                </Button>
+              </div>
             </div>
           </div>
         </form>

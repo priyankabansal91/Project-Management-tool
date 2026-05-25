@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireParentReady } = require('../middleware/waterfallGuard');
 
 router.use(authenticate);
 
@@ -28,7 +29,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST / — create a vertical (org_admin, division_admin only)
-router.post('/', authorize('org_admin', 'division_admin'), async (req, res) => {
+router.post('/', authorize('org_admin', 'division_admin'), requireParentReady('vertical'), async (req, res) => {
   try {
     const prisma = require('../config/prisma');
     const { name, description, color, status, divisionId, headId } = req.body;

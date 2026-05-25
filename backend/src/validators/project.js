@@ -11,6 +11,9 @@ const createProjectSchema = z.object({
   due_date: z.string().optional().nullable(),
 });
 
-const updateProjectSchema = createProjectSchema.partial();
+const updateProjectSchema = createProjectSchema.partial().extend({
+  phase: z.enum(['DRAFT', 'SETUP_PENDING', 'PENDING_APPROVAL', 'ACTIVE', 'ON_HOLD', 'CLOSED']).optional(),
+  status: z.string().optional(),
+});
 
 module.exports = { createProjectSchema, updateProjectSchema };

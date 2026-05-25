@@ -77,6 +77,12 @@ export interface Task {
   position: number;
   comment_count: number;
   subtask_count: number;
+  sprint_id?: string | null;
+  milestone_id?: string | null;
+  depends_on_id?: string | null;
+  blocked_reason?: string | null;
+  depends_on?: { id: string; task_key: string; title: string; status_name: string | null; is_done: boolean } | null;
+  dependents_count?: number;
   is_archived: boolean;
   completed_at: string | null;
   created_at: string;
