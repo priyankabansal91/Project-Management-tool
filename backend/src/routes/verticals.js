@@ -32,7 +32,7 @@ router.get('/', async (req, res) => {
 router.post('/', authorize('org_admin', 'division_admin'), requireParentReady('vertical'), async (req, res) => {
   try {
     const prisma = require('../config/prisma');
-    const { name, description, color, status, divisionId, headId } = req.body;
+    const { name, description, color, status, divisionId, headId, budget } = req.body;
     if (!name) {
       return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'name is required' } });
     }
@@ -45,6 +45,7 @@ router.post('/', authorize('org_admin', 'division_admin'), requireParentReady('v
         orgId: req.user.orgId,
         divisionId: divisionId || null,
         headId: headId || null,
+        ...(budget !== undefined && { budget: budget ? parseFloat(budget) : null }),
       },
       include: {
         division: { select: { id: true, name: true } },
@@ -87,7 +88,7 @@ router.patch('/:id', authorize('org_admin', 'division_admin'), async (req, res) 
     if (!existing) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Vertical not found' } });
     }
-    const { name, description, color, status, divisionId, headId } = req.body;
+    const { name, description, color, status, divisionId, headId, budget, lifecycleStatus } = req.body;
     const updated = await prisma.vertical.update({
       where: { id: req.params.id },
       data: {
@@ -97,6 +98,8 @@ router.patch('/:id', authorize('org_admin', 'division_admin'), async (req, res) 
         ...(status !== undefined && { status }),
         ...(divisionId !== undefined && { divisionId: divisionId || null }),
         ...(headId !== undefined && { headId: headId || null }),
+        ...(budget !== undefined && { budget: budget ? parseFloat(budget) : null }),
+        ...(lifecycleStatus !== undefined && { lifecycleStatus }),
       },
       include: {
         division: { select: { id: true, name: true } },

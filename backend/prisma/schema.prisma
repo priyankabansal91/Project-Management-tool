@@ -194,6 +194,7 @@ model Vertical {
   updatedAt        DateTime          @updatedAt @map("updated_at")
   lifecycleStatus  VerticalLifecycle @default(ACTIVE) @map("lifecycle_status")
   setupChecklist   Json              @default("{}") @map("setup_checklist")
+  budget           Decimal?          @map("budget")
 
   org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   division    Division?    @relation(fields: [divisionId], references: [id], onDelete: SetNull)
@@ -444,6 +445,7 @@ model Project {
   updatedAt        DateTime          @updatedAt @map("updated_at")
   deletedAt        DateTime?         @map("deleted_at")
   phase            ProjectPhase      @default(ACTIVE) @map("phase")
+  budget           Decimal?          @map("budget")
 
   organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   division       Division?       @relation(fields: [divisionId], references: [id])

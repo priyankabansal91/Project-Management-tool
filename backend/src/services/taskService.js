@@ -223,6 +223,19 @@ class TaskService {
 
   async moveTask(orgId, taskId, { status_id, status_name, position }) {
     const existing = await this.getById(orgId, taskId);
+
+    // Block forward moves when an unresolved dependency exists
+    const isInitial = status_id === 'backlog' || status_id === 'todo';
+    if (!isInitial && existing.dependsOnId) {
+      const dep = await prisma.task.findUnique({
+        where: { id: existing.dependsOnId },
+        select: { completedAt: true, title: true, seqNumber: true, project: { select: { key: true } } },
+      });
+      if (dep && !dep.completedAt) {
+        throw new ApiError(422, `Blocked by ${dep.project?.key ?? '?'}-${dep.seqNumber}: "${dep.title}" must be completed first`, 'DEPENDENCY_UNRESOLVED');
+      }
+    }
+
     const isFinal = status_name?.toLowerCase() === 'done' || status_name?.toLowerCase() === 'accepted';
     const wasCompleted = !!existing.completedAt;
 

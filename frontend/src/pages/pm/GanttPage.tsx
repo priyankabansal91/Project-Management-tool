@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useProjectTasks, useProject, useProjects } from '@/api/hooks';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,8 @@ import { cn, priorityColor } from '@/lib/utils';
 import type { Task } from '@/types';
 
 type ZoomLevel = 'day' | 'week' | 'month';
+
+const ROW_HEIGHT = 48;
 
 const PRIORITY_BAR: Record<string, string> = {
   critical: 'bg-red-500',
@@ -94,6 +96,19 @@ export function GanttPage() {
       left: `${Math.max(0, leftPct)}%`,
       width: `${Math.min(widthPct, 100 - Math.max(0, leftPct))}%`,
     };
+  };
+
+  const getBarPx = (task: Task): { leftPx: number; rightPx: number } | null => {
+    const start = task.start_date ? new Date(task.start_date) : new Date(task.due_date!);
+    const end = task.due_date ? new Date(task.due_date) : addDays(start, 3);
+    const msPerDay = 86400000;
+    const totalDays = cfg.count * cfg.stepDays;
+    const startDays = (start.getTime() - viewStart.getTime()) / msPerDay;
+    const durationDays = Math.max(1, (end.getTime() - start.getTime()) / msPerDay);
+    const leftPx = (startDays / totalDays) * totalWidth;
+    const rightPx = leftPx + (durationDays / totalDays) * totalWidth;
+    if (leftPx > totalWidth || rightPx < 0) return null;
+    return { leftPx: Math.max(0, leftPx), rightPx: Math.min(rightPx, totalWidth) };
   };
 
   const today = new Date();
@@ -270,6 +285,67 @@ export function GanttPage() {
                     </div>
                   );
                 })}
+
+                {/* Dependency arrows SVG overlay */}
+                {(() => {
+                  const taskIndexMap = new Map(tasks.map((t, i) => [t.id, i]));
+                  const arrows: React.ReactNode[] = [];
+
+                  tasks.forEach((task) => {
+                    if (!task.depends_on_id) return;
+                    const srcIdx = taskIndexMap.get(task.depends_on_id);
+                    const dstIdx = taskIndexMap.get(task.id);
+                    if (srcIdx === undefined || dstIdx === undefined) return;
+
+                    const srcBar = getBarPx(tasks[srcIdx]);
+                    const dstBar = getBarPx(task);
+                    if (!srcBar || !dstBar) return;
+
+                    const x1 = srcBar.rightPx;
+                    const y1 = srcIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+                    const x2 = dstBar.leftPx;
+                    const y2 = dstIdx * ROW_HEIGHT + ROW_HEIGHT / 2;
+                    const isDone = !!tasks[srcIdx].completed_at;
+                    const color = isDone ? '#9CA3AF' : '#EF4444';
+                    const cx1 = x1 + Math.max(20, Math.abs(x2 - x1) * 0.4);
+                    const cx2 = x2 - Math.max(20, Math.abs(x2 - x1) * 0.4);
+                    const d = `M ${x1} ${y1} C ${cx1} ${y1} ${cx2} ${y2} ${x2} ${y2}`;
+
+                    arrows.push(
+                      <g key={`${task.depends_on_id}-${task.id}`}>
+                        <title>{isDone ? `Done: ${tasks[srcIdx].title}` : `Blocked by ${tasks[srcIdx].task_key}: ${tasks[srcIdx].title}`}</title>
+                        <path
+                          d={d}
+                          stroke={color}
+                          strokeWidth={1.5}
+                          fill="none"
+                          strokeDasharray={isDone ? undefined : '4 2'}
+                          markerEnd={isDone ? 'url(#arrow-done)' : 'url(#arrow-pending)'}
+                        />
+                      </g>
+                    );
+                  });
+
+                  if (arrows.length === 0) return null;
+
+                  return (
+                    <svg
+                      className="absolute top-0 left-0 pointer-events-none z-30"
+                      style={{ width: totalWidth, height: tasks.length * ROW_HEIGHT }}
+                      overflow="visible"
+                    >
+                      <defs>
+                        <marker id="arrow-pending" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                          <path d="M 0 0 L 6 3 L 0 6 z" fill="#EF4444" />
+                        </marker>
+                        <marker id="arrow-done" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                          <path d="M 0 0 L 6 3 L 0 6 z" fill="#9CA3AF" />
+                        </marker>
+                      </defs>
+                      {arrows}
+                    </svg>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -286,6 +362,10 @@ export function GanttPage() {
             <span className="flex items-center gap-1.5 ml-4">
               <span className="h-4 w-0.5 bg-red-400" />
               <span className="text-muted-foreground">Today</span>
+            </span>
+            <span className="flex items-center gap-1.5 ml-4">
+              <svg width="24" height="10"><path d="M 0 5 C 6 5 18 5 20 5" stroke="#EF4444" strokeWidth="1.5" fill="none" strokeDasharray="4 2" markerEnd="url(#legend-arrow)" /><defs><marker id="legend-arrow" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto"><path d="M 0 0 L 4 2 L 0 4 z" fill="#EF4444" /></marker></defs></svg>
+              <span className="text-muted-foreground">Dependency</span>
             </span>
           </div>
         </Card>

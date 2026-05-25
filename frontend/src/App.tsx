@@ -12,6 +12,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { ProjectListPage } from '@/pages/pm/ProjectListPage';
 import { KanbanBoardPage } from '@/pages/pm/KanbanBoardPage';
 import { MilestonesPage } from '@/pages/pm/MilestonesPage';
+import { MilestoneDetailPage } from '@/pages/pm/MilestoneDetailPage';
 import { MilestonesOverviewPage } from '@/pages/pm/MilestonesOverviewPage';
 import { MyTasksPage } from '@/pages/user/MyTasksPage';
 import { TaskDetailPage } from '@/pages/user/TaskDetailPage';
@@ -118,6 +119,7 @@ export default function App() {
           <Route path="/projects/:projectId/board" element={<KanbanBoardPage />} />
           <Route path="/milestones" element={<MilestonesOverviewPage />} />
           <Route path="/projects/:projectId/milestones" element={<MilestonesPage />} />
+          <Route path="/projects/:projectId/milestones/:milestoneId" element={<MilestoneDetailPage />} />
           <Route path="/projects/:projectId/calendar" element={<CalendarViewPage />} />
           <Route path="/projects/:projectId/gantt" element={<GanttPage />} />
           <Route path="/gantt" element={<GanttPage />} />

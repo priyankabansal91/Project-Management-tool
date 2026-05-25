@@ -37,6 +37,7 @@ interface Vertical {
   status: 'active' | 'inactive';
   lifecycleStatus?: VerticalLifecycle;
   lifecycle_status?: VerticalLifecycle;
+  budget?: number | string | null;
 }
 
 const SEED_VERTICALS: Vertical[] = [
@@ -65,6 +66,7 @@ interface VerticalFormData {
   head_name: string;
   color: string;
   status: 'active' | 'inactive';
+  budget: string;
 }
 
 const EMPTY_FORM: VerticalFormData = {
@@ -74,6 +76,7 @@ const EMPTY_FORM: VerticalFormData = {
   head_name: '',
   color: COLORS[0],
   status: 'active',
+  budget: '',
 };
 
 // ─── Stat Card ───────────────────────────────────────────
@@ -177,7 +180,7 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-2">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground border-t pt-2 flex-wrap">
           <span className="flex items-center gap-1">
             <Users className="h-3.5 w-3.5" />
             <span className="font-medium text-foreground">{vertical.member_count}</span> members
@@ -186,6 +189,11 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
             <FolderKanban className="h-3.5 w-3.5" />
             <span className="font-medium text-foreground">{vertical.project_count}</span> projects
           </span>
+          {vertical.budget != null && Number(vertical.budget) > 0 && (
+            <span className="flex items-center gap-1 ml-auto font-medium text-green-600">
+              ₹{Number(vertical.budget).toLocaleString('en-IN')}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -252,6 +260,18 @@ function VerticalModal({ editingId, initialData, onSave, onClose }: {
                 onChange={(e) => set({ description: e.target.value })}
                 className="w-full px-3 py-2 border rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                 rows={2}
+              />
+            </div>
+
+            {/* Budget */}
+            <div>
+              <label className="text-sm font-medium block mb-1">Budget (₹)</label>
+              <Input
+                placeholder="e.g., 500000"
+                type="number"
+                min={0}
+                value={form.budget}
+                onChange={(e) => set({ budget: e.target.value })}
               />
             </div>
 
@@ -432,6 +452,7 @@ export function VerticalsPage() {
       head_name: data.head_name,
       color: data.color,
       status: data.status,
+      ...(data.budget !== '' && { budget: parseFloat(data.budget) }),
     };
 
     if (id) {
@@ -465,6 +486,7 @@ export function VerticalsPage() {
         head_name: editingVertical.head_name,
         color: editingVertical.color,
         status: editingVertical.status,
+        budget: editingVertical.budget != null ? String(editingVertical.budget) : '',
       }
     : EMPTY_FORM;
 

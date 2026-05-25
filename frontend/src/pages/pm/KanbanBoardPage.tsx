@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink, Flag } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink, Flag, AlertTriangle, X } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
 import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask, useMembers, useMilestones } from '@/api/hooks';
@@ -228,6 +228,7 @@ export function KanbanBoardPage() {
   const [modalStatusId, setModalStatusId] = useState<string>('');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [search, setSearch] = useState('');
+  const [dragBlockError, setDragBlockError] = useState<string | null>(null);
 
   const projectData = projectQuery.data;
 
@@ -323,12 +324,18 @@ export function KanbanBoardPage() {
       const overIdx = targetCol.tasks.findIndex((t) => t.id === over.id);
       const position = overIdx >= 0 ? (overIdx + 1) * 10 : (targetCol.tasks.length + 1) * 10;
 
-      // Call API (fire-and-forget for optimistic UI)
+      // Call API — revert optimistic update on 422 dependency block
       moveTask.mutate({
         taskId: task.id,
         status_id: targetCol.id,
         status_name: targetCol.name,
         position,
+      }, {
+        onError: (err: any) => {
+          const msg = err?.response?.data?.error?.message || 'Cannot move this task';
+          setDragBlockError(msg);
+          kanbanQuery.refetch();
+        },
       });
     }
   };
@@ -473,6 +480,17 @@ export function KanbanBoardPage() {
           <Flag className="h-3.5 w-3.5" /> Milestones
         </Link>
       </div>
+
+      {/* Dependency block error banner */}
+      {dragBlockError && (
+        <div className="mx-6 mt-3 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{dragBlockError}</span>
+          <button className="ml-auto rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900" onClick={() => setDragBlockError(null)}>
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Kanban Columns with DnD */}
       <div className="flex-1 overflow-x-auto px-6 py-4">

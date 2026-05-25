@@ -128,7 +128,7 @@ function WaterfallBadge({ ws }: { ws: WaterfallStatus }) {
 }
 
 function MilestoneCard({
-  milestone, isLast, onEdit, onDelete, onClose, onStart,
+  milestone, isLast, onEdit, onDelete, onClose, onStart, projectId,
 }: {
   milestone: Milestone;
   isLast: boolean;
@@ -136,6 +136,7 @@ function MilestoneCard({
   onDelete: (id: string) => void;
   onClose: (m: Milestone) => void;
   onStart: (m: Milestone) => void;
+  projectId: string;
 }) {
   const cfg = statusConfig(milestone.status);
   const ws = milestone.waterfallStatus ?? 'NOT_STARTED';
@@ -198,7 +199,10 @@ function MilestoneCard({
                     <Hash className="h-2.5 w-2.5" />{milestone.sequenceOrder}
                   </span>
                 )}
-                <h3 className={cn('font-semibold text-sm', isBlocked && 'text-muted-foreground')}>{milestone.title}</h3>
+                <Link
+                  to={`/projects/${projectId}/milestones/${milestone.id}`}
+                  className={cn('font-semibold text-sm hover:text-primary hover:underline transition-colors', isBlocked && 'text-muted-foreground')}
+                >{milestone.title}</Link>
                 <Badge className={cn('text-[10px] border-0', cfg.badgeClass)}>{cfg.label}</Badge>
                 <WaterfallBadge ws={ws} />
                 {taskCount > 0 && (
@@ -687,7 +691,8 @@ export function MilestonesPage() {
         <div className="mt-2">
           {milestones.map((m, i) => (
             <MilestoneCard key={m.id} milestone={m} isLast={i === milestones.length - 1}
-              onEdit={openEdit} onDelete={handleDelete} onClose={setClosingMilestone} onStart={handleStartMilestone} />
+              onEdit={openEdit} onDelete={handleDelete} onClose={setClosingMilestone} onStart={handleStartMilestone}
+              projectId={projectId} />
           ))}
         </div>
       ) : (

@@ -1451,6 +1451,27 @@ export function useMilestones(projectId: string) {
   });
 }
 
+export function useMilestone(projectId: string, milestoneId: string) {
+  return useQuery({
+    queryKey: ['milestone', projectId, milestoneId],
+    queryFn: () => api.get(`/projects/${projectId}/milestones/${milestoneId}`).then((r) => r.data.data),
+    enabled: !!projectId && !!milestoneId,
+  });
+}
+
+export function useCloseMilestone(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ milestoneId, completionNotes }: { milestoneId: string; completionNotes?: string }) =>
+      api.post(`/projects/${projectId}/milestones/${milestoneId}/close`, { completionNotes }).then((r) => r.data.data),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['milestones', projectId] });
+      qc.invalidateQueries({ queryKey: ['milestone', projectId, vars.milestoneId] });
+      qc.invalidateQueries({ queryKey: ['approvals'] });
+    },
+  });
+}
+
 export function useCreateMilestone(projectId: string) {
   const qc = useQueryClient();
   return useMutation({

@@ -17,6 +17,7 @@ function fmt(p) {
     vertical_id: p.verticalId || null,
     start_date: p.startDate,
     due_date: p.dueDate,
+    budget: p.budget ? Number(p.budget) : null,
     member_count: p.members?.length ?? 0,
     task_count: tasks.length,
     completed: tasks.filter((t) => t.completedAt).length,
@@ -139,6 +140,7 @@ class ProjectService {
         ...(data.division_id  !== undefined && { divisionId: data.division_id || null }),
         ...(data.vertical_id  !== undefined && { verticalId: data.vertical_id || null }),
         ...(data.phase        !== undefined && { phase: data.phase }),
+        ...(data.budget       !== undefined && { budget: data.budget ? Number(data.budget) : null }),
       },
       include: { ...TASK_INCLUDE, ...MEMBER_INCLUDE },
     });

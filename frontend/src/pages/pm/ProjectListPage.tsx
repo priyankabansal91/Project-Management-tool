@@ -283,9 +283,16 @@ export function ProjectListPage() {
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0 whitespace-nowrap">
-                      <Calendar className="h-3 w-3" />
-                      <span className="hidden sm:inline">{formatDate(p.due_date)}</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {(p as any).budget != null && (
+                        <span className="text-[10px] font-medium text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full hidden sm:inline">
+                          ₹{Number((p as any).budget).toLocaleString('en-IN')}
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
+                        <Calendar className="h-3 w-3" />
+                        <span className="hidden sm:inline">{formatDate(p.due_date)}</span>
+                      </div>
                     </div>
                   </div>
                 </Card>
