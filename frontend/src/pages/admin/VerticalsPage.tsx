@@ -29,16 +29,31 @@ interface Vertical {
   id: string;
   name: string;
   description: string;
-  division: string;
-  division_id: string;
-  head_name: string;
+  // seed data sends strings; API sends objects
+  division: string | { id: string; name: string } | null;
+  divisionId?: string;
+  division_id?: string;
+  head_name?: string;
+  head?: { id: string; firstName: string; lastName: string; email?: string } | null;
   color: string;
-  member_count: number;
-  project_count: number;
+  member_count?: number;
+  project_count?: number;
   status: 'active' | 'inactive';
   lifecycleStatus?: VerticalLifecycle;
   lifecycle_status?: VerticalLifecycle;
   budget?: number | string | null;
+}
+
+function getDivisionName(v: Vertical): string {
+  if (!v.division) return '';
+  if (typeof v.division === 'string') return v.division;
+  return v.division.name || '';
+}
+
+function getHeadName(v: Vertical): string {
+  if (v.head_name) return v.head_name;
+  if (v.head) return `${v.head.firstName} ${v.head.lastName}`.trim();
+  return 'Unassigned';
 }
 
 const SEED_VERTICALS: Vertical[] = [
@@ -155,7 +170,7 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
         {/* Division badge + lifecycle badge */}
         <div className="flex items-center gap-1.5 mb-3 flex-wrap">
           <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-          <Badge variant="outline" className="text-[10px] font-medium">{vertical.division}</Badge>
+          <Badge variant="outline" className="text-[10px] font-medium">{getDivisionName(vertical)}</Badge>
           <Badge className={cn('text-[10px] border-0 ml-auto', cfg.color)}>{cfg.label}</Badge>
         </div>
 
@@ -178,8 +193,8 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
         <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-muted/30">
           <UserCheck className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           <span className="text-[11px] text-muted-foreground mr-1">Head:</span>
-          <Avatar name={vertical.head_name} size="sm" />
-          <span className="text-xs font-medium truncate">{vertical.head_name}</span>
+          <Avatar name={getHeadName(vertical)} size="sm" />
+          <span className="text-xs font-medium truncate">{getHeadName(vertical)}</span>
         </div>
 
         {/* Stats */}
@@ -405,17 +420,18 @@ export function VerticalsPage() {
 
   // ── Filtered list ────────────────────────────────────
   const filtered = verticals.filter((v) => {
-    const matchSearch = v.name.toLowerCase().includes(search.toLowerCase())
-      || v.description.toLowerCase().includes(search.toLowerCase())
-      || v.head_name.toLowerCase().includes(search.toLowerCase());
-    const matchDivision = divisionFilter === 'All Divisions' || v.division === divisionFilter;
+    const q = search.toLowerCase();
+    const matchSearch = v.name.toLowerCase().includes(q)
+      || (v.description || '').toLowerCase().includes(q)
+      || getHeadName(v).toLowerCase().includes(q);
+    const matchDivision = divisionFilter === 'All Divisions' || getDivisionName(v) === divisionFilter;
     const matchStatus = statusFilter === 'all' || v.status === statusFilter;
     return matchSearch && matchDivision && matchStatus;
   });
 
   // ── Stats ────────────────────────────────────────────
-  const totalMembers = verticals.reduce((s, v) => s + v.member_count, 0);
-  const totalProjects = verticals.reduce((s, v) => s + v.project_count, 0);
+  const totalMembers = verticals.reduce((s, v) => s + (v.member_count ?? 0), 0);
+  const totalProjects = verticals.reduce((s, v) => s + (v.project_count ?? 0), 0);
   const activeCount = verticals.filter((v) => v.status === 'active').length;
 
   // ── Handlers ─────────────────────────────────────────
@@ -484,9 +500,9 @@ export function VerticalsPage() {
   const modalInitial: VerticalFormData = editingVertical
     ? {
         name: editingVertical.name,
-        description: editingVertical.description,
-        division: editingVertical.division,
-        head_name: editingVertical.head_name,
+        description: editingVertical.description || '',
+        division: getDivisionName(editingVertical),
+        head_name: getHeadName(editingVertical),
         color: editingVertical.color,
         status: editingVertical.status,
         budget: editingVertical.budget != null ? String(editingVertical.budget) : '',
