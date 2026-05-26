@@ -398,7 +398,7 @@ function VerticalModal({ editingId, initialData, onSave, onClose }: {
 // ─── Main Page ───────────────────────────────────────────
 
 export function VerticalsPage() {
-  const { user } = useAuthStore();
+  const { user, currentRole } = useAuthStore();
 
   const { data: apiData, isLoading } = useVerticals();
   const rawApiItems = (apiData as any)?.items ?? (Array.isArray(apiData) ? apiData : []);
@@ -522,10 +522,10 @@ export function VerticalsPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Network className="h-6 w-6 text-primary" />
-            {user?.role === 'vertical_head' ? 'My Vertical' : 'Verticals'}
+            {currentRole === 'vertical_head' ? 'My Vertical' : 'Verticals'}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {user?.role === 'vertical_head'
+            {currentRole === 'vertical_head'
               ? 'Your assigned vertical and its projects'
               : 'Manage team verticals within your boards/divisions'}
           </p>
