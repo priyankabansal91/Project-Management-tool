@@ -384,38 +384,6 @@ export function KanbanBoardPage() {
       }, {
         onSuccess: () => setShowModal(false),
       });
-
-      // Optimistic: add to local state too
-      const col = columns.find((c) => c.id === (formData.status_id || modalStatusId));
-      if (col) {
-        const newTask: Task = {
-          id: `temp-${Date.now()}`,
-          seq_number: 99,
-          task_key: `CPR-?`,
-          title: formData.title,
-          description: formData.description,
-          status_id: formData.status_id || modalStatusId,
-          status_name: formData.status_name || col.name,
-          priority: formData.priority as any,
-          assignee: formData.assignee_id ? fallbackMembers.find((m) => m.id === formData.assignee_id) || null : null,
-          reporter: null,
-          due_date: formData.due_date || null,
-          start_date: formData.start_date || null,
-          estimated_hours: formData.estimated_hours ? parseFloat(formData.estimated_hours) : null,
-          logged_hours: 0,
-          tags: formData.tags,
-          custom_fields: {},
-          position: (col.tasks.length + 1) * 10,
-          comment_count: 0,
-          subtask_count: 0,
-          is_archived: false,
-          completed_at: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setColumns((prev) => prev.map((c) => c.id === col.id ? { ...c, tasks: [...c.tasks, newTask] } : c));
-        setShowModal(false);
-      }
     }
   };
 

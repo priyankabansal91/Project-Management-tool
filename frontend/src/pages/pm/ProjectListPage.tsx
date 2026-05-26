@@ -9,7 +9,7 @@ import { Plus, Search, LayoutGrid, List, Calendar, MoreHorizontal, Trash2, Exter
 import { cn, formatDate } from '@/lib/utils';
 import { ProjectModal, type ProjectFormData } from '@/components/shared/ProjectModal';
 import { PermissionGate } from '@/components/shared/PermissionGate';
-import { useProjects, useCreateProject, useDeleteProject, useWorkflows, useUpdateProject } from '@/api/hooks';
+import { useProjects, useCreateProject, useDeleteProject, useWorkflows, useUpdateProject, useVerticals } from '@/api/hooks';
 import type { Project } from '@/types';
 
 type ProjectPhase = 'DRAFT' | 'SETUP_PENDING' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ON_HOLD' | 'CLOSED';
@@ -140,8 +140,12 @@ export function ProjectListPage() {
 
   const { data: projectsData, isLoading } = useProjects();
   const { data: workflowsData } = useWorkflows();
+  const { data: verticalsData } = useVerticals();
   const projects = projectsData?.items || [];
   const workflows = workflowsData || [];
+  const activeVerticals = ((verticalsData as any)?.items ?? [])
+    .filter((v: any) => (v.lifecycleStatus || v.lifecycle_status) === 'ACTIVE')
+    .map((v: any) => ({ id: v.id, name: v.name }));
   const createProjectMutation = useCreateProject();
   const deleteProjectMutation = useDeleteProject();
   const updateProjectMutation = useUpdateProject();
@@ -201,6 +205,7 @@ export function ProjectListPage() {
         onSave={handleCreateProject}
         saving={createProjectMutation.isPending}
         workflows={workflows}
+        verticals={activeVerticals}
         error={modalError}
       />
 

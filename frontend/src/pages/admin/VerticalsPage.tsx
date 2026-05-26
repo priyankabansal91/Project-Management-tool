@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical } from '@/api/hooks';
+import { PermissionGate } from '@/components/shared/PermissionGate';
 
 // ─── Seed Data ───────────────────────────────────────────
 
@@ -132,21 +133,23 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{vertical.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Button
-              size="sm" variant="ghost" className="h-7 w-7 p-0"
-              onClick={() => onEdit(vertical)} title="Edit"
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              size="sm" variant="ghost"
-              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-              onClick={() => onDelete(vertical.id)} title="Delete"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          <PermissionGate roles={['org_admin', 'division_admin']} silent>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button
+                size="sm" variant="ghost" className="h-7 w-7 p-0"
+                onClick={() => onEdit(vertical)} title="Edit"
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="sm" variant="ghost"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                onClick={() => onDelete(vertical.id)} title="Delete"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </PermissionGate>
         </div>
 
         {/* Division badge + lifecycle badge */}
@@ -508,9 +511,11 @@ export function VerticalsPage() {
             Manage team verticals within your boards/divisions
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" /> Create Vertical
-        </Button>
+        <PermissionGate roles={['org_admin', 'division_admin']} silent>
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" /> Create Vertical
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Stats */}

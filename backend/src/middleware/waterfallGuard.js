@@ -6,26 +6,26 @@ function requireParentReady(entityType) {
     try {
       if (entityType === 'vertical') {
         const divisionId = req.body.divisionId || req.body.division_id;
-        if (!divisionId) return next();
+        if (!divisionId) {
+          return res.status(400).json({ success: false, error: { code: 'DIVISION_REQUIRED', message: 'A division must be selected to create a vertical.' } });
+        }
         const division = await prisma.division.findUnique({ where: { id: divisionId } });
         if (!division) return res.status(404).json({ error: 'Division not found' });
         if (division.setupStatus !== 'ACTIVE') {
           return res.status(403).json({
-            error: 'Parent division is not active',
-            code: 'PARENT_NOT_READY',
-            details: { divisionId, setupStatus: division.setupStatus }
+            success: false, error: { code: 'PARENT_NOT_READY', message: 'Parent division is not active. Activate the division before creating verticals.' }
           });
         }
       } else if (entityType === 'project') {
         const verticalId = req.body.verticalId || req.body.vertical_id;
-        if (!verticalId) return next();
+        if (!verticalId) {
+          return res.status(400).json({ success: false, error: { code: 'VERTICAL_REQUIRED', message: 'A vertical must be selected to create a project.' } });
+        }
         const vertical = await prisma.vertical.findUnique({ where: { id: verticalId } });
         if (!vertical) return res.status(404).json({ error: 'Vertical not found' });
         if (vertical.lifecycleStatus !== 'ACTIVE') {
           return res.status(403).json({
-            error: 'Parent vertical is not active',
-            code: 'PARENT_NOT_READY',
-            details: { verticalId, lifecycleStatus: vertical.lifecycleStatus }
+            success: false, error: { code: 'PARENT_NOT_READY', message: 'Parent vertical is not active. Activate the vertical before creating projects.' }
           });
         }
       } else if (entityType === 'milestone') {
@@ -35,9 +35,7 @@ function requireParentReady(entityType) {
         if (!project) return res.status(404).json({ error: 'Project not found' });
         if (project.phase !== 'ACTIVE') {
           return res.status(403).json({
-            error: 'Parent project is not in ACTIVE phase',
-            code: 'PARENT_NOT_READY',
-            details: { projectId, phase: project.phase }
+            success: false, error: { code: 'PARENT_NOT_READY', message: 'Project must be in ACTIVE phase before milestones can be created.' }
           });
         }
       }

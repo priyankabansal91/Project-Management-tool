@@ -44,7 +44,14 @@ router.post('/project/:projectId', async (req, res, next) => {
     if (!req.body.milestone_id && !req.body.milestoneId) {
       return res.status(400).json({
         success: false,
-        error: { code: 'MILESTONE_REQUIRED', message: 'Tasks must be assigned to a milestone. Please select a milestone before creating the task.' },
+        error: { code: 'MILESTONE_REQUIRED', message: 'Tasks must be assigned to a milestone. Please create or select a milestone first.' },
+      });
+    }
+    // Assignee is required — every task must have an owner
+    if (!req.body.assignee_id && !req.body.assigneeId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'ASSIGNEE_REQUIRED', message: 'Tasks must be assigned to a team member.' },
       });
     }
     const data = createTaskSchema.parse(req.body);

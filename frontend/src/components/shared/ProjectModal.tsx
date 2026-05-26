@@ -6,12 +6,15 @@ import { X } from 'lucide-react';
 import { WorkflowPicker } from './WorkflowPicker';
 import type { WorkflowConfig } from '@/types';
 
+interface VerticalOption { id: string; name: string; }
+
 interface ProjectModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: ProjectFormData) => void | Promise<void>;
   project?: ProjectData | null;
   workflows?: WorkflowConfig[];
+  verticals?: VerticalOption[];
   saving?: boolean;
   error?: string;
 }
@@ -25,6 +28,7 @@ export interface ProjectFormData {
   workflow_config_id?: string;
   start_date?: string;
   due_date?: string;
+  vertical_id?: string;
 }
 
 interface ProjectData {
@@ -50,7 +54,7 @@ const VISIBILITY_OPTIONS = [
   { value: 'public', label: 'Public' },
 ];
 
-export function ProjectModal({ open, onClose, onSave, project, workflows = [], saving = false, error: externalError }: ProjectModalProps) {
+export function ProjectModal({ open, onClose, onSave, project, workflows = [], verticals = [], saving = false, error: externalError }: ProjectModalProps) {
   const isEdit = !!project;
   const [form, setForm] = useState<ProjectFormData>({
     name: '',
@@ -61,6 +65,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
     workflow_config_id: workflows[0]?.id,
     start_date: '',
     due_date: '',
+    vertical_id: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -101,6 +106,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
     if (!form.key.trim()) newErrors.key = 'Project code is required';
     if (form.key.length < 2 || form.key.length > 10) newErrors.key = 'Code must be 2-10 characters';
     if (!/^[A-Z0-9]+$/.test(form.key.toUpperCase())) newErrors.key = 'Code must contain only letters and numbers';
+    if (!isEdit && !form.vertical_id) newErrors.vertical_id = 'A vertical must be selected';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -211,6 +217,30 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], s
               ))}
             </div>
           </div>
+
+          {/* Vertical — required on create */}
+          {!isEdit && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Vertical <span className="text-destructive">*</span></label>
+              {verticals.length === 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded text-amber-700 text-sm dark:bg-amber-950/30">
+                  No active verticals found. Create and activate a vertical before creating a project.
+                </div>
+              ) : (
+                <select
+                  value={form.vertical_id || ''}
+                  onChange={(e) => setForm({ ...form, vertical_id: e.target.value })}
+                  className={`w-full px-3 py-2 border bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring ${errors.vertical_id ? 'border-red-500' : 'border-input'}`}
+                >
+                  <option value="">— Select a vertical —</option>
+                  {verticals.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              )}
+              {errors.vertical_id && <p className="text-red-500 text-sm mt-1">{errors.vertical_id}</p>}
+            </div>
+          )}
 
           {/* Workflow Config */}
           {workflows.length > 0 && (

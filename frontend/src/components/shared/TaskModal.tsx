@@ -89,6 +89,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
     attachments: [],
   });
   const [milestoneError, setMilestoneError] = useState('');
+  const [assigneeError, setAssigneeError] = useState('');
 
   const [tagInput, setTagInput] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
@@ -192,11 +193,27 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return;
-    if (!isEdit && milestones && milestones.length > 0 && !form.milestone_id) {
-      setMilestoneError('A milestone is required. Please select one before creating the task.');
-      return;
+
+    // Milestone required on create
+    if (!isEdit && milestones !== undefined) {
+      if (milestones.length === 0) {
+        setMilestoneError('No milestones exist. Create a milestone for this project first.');
+        return;
+      }
+      if (!form.milestone_id) {
+        setMilestoneError('A milestone is required. Please select one before creating the task.');
+        return;
+      }
     }
     setMilestoneError('');
+
+    // Assignee required on create
+    if (!isEdit && !form.assignee_id) {
+      setAssigneeError('Please assign this task to a team member.');
+      return;
+    }
+    setAssigneeError('');
+
     onSave(form);
   };
 
@@ -480,12 +497,14 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
 
               {/* Assignee */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assignee</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Assignee {!isEdit && <span className="text-destructive">*</span>}
+                </label>
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
-                    className="flex w-full items-center gap-2 rounded-md border p-2 text-sm bg-card hover:bg-accent"
+                    onClick={() => { setShowAssigneeDropdown(!showAssigneeDropdown); setAssigneeError(''); }}
+                    className={cn('flex w-full items-center gap-2 rounded-md border p-2 text-sm bg-card hover:bg-accent', assigneeError && 'border-destructive ring-1 ring-destructive')}
                   >
                     {selectedAssignee ? (
                       <>
@@ -511,7 +530,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
                         <button
                           key={m.id}
                           type="button"
-                          onClick={() => { updateField('assignee_id', m.id); setShowAssigneeDropdown(false); }}
+                          onClick={() => { updateField('assignee_id', m.id); setShowAssigneeDropdown(false); setAssigneeError(''); }}
                           className={cn('flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent', form.assignee_id === m.id && 'bg-primary/5')}
                         >
                           <Avatar name={m.name} src={m.avatar_url} size="sm" />
@@ -521,6 +540,11 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
                     </div>
                   )}
                 </div>
+                {assigneeError && (
+                  <p className="flex items-center gap-1 text-xs text-destructive mt-1">
+                    <AlertCircle className="h-3 w-3" /> {assigneeError}
+                  </p>
+                )}
               </div>
 
               {/* Due Date */}
