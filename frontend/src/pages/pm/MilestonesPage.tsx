@@ -273,23 +273,45 @@ function MilestoneCard({
             </div>
           )}
 
-          {/* Progress + Burn rate bar */}
+          {/* Budget bar (if budget exists) */}
+          {milestone.budget != null && milestone.budget > 0 && (() => {
+            const consumed = Math.min(100, milestone.burnRate ?? milestone.progress ?? 0);
+            const consumedAmt = Math.round((consumed / 100) * milestone.budget!);
+            return (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Budget</span>
+                  <span className="text-xs font-semibold">
+                    ₹{consumedAmt.toLocaleString('en-IN')} · {consumed}%
+                  </span>
+                </div>
+                <div className="h-3 w-full rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className={cn('h-full rounded-full transition-all',
+                      isBlocked ? 'bg-red-300' :
+                      consumed > 90 ? 'bg-red-500' :
+                      consumed > 70 ? 'bg-amber-500' : 'bg-emerald-500'
+                    )}
+                    style={{ width: `${consumed}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Progress bar */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">
-                {milestone.burnRate != null ? 'Burn Rate' : 'Progress'}
-              </span>
-              <span className="text-xs font-semibold">{burn}%</span>
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Progress</span>
+              <span className="text-xs font-semibold">{milestone.progress ?? 0}%</span>
             </div>
-            <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+            <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
               <div
                 className={cn('h-full rounded-full transition-all',
-                  isBlocked ? 'bg-red-300' :
                   milestone.status === 'completed' ? 'bg-green-500' :
-                  burn > 90 ? 'bg-red-500' :
-                  burn > 70 ? 'bg-orange-500' : 'bg-blue-500'
+                  (milestone.progress ?? 0) > 60 ? 'bg-blue-500' : 'bg-blue-400'
                 )}
-                style={{ width: `${burn}%` }}
+                style={{ width: `${milestone.progress ?? 0}%` }}
               />
             </div>
           </div>
@@ -516,7 +538,8 @@ export function MilestonesPage() {
 
   const apiMilestones: Milestone[] = (milestonesQuery.data ?? []) as Milestone[];
   const milestones = apiMilestones.length > 0 ? apiMilestones : localMilestones;
-  const projectName = (projectQuery.data as any)?.name || 'Project';
+  const project = projectQuery.data as any;
+  const projectName = project?.name || 'Project';
 
   const total = milestones.length;
   const completed = milestones.filter((m) => m.status === 'completed').length;
@@ -524,6 +547,7 @@ export function MilestonesPage() {
   const pending = milestones.filter((m) => m.status === 'pending').length;
   const blocked = milestones.filter((m) => m.waterfallStatus === 'BLOCKED').length;
   const totalBudget = milestones.reduce((s, m) => s + (m.budget ?? 0), 0);
+  const totalMilestoneBudget = totalBudget;
 
   // ── Handlers ─────────────────────────────────────────────
 
@@ -684,6 +708,24 @@ export function MilestonesPage() {
             <p className="text-xs text-muted-foreground mt-0.5">Total Budget</p>
           </Card>
         )}
+      </div>
+
+      {/* Budget summary + ERP badge */}
+      <div className="flex flex-wrap items-center gap-3">
+        {project?.budget && (
+          <div className="text-xs text-muted-foreground">
+            Project budget: <span className="font-semibold text-foreground">₹{Number(project.budget).toLocaleString('en-IN')}</span>
+            {' · '}Allocated: <span className={cn('font-semibold', totalMilestoneBudget > Number(project.budget) ? 'text-red-600' : 'text-foreground')}>
+              ₹{totalMilestoneBudget.toLocaleString('en-IN')}
+            </span>
+          </div>
+        )}
+        {/* ERP Sync badge */}
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded border border-dashed border-muted-foreground/30 text-xs text-muted-foreground">
+          <span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />
+          ERP Sync: Not connected
+          <button className="ml-1 text-primary hover:underline text-[10px]" onClick={() => {}}>Configure</button>
+        </div>
       </div>
 
       {/* Timeline */}

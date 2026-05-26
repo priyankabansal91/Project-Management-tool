@@ -1396,7 +1396,21 @@ export function useAuditLogs(params?: AuditLogParams) {
 export interface DivisionMISData {
   division: { id: string; name: string; code: string };
   members: { total: number; active: number; inactive: number; suspended: number };
-  projects: { total: number; active: number; completed: number; on_hold: number; overdue: number };
+  projects: {
+    total: number; active: number; completed: number; on_hold: number; overdue: number;
+    /** Optional: populated when budget data is available */
+    closed?: number;
+    totalBudget?: number;
+  };
+  milestones?: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    pending: number;
+    overdue: number;
+    completionPct: number;
+    totalBudget?: number;
+  };
   tasks: {
     total: number; open: number; in_progress: number; completed: number;
     overdue: number; due_this_week: number;

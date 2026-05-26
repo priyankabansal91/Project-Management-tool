@@ -70,6 +70,34 @@ router.post(
     try {
       const prisma = require('../config/prisma');
 
+      // Validate milestone budget doesn't exceed project's remaining budget
+      if (budget) {
+        const project = await prisma.project.findFirst({
+          where: { id: req.params.projectId, orgId: req.user.orgId },
+          select: { budget: true },
+        }).catch(() => null);
+
+        if (project?.budget) {
+          const existingMilestones = await prisma.milestone.findMany({
+            where: { projectId: req.params.projectId },
+            select: { budget: true, id: true },
+          }).catch(() => []);
+          // Exclude current milestone if editing (POST is always new)
+          const usedBudget = existingMilestones.reduce((s, m) => s + Number(m.budget || 0), 0);
+          const projectBudget = Number(project.budget);
+          if (usedBudget + parseFloat(budget) > projectBudget) {
+            const remaining = projectBudget - usedBudget;
+            return res.status(400).json({
+              success: false,
+              error: {
+                code: 'BUDGET_EXCEEDED',
+                message: `Milestone budget exceeds project remaining budget. Project total: ₹${projectBudget.toLocaleString('en-IN')}, Already allocated: ₹${usedBudget.toLocaleString('en-IN')}, Remaining: ₹${remaining.toLocaleString('en-IN')}`,
+              },
+            });
+          }
+        }
+      }
+
       // Auto-assign sequenceOrder and predecessorId
       const lastMilestone = await prisma.milestone.findFirst({
         where: { projectId: req.params.projectId },
@@ -213,6 +241,31 @@ router.patch(
       if (waterfallStatus !== undefined) data.waterfallStatus = waterfallStatus;
       if (blockedReason !== undefined) data.blockedReason = blockedReason;
       if (status === 'completed' || waterfallStatus === 'COMPLETED') data.completedAt = new Date();
+
+      // Validate updated budget doesn't push total over project budget
+      if (budget !== undefined && budget) {
+        const project = await prisma.project.findFirst({
+          where: { id: req.params.projectId, orgId: req.user.orgId },
+          select: { budget: true },
+        }).catch(() => null);
+        if (project?.budget) {
+          const existingMilestones = await prisma.milestone.findMany({
+            where: { projectId: req.params.projectId, id: { not: req.params.id } },
+            select: { budget: true },
+          }).catch(() => []);
+          const otherBudget = existingMilestones.reduce((s, m) => s + Number(m.budget || 0), 0);
+          if (otherBudget + parseFloat(budget) > Number(project.budget)) {
+            const remaining = Number(project.budget) - otherBudget;
+            return res.status(400).json({
+              success: false,
+              error: {
+                code: 'BUDGET_EXCEEDED',
+                message: `Milestone budget exceeds remaining project budget. Remaining available: ₹${remaining.toLocaleString('en-IN')}`,
+              },
+            });
+          }
+        }
+      }
 
       const milestone = await prisma.milestone.update({ where: { id: req.params.id }, data });
 

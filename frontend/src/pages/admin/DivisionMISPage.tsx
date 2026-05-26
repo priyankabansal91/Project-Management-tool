@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import {
   Users, FolderKanban, CheckSquare, Clock, BarChart2, AlertTriangle,
   RefreshCw, Loader2, TrendingUp, CheckCircle2, XCircle, Calendar,
-  Activity, Star, ChevronDown,
+  Activity, Star, ChevronDown, Wallet, Flag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -18,6 +18,10 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 
 // ─── Helpers ──────────────────────────────────────────────
+
+function fmtCurrency(n: number) {
+  return '₹' + n.toLocaleString('en-IN');
+}
 
 function fmtAction(action: string): string {
   return action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -509,6 +513,95 @@ export function DivisionMISPage() {
                 )}
               </CardContent>
             </Card>
+          </div>
+
+          {/* ── Financial Overview ─── */}
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <Wallet className="h-4 w-4" /> Financial Overview
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <p className="text-sm text-muted-foreground font-medium flex items-center gap-1"><TrendingUp className="h-4 w-4 text-green-600" /> Total Budget Allocated</p>
+                  <p className="text-2xl font-bold text-green-600 mt-1">{fmtCurrency(mis?.projects?.totalBudget ?? 0)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">across {mis?.projects?.total ?? 0} projects</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <p className="text-sm text-muted-foreground font-medium flex items-center gap-1"><Activity className="h-4 w-4 text-blue-600" /> Milestone Budget Used</p>
+                  <p className="text-2xl font-bold text-blue-600 mt-1">{fmtCurrency(mis?.milestones?.totalBudget ?? 0)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{mis?.milestones?.total ?? 0} milestones tracked</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <p className="text-sm text-muted-foreground font-medium flex items-center gap-1"><AlertTriangle className="h-4 w-4 text-amber-600" /> ERP Integration</p>
+                  <p className="text-2xl font-bold text-amber-600 mt-1">—</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />
+                    Not connected · <button className="text-primary hover:underline">Configure ERP</button>
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* ── Milestone Health ─── */}
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <Flag className="h-4 w-4" /> Milestone Health
+            </h2>
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Completed', value: mis?.milestones?.completed ?? 0, color: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
+                    { label: 'In Progress', value: mis?.milestones?.inProgress ?? 0, color: '#3b82f6', bg: 'bg-blue-50 dark:bg-blue-950/20' },
+                    { label: 'Pending', value: mis?.milestones?.pending ?? 0, color: '#94a3b8', bg: 'bg-gray-50 dark:bg-gray-800/30' },
+                    { label: 'Overdue', value: mis?.milestones?.overdue ?? 0, color: '#ef4444', bg: 'bg-red-50 dark:bg-red-950/20' },
+                  ].map(({ label, value, color, bg }) => (
+                    <div key={label} className={`rounded-lg p-3 ${bg}`}>
+                      <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                {(mis?.milestones?.total ?? 0) > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-muted-foreground">Overall milestone completion</span>
+                      <span className="text-xs font-semibold">{mis?.milestones?.completionPct ?? 0}%</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${mis?.milestones?.completionPct ?? 0}%` }} />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ── Project Health ─── */}
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <FolderKanban className="h-4 w-4" /> Project Health
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { label: 'Active Projects', value: mis?.projects?.active ?? 0, color: 'text-blue-600', accent: 'blue' as const },
+                { label: 'On Hold', value: mis?.projects?.on_hold ?? 0, color: 'text-amber-600', accent: 'amber' as const },
+                { label: 'Closed', value: mis?.projects?.closed ?? 0, color: 'text-emerald-600', accent: 'green' as const },
+              ].map(({ label, value, color }) => (
+                <Card key={label}>
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-sm text-muted-foreground font-medium">{label}</p>
+                    <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
 
           {/* ── Recent Activity ─── */}
