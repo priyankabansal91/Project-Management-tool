@@ -12,6 +12,15 @@ router.use(divisionScope);
 
 router.get('/', async (req, res, next) => {
   try {
+    let userVerticals;
+    if (req.user.role === 'vertical_head') {
+      const prisma = require('../config/prisma');
+      const myVerticals = await prisma.vertical.findMany({
+        where: { orgId: req.user.orgId, headId: req.user.id },
+        select: { id: true },
+      });
+      userVerticals = myVerticals.map((v) => v.id);
+    }
     const result = await projectService.list(
       req.user.orgId,
       req.query,
@@ -19,6 +28,7 @@ router.get('/', async (req, res, next) => {
         userDivisions: req.userDivisions,
         isScopeAll: req.isScopeAll,
         divisionId: req.query.division_id,
+        userVerticals,
       }
     );
     res.json({ success: true, data: result });

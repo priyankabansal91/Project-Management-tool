@@ -209,13 +209,28 @@ async function main() {
     });
   }
 
+  // ── Verticals ─────────────────────────────────────────────
+  const verticals = [
+    { id: 'vert_tech',   name: 'Technology',          description: 'All technology and platform projects', color: '#3B82F6', status: 'active', lifecycleStatus: 'ACTIVE', divisionId: 'div_engineering', headId: 'dev-vertical_head-id', budget: 3000000 },
+    { id: 'vert_digital', name: 'Digital Products',   description: 'Web and mobile digital products',     color: '#8B5CF6', status: 'active', lifecycleStatus: 'ACTIVE', divisionId: 'div_frontend',    headId: null,                  budget: 1500000 },
+    { id: 'vert_ops',    name: 'Operations & DevOps', description: 'Infrastructure and DevOps vertical',  color: '#06B6D4', status: 'active', lifecycleStatus: 'ACTIVE', divisionId: 'div_backend',     headId: null,                  budget: 2000000 },
+  ];
+
+  for (const v of verticals) {
+    await prisma.vertical.upsert({
+      where: { id: v.id },
+      update: { headId: v.headId, lifecycleStatus: v.lifecycleStatus },
+      create: { ...v, orgId: 'dev-org-id' },
+    });
+  }
+
   // ── Projects ──────────────────────────────────────────────
   const projects = [
-    { id: 'proj_default_1', name: 'ProjectFlow Platform',  key: 'PF',     divisionId: 'div_engineering', ownerId: 'dev-org_admin-id',       color: '#3B82F6', description: 'The core project management platform — internal development.',         startDate: new Date('2026-01-01'), dueDate: new Date('2026-12-31'), createdBy: 'dev-org_admin-id',       workflowConfigId: 'wf_default' },
-    { id: 'proj_eng_2',     name: 'API Platform v3',       key: 'APIV3',  divisionId: 'div_backend',     ownerId: 'dev-project_manager-id', color: '#8B5CF6', description: 'Next generation REST + GraphQL API platform.',                         startDate: new Date('2026-02-01'), dueDate: new Date('2026-09-30'), createdBy: 'dev-project_manager-id', workflowConfigId: 'wf_agile' },
-    { id: 'proj_sales_1',   name: 'Q2 Lead Campaign',      key: 'Q2LEAD', divisionId: 'div_sales',       ownerId: 'dev-org_admin-id',       color: '#10B981', description: 'Q2 2026 sales and lead generation campaign across digital channels.', startDate: new Date('2026-04-01'), dueDate: new Date('2026-06-30'), createdBy: 'dev-org_admin-id',       workflowConfigId: 'wf_simple' },
-    { id: 'proj_hr_1',      name: 'Annual Review 2026',    key: 'HR26',   divisionId: 'div_hr',          ownerId: 'dev-org_admin-id',       color: '#F59E0B', description: 'Annual performance review and appraisal cycle 2026.',                  startDate: new Date('2026-01-01'), dueDate: new Date('2026-03-31'), createdBy: 'dev-org_admin-id',       workflowConfigId: 'wf_approval' },
-    { id: 'proj_mobile',    name: 'Mobile App v2',         key: 'MOB2',   divisionId: 'div_frontend',    ownerId: 'dev-project_manager-id', color: '#EC4899', description: 'React Native mobile app — iOS & Android.',                             startDate: new Date('2026-03-01'), dueDate: new Date('2026-10-31'), createdBy: 'dev-project_manager-id', workflowConfigId: 'wf_default' },
+    { id: 'proj_default_1', name: 'ProjectFlow Platform',  key: 'PF',     divisionId: 'div_engineering', verticalId: 'vert_tech',    ownerId: 'dev-org_admin-id',       color: '#3B82F6', description: 'The core project management platform — internal development.',         startDate: new Date('2026-01-01'), dueDate: new Date('2026-12-31'), createdBy: 'dev-org_admin-id',       workflowConfigId: 'wf_default' },
+    { id: 'proj_eng_2',     name: 'API Platform v3',       key: 'APIV3',  divisionId: 'div_backend',     verticalId: 'vert_tech',    ownerId: 'dev-project_manager-id', color: '#8B5CF6', description: 'Next generation REST + GraphQL API platform.',                         startDate: new Date('2026-02-01'), dueDate: new Date('2026-09-30'), createdBy: 'dev-project_manager-id', workflowConfigId: 'wf_agile' },
+    { id: 'proj_sales_1',   name: 'Q2 Lead Campaign',      key: 'Q2LEAD', divisionId: 'div_sales',       verticalId: null,           ownerId: 'dev-org_admin-id',       color: '#10B981', description: 'Q2 2026 sales and lead generation campaign across digital channels.', startDate: new Date('2026-04-01'), dueDate: new Date('2026-06-30'), createdBy: 'dev-org_admin-id',       workflowConfigId: 'wf_simple' },
+    { id: 'proj_hr_1',      name: 'Annual Review 2026',    key: 'HR26',   divisionId: 'div_hr',          verticalId: null,           ownerId: 'dev-org_admin-id',       color: '#F59E0B', description: 'Annual performance review and appraisal cycle 2026.',                  startDate: new Date('2026-01-01'), dueDate: new Date('2026-03-31'), createdBy: 'dev-org_admin-id',       workflowConfigId: 'wf_approval' },
+    { id: 'proj_mobile',    name: 'Mobile App v2',         key: 'MOB2',   divisionId: 'div_frontend',    verticalId: 'vert_digital', ownerId: 'dev-project_manager-id', color: '#EC4899', description: 'React Native mobile app — iOS & Android.',                             startDate: new Date('2026-03-01'), dueDate: new Date('2026-10-31'), createdBy: 'dev-project_manager-id', workflowConfigId: 'wf_default' },
   ];
 
   for (const p of projects) {
@@ -507,7 +522,8 @@ async function main() {
   }
 
   console.log('✅  Database seeded with comprehensive demo data');
-  console.log('   • 5 users + 5 org members');
+  console.log('   • 8 users + 8 org members');
+  console.log('   • 3 verticals (vert_tech headed by dev-vertical_head-id)');
   console.log('   • 4 workflow configs (Kanban, Agile, Simple, Approval-Gated)');
   console.log('   • 4 custom roles, 4 custom field definitions');
   console.log('   • 5 divisions (2 sub-divisions of Engineering)');

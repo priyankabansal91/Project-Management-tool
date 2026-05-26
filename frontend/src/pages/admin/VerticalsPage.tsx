@@ -505,10 +505,13 @@ export function VerticalsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Network className="h-6 w-6 text-primary" /> Verticals
+            <Network className="h-6 w-6 text-primary" />
+            {user?.role === 'vertical_head' ? 'My Vertical' : 'Verticals'}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage team verticals within your boards/divisions
+            {user?.role === 'vertical_head'
+              ? 'Your assigned vertical and its projects'
+              : 'Manage team verticals within your boards/divisions'}
           </p>
         </div>
         <PermissionGate roles={['org_admin', 'division_admin']} silent>

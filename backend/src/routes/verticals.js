@@ -13,6 +13,10 @@ router.get('/', async (req, res) => {
     if (req.query.divisionId) {
       where.divisionId = req.query.divisionId;
     }
+    // vertical_head sees only verticals they head
+    if (req.user.role === 'vertical_head') {
+      where.headId = req.user.id;
+    }
     const verticals = await prisma.vertical.findMany({
       where,
       include: {
