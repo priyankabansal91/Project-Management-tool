@@ -260,8 +260,8 @@ function VerticalModal({ editingId, initialData, onSave, onClose, members }: {
       />
 
       {/* Dialog */}
-      <Card className="relative z-10 w-full max-w-lg shadow-2xl">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+      <Card className="relative z-10 w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between flex-shrink-0">
           <CardTitle className="text-base">
             {editingId ? 'Edit Vertical' : 'Create Vertical'}
           </CardTitle>
@@ -269,7 +269,7 @@ function VerticalModal({ editingId, initialData, onSave, onClose, members }: {
             <X className="h-4 w-4" />
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-y-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
             <div>
