@@ -75,15 +75,18 @@ router.get('/:id/members', async (req, res) => {
     if (!vertical) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Vertical not found' } });
     }
-    // Return all org members (filterable by role)
-    const members = await prisma.user.findMany({
-      where: {
-        orgId: req.user.orgId,
-        orgMembers: { some: { status: 'active' } },
-      },
-      select: { id: true, firstName: true, lastName: true, email: true },
-      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    // Query via OrgMember (User model has no orgId field)
+    const orgMembers = await prisma.orgMember.findMany({
+      where: { orgId: req.user.orgId },
+      include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+      orderBy: [{ user: { firstName: 'asc' } }],
     });
+    const members = orgMembers.map((m) => ({
+      id: m.user.id,
+      firstName: m.user.firstName,
+      lastName: m.user.lastName,
+      email: m.user.email,
+    }));
     res.json({ success: true, data: { items: members } });
   } catch (err) {
     res.json({ success: true, data: { items: [] } });
@@ -111,14 +114,27 @@ router.get('/:id', async (req, res) => {
 });
 
 // PATCH /:id — update a vertical
-router.patch('/:id', authorize('org_admin', 'division_admin'), async (req, res) => {
+// org_admin and division_admin can update anything; vertical_head can only update lifecycle on their own vertical
+router.patch('/:id', async (req, res) => {
+  const { role, id: userId, orgId } = req.user;
+  if (!['org_admin', 'division_admin', 'vertical_head'].includes(role)) {
+    return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Insufficient permissions' } });
+  }
   try {
     const prisma = require('../config/prisma');
+    const scopeFilter = role === 'vertical_head' ? { headId: userId } : {};
     const existing = await prisma.vertical.findFirst({
-      where: { id: req.params.id, orgId: req.user.orgId },
+      where: { id: req.params.id, orgId, ...scopeFilter },
     });
     if (!existing) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Vertical not found' } });
+    }
+    // vertical_head can only change lifecycleStatus, not structural fields
+    if (role === 'vertical_head') {
+      const { lifecycleStatus } = req.body;
+      if (!lifecycleStatus) {
+        return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Vertical heads can only update lifecycle status' } });
+      }
     }
     const { name, description, color, status, divisionId, headId, budget, lifecycleStatus } = req.body;
     const updated = await prisma.vertical.update({
