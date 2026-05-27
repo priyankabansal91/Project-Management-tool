@@ -104,6 +104,13 @@ class ProjectService {
       }
     }
 
+    const projectManagerId = data.project_manager_id || userId;
+    const membersToCreate = [{ userId: projectManagerId, role: 'project_manager' }];
+    // If creator is different from project manager, add creator as member too
+    if (data.project_manager_id && data.project_manager_id !== userId) {
+      membersToCreate.push({ userId, role: 'member' });
+    }
+
     const p = await prisma.project.create({
       data: {
         orgId,
@@ -119,7 +126,7 @@ class ProjectService {
         startDate: data.start_date ? new Date(data.start_date) : null,
         dueDate: data.due_date ? new Date(data.due_date) : null,
         createdBy: userId,
-        members: { create: { userId, role: 'project_manager' } },
+        members: { create: membersToCreate },
       },
       include: { ...TASK_INCLUDE, ...MEMBER_INCLUDE },
     });

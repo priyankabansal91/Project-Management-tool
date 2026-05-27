@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical } from '@/api/hooks';
+import { useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical, useMembers } from '@/api/hooks';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 
 // ─── Seed Data ───────────────────────────────────────────
@@ -68,18 +68,13 @@ const SEED_VERTICALS: Vertical[] = [
 const DIVISIONS = ['All Divisions', 'IT Division', 'Finance Division', 'Accreditation Division', 'Operations Division'];
 const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
 
-const SAMPLE_USERS = [
-  'Rahul Mehta', 'Sunita Rao', 'Priya Sharma', 'Vikram Singh',
-  'Anjali Gupta', 'David Park', 'Neha Joshi', 'Arjun Patel',
-];
-
 // ─── Form State ──────────────────────────────────────────
 
 interface VerticalFormData {
   name: string;
   description: string;
   division: string;
-  head_name: string;
+  head_id: string;
   color: string;
   status: 'active' | 'inactive';
   budget: string;
@@ -89,7 +84,7 @@ const EMPTY_FORM: VerticalFormData = {
   name: '',
   description: '',
   division: DIVISIONS[1],
-  head_name: '',
+  head_id: '',
   color: COLORS[0],
   status: 'active',
   budget: '',
@@ -116,11 +111,12 @@ function StatCard({ label, value, icon: Icon, colorClass, bgClass }: {
 
 // ─── Vertical Card ───────────────────────────────────────
 
-function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
+function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange, onManageMembers }: {
   vertical: Vertical;
   onEdit: (v: Vertical) => void;
   onDelete: (id: string) => void;
   onLifecycleChange: (id: string, status: VerticalLifecycle) => void;
+  onManageMembers?: (v: Vertical) => void;
 }) {
   const lifecycle: VerticalLifecycle = vertical.lifecycleStatus || vertical.lifecycle_status || 'ACTIVE';
   const cfg = LIFECYCLE_CFG[lifecycle];
@@ -213,6 +209,20 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
             </span>
           )}
         </div>
+
+        {/* Manage Members button */}
+        {onManageMembers && (
+          <div className="border-t pt-2 mt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full h-7 text-xs"
+              onClick={() => onManageMembers(vertical)}
+            >
+              <Users className="h-3 w-3 mr-1.5" /> Manage Members
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -220,11 +230,12 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange }: {
 
 // ─── Modal ───────────────────────────────────────────────
 
-function VerticalModal({ editingId, initialData, onSave, onClose }: {
+function VerticalModal({ editingId, initialData, onSave, onClose, members }: {
   editingId: string | null;
   initialData: VerticalFormData;
   onSave: (id: string | null, data: VerticalFormData) => void;
   onClose: () => void;
+  members: Array<{ id: string; firstName?: string; lastName?: string; first_name?: string; last_name?: string; email?: string }>;
 }) {
   const [form, setForm] = useState<VerticalFormData>(initialData);
 
@@ -233,6 +244,10 @@ function VerticalModal({ editingId, initialData, onSave, onClose }: {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
+    if (!form.head_id) {
+      alert('Please select a Vertical Head. This is required.');
+      return;
+    }
     onSave(editingId, form);
   };
 
@@ -312,20 +327,25 @@ function VerticalModal({ editingId, initialData, onSave, onClose }: {
 
             {/* Vertical Head */}
             <div>
-              <label className="text-sm font-medium block mb-1">Vertical Head</label>
+              <label className="text-sm font-medium block mb-1">
+                Vertical Head <span className="text-destructive">*</span>
+              </label>
               <div className="relative">
                 <select
-                  value={form.head_name}
-                  onChange={(e) => set({ head_name: e.target.value })}
+                  value={form.head_id}
+                  onChange={(e) => set({ head_id: e.target.value })}
+                  required
                   className="w-full appearance-none px-3 py-2 pr-8 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">— Select a user —</option>
-                  {SAMPLE_USERS.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
+                  {members.map((m) => {
+                    const name = `${m.firstName || m.first_name || ''} ${m.lastName || m.last_name || ''}`.trim() || m.email || m.id;
+                    return <option key={m.id} value={m.id}>{name}</option>;
+                  })}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
               </div>
+              <p className="text-xs text-muted-foreground mt-1">Required. The person responsible for leading this vertical.</p>
             </div>
 
             {/* Color picker */}
@@ -407,12 +427,16 @@ export function VerticalsPage() {
   const updateMutation = useUpdateVertical();
   const deleteMutation = useDeleteVertical();
 
+  const membersQ = useMembers();
+  const orgMembers = (membersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; first_name?: string; last_name?: string; email?: string }>;
+
   // Fall back to seed data if API returns nothing
   const [localVerticals, setLocalVerticals] = useState<Vertical[]>(SEED_VERTICALS);
   const verticals: Vertical[] = apiVerticals.length > 0 ? apiVerticals : localVerticals;
 
   const [showModal, setShowModal] = useState(false);
   const [editingVertical, setEditingVertical] = useState<Vertical | null>(null);
+  const [managingMembersFor, setManagingMembersFor] = useState<Vertical | null>(null);
 
   const [search, setSearch] = useState('');
   const [divisionFilter, setDivisionFilter] = useState('All Divisions');
@@ -468,7 +492,7 @@ export function VerticalsPage() {
       description: data.description,
       division: data.division,
       division_id: `div_${data.division.toLowerCase().replace(/\s+/g, '_')}`,
-      head_name: data.head_name,
+      headId: data.head_id,
       color: data.color,
       status: data.status,
       ...(data.budget !== '' && { budget: parseFloat(data.budget) }),
@@ -502,7 +526,7 @@ export function VerticalsPage() {
         name: editingVertical.name,
         description: editingVertical.description || '',
         division: getDivisionName(editingVertical),
-        head_name: getHeadName(editingVertical),
+        head_id: editingVertical.head?.id || '',
         color: editingVertical.color,
         status: editingVertical.status,
         budget: editingVertical.budget != null ? String(editingVertical.budget) : '',
@@ -609,6 +633,7 @@ export function VerticalsPage() {
               onEdit={openEdit}
               onDelete={handleDelete}
               onLifecycleChange={handleLifecycleChange}
+              onManageMembers={(vert) => setManagingMembersFor(vert)}
             />
           ))}
         </div>
@@ -644,6 +669,40 @@ export function VerticalsPage() {
         </Card>
       )}
 
+      {/* Members management panel */}
+      {managingMembersFor && (
+        <Card className="border-primary/40 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold">Members — {managingMembersFor.name}</h2>
+            <Button size="sm" variant="ghost" onClick={() => setManagingMembersFor(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            Add org members to this vertical so Project Managers can assign them to projects and tasks.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+            {orgMembers.map((m) => {
+              const name = `${m.firstName || m.first_name || ''} ${m.lastName || m.last_name || ''}`.trim() || m.email || '';
+              return (
+                <div key={m.id} className="flex items-center gap-2 p-2 border rounded-md text-sm">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                    {name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{m.email || ''}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            All org members are available to Project Managers. Use User Management to invite new members.
+          </p>
+        </Card>
+      )}
+
       {/* Modal */}
       {showModal && (
         <VerticalModal
@@ -651,6 +710,7 @@ export function VerticalsPage() {
           initialData={modalInitial}
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditingVertical(null); }}
+          members={orgMembers}
         />
       )}
     </div>

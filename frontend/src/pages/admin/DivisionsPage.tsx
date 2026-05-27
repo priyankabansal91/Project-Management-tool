@@ -83,7 +83,6 @@ function ReadinessBar({ checklist, setupStatus }: { checklist?: Record<string, b
 function getColor(index: number) { return DIV_COLORS[index % DIV_COLORS.length]; }
 
 const DIV_HEAD_USERS = [
-  { id: '', label: 'No head assigned' },
   { id: 'dev-org_admin-id', label: 'Priya Sharma (Org Admin / CEO)' },
   { id: 'dev-division_admin-id', label: 'Rahul Mehta (Division Admin / HOD)' },
   { id: 'dev-vertical_head-id', label: 'Kavya Reddy (Vertical Head)' },
@@ -233,6 +232,10 @@ export function DivisionsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.manager_id) {
+      alert('Please select a Division Head (HOD/CEO). This is required.');
+      return;
+    }
     try {
       if (editingId) await updateDivision.mutateAsync({ divisionId: editingId, ...formData });
       else await createDivision.mutateAsync(formData);
@@ -331,18 +334,19 @@ export function DivisionsPage() {
               <Input placeholder="Head Count" type="number" value={formData.head_count} onChange={(e) => setFormData({ ...formData, head_count: e.target.value })} />
             </div>
             <div>
-              <label className="text-sm font-medium block mb-1">Division Head / HOD</label>
+              <label className="text-sm font-medium block mb-1">Division Head / HOD *</label>
               <select
                 value={formData.manager_id}
                 onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
                 className="w-full text-sm border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                required
               >
                 {DIV_HEAD_USERS.map((u) => (
                   <option key={u.id} value={u.id}>{u.label}</option>
                 ))}
               </select>
               <p className="text-xs text-muted-foreground mt-1">
-                The Division Head (HOD/CEO) is responsible for approving project closures and major decisions.
+                Required. The Division Head (HOD/CEO) is responsible for approving project closures and major decisions.
               </p>
             </div>
             <div className="flex gap-2">

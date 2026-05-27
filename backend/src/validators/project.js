@@ -11,6 +11,7 @@ const createProjectSchema = z.object({
   due_date: z.string().optional().nullable(),
   budget: z.union([z.number(), z.string()]).optional().nullable(),
   vertical_id: z.string().optional().nullable(),
+  project_manager_id: z.string().optional().nullable(),
   milestones: z.array(z.object({
     title: z.string().min(1),
     description: z.string().optional(),

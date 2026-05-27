@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { WorkflowPicker } from './WorkflowPicker';
 import type { WorkflowConfig } from '@/types';
+import { useMembers } from '@/api/hooks';
 
 interface VerticalOption { id: string; name: string; }
 
@@ -30,6 +31,7 @@ export interface ProjectFormData {
   due_date?: string;
   vertical_id?: string;
   budget?: string;
+  project_manager_id?: string;
   milestones?: Array<{ title: string; budget: string; due_date: string }>;
   submit_for_approval?: boolean;
 }
@@ -73,6 +75,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     due_date: '',
     vertical_id: '',
     budget: '',
+    project_manager_id: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -90,6 +93,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
         start_date: project.start_date || '',
         due_date: project.due_date || '',
         budget: '',
+        project_manager_id: '',
       });
     } else {
       setForm({
@@ -103,6 +107,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
         due_date: '',
         vertical_id: '',
         budget: '',
+        project_manager_id: '',
       });
     }
     setErrors({});
@@ -112,6 +117,9 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     setSubmitForApproval(true);
   }, [project, open, workflows]);
 
+  const membersQ = useMembers();
+  const orgMembers = (membersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; email?: string }>;
+
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
 
@@ -119,6 +127,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     if (!form.key.trim()) newErrors.key = 'Project code is required';
     if (form.key.length < 2 || form.key.length > 10) newErrors.key = 'Code must be 2-10 characters';
     if (!/^[A-Z0-9]+$/.test(form.key.toUpperCase())) newErrors.key = 'Code must contain only letters and numbers';
+    if (!form.project_manager_id) newErrors.project_manager_id = 'Project Lead is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -294,6 +303,32 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
                     </select>
                   )}
                   {errors.vertical_id && <p className="text-red-500 text-sm mt-1">{errors.vertical_id}</p>}
+                </div>
+              )}
+
+              {/* Project Lead (Project Manager) */}
+              {!isEdit && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Project Lead <span className="text-destructive">*</span></label>
+                  {orgMembers.length === 0 ? (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded text-amber-700 text-sm dark:bg-amber-950/30">
+                      No members found. Invite members first.
+                    </div>
+                  ) : (
+                    <select
+                      value={form.project_manager_id || ''}
+                      onChange={(e) => setForm({ ...form, project_manager_id: e.target.value })}
+                      className={`w-full px-3 py-2 border bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring ${errors.project_manager_id ? 'border-red-500' : 'border-input'}`}
+                    >
+                      <option value="">— Select Project Lead —</option>
+                      {orgMembers.map((m) => {
+                        const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email || m.id;
+                        return <option key={m.id} value={m.id}>{name}</option>;
+                      })}
+                    </select>
+                  )}
+                  {errors.project_manager_id && <p className="text-red-500 text-sm mt-1">{errors.project_manager_id}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">The Project Lead is responsible for managing and delivering this project.</p>
                 </div>
               )}
 

@@ -6,7 +6,7 @@ const memberService = require('../services/memberService');
 const router = Router();
 router.use(authenticate);
 
-const VALID_ROLES = new Set(['org_admin', 'division_admin', 'project_manager', 'member', 'viewer', 'executive']);
+const VALID_ROLES = new Set(['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'team_lead', 'member', 'viewer', 'executive']);
 
 // List members
 router.get('/', async (req, res, next) => {
@@ -37,7 +37,7 @@ router.delete('/invites/:inviteId', authorize('org_admin'), async (req, res, nex
 });
 
 // Invite member — sends real email via Gmail SMTP
-router.post('/invite', authorize('org_admin', 'division_admin'), async (req, res, next) => {
+router.post('/invite', authorize('org_admin', 'division_admin', 'vertical_head'), async (req, res, next) => {
   try {
     const { email, role } = req.body;
     if (!email) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'email is required' } });

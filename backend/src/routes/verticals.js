@@ -40,6 +40,9 @@ router.post('/', authorize('org_admin', 'division_admin'), requireParentReady('v
     if (!name) {
       return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'name is required' } });
     }
+    if (!headId) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'headId (Vertical Head) is required' } });
+    }
     const vertical = await prisma.vertical.create({
       data: {
         name,
@@ -59,6 +62,31 @@ router.post('/', authorize('org_admin', 'division_admin'), requireParentReady('v
     res.status(201).json({ success: true, data: vertical });
   } catch (err) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+  }
+});
+
+// GET /:id/members — list org members who can be assigned to this vertical
+router.get('/:id/members', async (req, res) => {
+  try {
+    const prisma = require('../config/prisma');
+    const vertical = await prisma.vertical.findFirst({
+      where: { id: req.params.id, orgId: req.user.orgId },
+    });
+    if (!vertical) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Vertical not found' } });
+    }
+    // Return all org members (filterable by role)
+    const members = await prisma.user.findMany({
+      where: {
+        orgId: req.user.orgId,
+        orgMembers: { some: { status: 'active' } },
+      },
+      select: { id: true, firstName: true, lastName: true, email: true },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    });
+    res.json({ success: true, data: { items: members } });
+  } catch (err) {
+    res.json({ success: true, data: { items: [] } });
   }
 });
 
