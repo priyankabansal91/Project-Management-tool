@@ -252,4 +252,55 @@ router.delete('/:projectId', authorize('org_admin', 'division_admin'), async (re
   }
 });
 
+// ── Project Team Member Management ──────────────────────
+
+// Add a member to the project team
+router.post('/:projectId/members', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), async (req, res, next) => {
+  try {
+    const prisma = require('../config/prisma');
+    const { userId, role } = req.body;
+    if (!userId) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'userId is required' } });
+
+    const project = await prisma.project.findFirst({ where: { id: req.params.projectId, orgId: req.user.orgId } });
+    if (!project) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+
+    // Upsert — don't error if already a member
+    const member = await prisma.projectMember.upsert({
+      where: { projectId_userId: { projectId: req.params.projectId, userId } },
+      create: { projectId: req.params.projectId, userId, role: role || 'member' },
+      update: { role: role || 'member' },
+      include: { user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: member.user.id,
+        name: `${member.user.firstName} ${member.user.lastName}`,
+        avatar_url: member.user.avatarUrl || null,
+        role: member.role,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Remove a member from the project team
+router.delete('/:projectId/members/:userId', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), async (req, res, next) => {
+  try {
+    const prisma = require('../config/prisma');
+    const project = await prisma.project.findFirst({ where: { id: req.params.projectId, orgId: req.user.orgId } });
+    if (!project) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
+
+    await prisma.projectMember.deleteMany({
+      where: { projectId: req.params.projectId, userId: req.params.userId },
+    });
+
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

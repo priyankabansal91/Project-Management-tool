@@ -80,6 +80,27 @@ export function useUpdateProject() {
   });
 }
 
+export function useAddProjectMember(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { userId: string; role?: string }) => {
+      const { data } = await api.post(`/projects/${projectId}/members`, body);
+      return data.data;
+    },
+    onSuccess: () => qc.refetchQueries({ queryKey: ['project', projectId] }),
+  });
+}
+
+export function useRemoveProjectMember(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await api.delete(`/projects/${projectId}/members/${userId}`);
+    },
+    onSuccess: () => qc.refetchQueries({ queryKey: ['project', projectId] }),
+  });
+}
+
 // ─── Tasks ──────────────────────────────────────────────
 
 export function useProjectTasks(projectId: string, params?: { view?: string; status_id?: string; assignee_id?: string; priority?: string; search?: string }) {

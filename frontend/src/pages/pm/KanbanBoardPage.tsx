@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink, Flag, AlertTriangle, X } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, MessageSquare, Calendar, ArrowLeft, GripVertical, Trash2, ExternalLink, Flag, AlertTriangle, X, Users, UserPlus } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
-import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask, useMembers, useMilestones } from '@/api/hooks';
+import { Card } from '@/components/ui/card';
+import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask, useMembers, useMilestones, useAddProjectMember, useRemoveProjectMember } from '@/api/hooks';
 import type { Task, KanbanColumn, WorkflowStatus } from '@/types';
 
 // ─── Fallback mock data (used when API is unavailable) ──
@@ -229,6 +230,11 @@ export function KanbanBoardPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [search, setSearch] = useState('');
   const [dragBlockError, setDragBlockError] = useState<string | null>(null);
+  const [showTeamPanel, setShowTeamPanel] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+
+  const addMember = useAddProjectMember(projectId || '');
+  const removeMember = useRemoveProjectMember(projectId || '');
 
   const projectData = projectQuery.data;
 
@@ -245,21 +251,24 @@ export function KanbanBoardPage() {
       }))
     : fallbackStatuses;
 
-  // Org members for the assignee dropdown — all active org members can be assigned tasks
+  // Task assignee dropdown — only show project team members
+  const projectMembers = (projectData?.members ?? []).map((m: { id: string; name: string; avatar_url: string | null }) => ({
+    id: m.id,
+    name: m.name,
+    avatar_url: m.avatar_url,
+  }));
   const orgMembers = membersQuery.data?.items ?? [];
-  const modalMembers = orgMembers.length > 0
-    ? orgMembers
-        .filter((m: any) => m.status === 'active')
-        .map((m: any) => ({
-          id: m.id,
-          name: `${m.first_name} ${m.last_name}`.trim(),
-          avatar_url: m.avatar_url,
-        }))
-    : (projectData?.members?.map((m: { id: string; name: string; avatar_url: string | null }) => ({
-        id: m.id,
-        name: m.name,
-        avatar_url: m.avatar_url,
-      })) ?? fallbackMembers);
+  const modalMembers = projectMembers.length > 0
+    ? projectMembers
+    : orgMembers.length > 0
+      ? orgMembers
+          .filter((m: any) => m.status === 'active')
+          .map((m: any) => ({
+            id: m.id,
+            name: `${m.first_name} ${m.last_name}`.trim(),
+            avatar_url: m.avatar_url,
+          }))
+      : fallbackMembers;
 
   // Sync API data into local columns so drag-and-drop stays consistent
   useEffect(() => {
@@ -415,6 +424,9 @@ export function KanbanBoardPage() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Filter tasks..." className="pl-8 h-9 w-48 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          <Button size="sm" variant="outline" onClick={() => setShowTeamPanel((s) => !s)}>
+            <Users className="h-3.5 w-3.5" /> Team
+          </Button>
           <Button size="sm" onClick={() => handleAddTask(columns[0]?.id || modalStatuses[0]?.id || 'backlog')}>
             <Plus className="h-3.5 w-3.5" /> Add Task
           </Button>
@@ -475,6 +487,105 @@ export function KanbanBoardPage() {
           </DragOverlay>
         </DndContext>
       </div>
+
+      {/* Project Team Panel */}
+      {showTeamPanel && (
+        <div className="fixed inset-y-0 right-0 z-40 w-80 bg-card border-l shadow-xl flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <h2 className="font-semibold text-sm flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" /> Project Team
+            </h2>
+            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setShowTeamPanel(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Current team members */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-4 pt-3 pb-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Current Members ({projectData?.members?.length ?? 0})
+              </p>
+              {(projectData?.members ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">No team members yet.</p>
+              ) : (
+                <div className="space-y-1">
+                  {(projectData?.members ?? []).map((m: any) => (
+                    <div key={m.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50">
+                      <Avatar name={m.name} size="sm" className="flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{m.name}</p>
+                        <p className="text-[10px] text-muted-foreground capitalize">{m.role?.replace('_', ' ')}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive flex-shrink-0"
+                        onClick={() => removeMember.mutate(m.id)}
+                        disabled={removeMember.isPending}
+                        title="Remove from team"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Add members from org */}
+            <div className="px-4 pt-3 border-t mt-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Add Members
+              </p>
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                <Input
+                  placeholder="Search org members..."
+                  className="pl-7 h-8 text-xs"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {orgMembers
+                  .filter((m: any) => {
+                    const name = `${m.first_name || ''} ${m.last_name || ''}`.toLowerCase();
+                    const email = (m.email || '').toLowerCase();
+                    const q = memberSearch.toLowerCase();
+                    const alreadyMember = (projectData?.members ?? []).some((pm: any) => pm.id === m.id);
+                    return !alreadyMember && (name.includes(q) || email.includes(q));
+                  })
+                  .map((m: any) => {
+                    const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email || m.id;
+                    return (
+                      <div key={m.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50">
+                        <Avatar name={name} size="sm" className="flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{name}</p>
+                          <p className="text-[10px] text-muted-foreground capitalize">{m.role?.replace('_', ' ')}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-primary hover:text-primary flex-shrink-0"
+                          onClick={() => addMember.mutate({ userId: m.id, role: 'member' })}
+                          disabled={addMember.isPending}
+                          title="Add to team"
+                        >
+                          <UserPlus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                {orgMembers.filter((m: any) => !(projectData?.members ?? []).some((pm: any) => pm.id === m.id)).length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2">All org members are already on the team.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Task Modal */}
       <TaskModal

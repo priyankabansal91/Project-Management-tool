@@ -427,7 +427,7 @@ export function VerticalsPage() {
   const updateMutation = useUpdateVertical();
   const deleteMutation = useDeleteVertical();
 
-  const membersQ = useMembers();
+  const membersQ = useMembers({ role: 'vertical_head' });
   const orgMembers = (membersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; first_name?: string; last_name?: string; email?: string }>;
 
   // Fall back to seed data if API returns nothing

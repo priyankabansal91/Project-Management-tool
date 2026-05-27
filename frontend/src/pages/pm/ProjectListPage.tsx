@@ -207,7 +207,7 @@ export function ProjectListPage() {
           <h1 className="text-xl sm:text-2xl font-bold">Projects</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">{projects.length} projects total</p>
         </div>
-        <PermissionGate roles={['org_admin', 'division_admin', 'project_manager']} silent>
+        <PermissionGate roles={['org_admin', 'division_admin', 'vertical_head', 'project_manager']} silent>
           <Button onClick={() => setModalOpen(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4" /> New Project
           </Button>
