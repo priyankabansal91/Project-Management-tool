@@ -119,7 +119,6 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     if (!form.key.trim()) newErrors.key = 'Project code is required';
     if (form.key.length < 2 || form.key.length > 10) newErrors.key = 'Code must be 2-10 characters';
     if (!/^[A-Z0-9]+$/.test(form.key.toUpperCase())) newErrors.key = 'Code must contain only letters and numbers';
-    if (!isEdit && !form.vertical_id) newErrors.vertical_id = 'A vertical must be selected';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

@@ -207,9 +207,10 @@ test.describe('Tasks CRUD', () => {
   test('UI: task detail page loads for real task', async ({ page }) => {
     await page.goto(`/tasks/${testTaskId}`);
     await page.waitForLoadState('networkidle');
-    const body = page.locator('body');
-    await expect(body).not.toContainText('Error loading task');
-    await expect(body).not.toContainText('404');
+    const main = page.locator('main');
+    await expect(main).not.toContainText('Error loading task');
+    await expect(main).not.toContainText('Page not found');
+    await expect(page.locator('body')).not.toContainText('TypeError');
   });
 
   test('UI: My Tasks page loads without error', async ({ page }) => {

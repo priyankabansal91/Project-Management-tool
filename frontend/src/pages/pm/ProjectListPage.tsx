@@ -8,24 +8,29 @@ import { Avatar } from '@/components/ui/avatar';
 import { Plus, Search, LayoutGrid, List, Calendar, MoreHorizontal, Trash2, ExternalLink, ChevronRight } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import { ProjectModal, type ProjectFormData } from '@/components/shared/ProjectModal';
+import { ProjectClosureDialog } from '@/components/shared/ProjectClosureDialog';
 import { PermissionGate } from '@/components/shared/PermissionGate';
+import { useQueryClient } from '@tanstack/react-query';
 import { useProjects, useCreateProject, useDeleteProject, useWorkflows, useUpdateProject, useVerticals } from '@/api/hooks';
 import type { Project } from '@/types';
 
-type ProjectPhase = 'DRAFT' | 'SETUP_PENDING' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ON_HOLD' | 'CLOSED';
-const PHASE_TRANSITIONS: Record<ProjectPhase, { next: ProjectPhase; label: string }[]> = {
+type ProjectPhase = 'DRAFT' | 'SETUP_PENDING' | 'PENDING_APPROVAL' | 'ACTIVE' | 'ON_HOLD' | 'PENDING_CLOSURE' | 'CLOSED';
+const CLOSE_ACTION = '__CLOSE__';
+const PHASE_TRANSITIONS: Record<ProjectPhase, { next: ProjectPhase | typeof CLOSE_ACTION; label: string }[]> = {
   DRAFT:            [{ next: 'SETUP_PENDING', label: 'Begin Setup' }, { next: 'ACTIVE', label: 'Activate Directly' }],
   SETUP_PENDING:    [{ next: 'PENDING_APPROVAL', label: 'Submit for Approval' }, { next: 'ACTIVE', label: 'Activate Directly' }],
   PENDING_APPROVAL: [{ next: 'ACTIVE', label: 'Approve & Activate' }, { next: 'DRAFT', label: 'Return to Draft' }],
-  ACTIVE:           [{ next: 'ON_HOLD', label: 'Put On Hold' }, { next: 'CLOSED', label: 'Close Project' }],
-  ON_HOLD:          [{ next: 'ACTIVE', label: 'Resume Project' }, { next: 'CLOSED', label: 'Close Project' }],
+  ACTIVE:           [{ next: 'ON_HOLD', label: 'Put On Hold' }, { next: CLOSE_ACTION, label: 'Close Project' }],
+  ON_HOLD:          [{ next: 'ACTIVE', label: 'Resume Project' }, { next: CLOSE_ACTION, label: 'Close Project' }],
+  PENDING_CLOSURE:  [],
   CLOSED:           [{ next: 'ACTIVE', label: 'Reopen Project' }],
 };
 
-function ProjectActionMenu({ project, onDelete, onPhaseChange }: {
+function ProjectActionMenu({ project, onDelete, onPhaseChange, onCloseProject }: {
   project: Project;
   onDelete: (id: string) => void;
   onPhaseChange: (id: string, phase: ProjectPhase) => void;
+  onCloseProject: (project: Project) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -74,7 +79,12 @@ function ProjectActionMenu({ project, onDelete, onPhaseChange }: {
                     <button
                       key={t.next}
                       className="flex w-full items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted"
-                      onClick={(e) => { e.preventDefault(); onPhaseChange(project.id, t.next); setOpen(false); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (t.next === CLOSE_ACTION) { onCloseProject(project); }
+                        else { onPhaseChange(project.id, t.next as ProjectPhase); }
+                        setOpen(false);
+                      }}
                     >
                       <span className={cn('h-2 w-2 rounded-full flex-shrink-0', phaseColors[t.next]?.split(' ')[0] || 'bg-gray-300')} />
                       {t.label}
@@ -120,6 +130,7 @@ const phaseColors: Record<string, string> = {
   PENDING_APPROVAL: 'bg-purple-100 text-purple-700 border-purple-200',
   ACTIVE:           'bg-emerald-100 text-emerald-700 border-emerald-200',
   ON_HOLD:          'bg-orange-100 text-orange-700 border-orange-200',
+  PENDING_CLOSURE:  'bg-rose-100 text-rose-700 border-rose-200',
   CLOSED:           'bg-slate-100 text-slate-500 border-slate-200',
 };
 
@@ -129,6 +140,7 @@ const phaseLabels: Record<string, string> = {
   PENDING_APPROVAL: 'Approval',
   ACTIVE:           'Active',
   ON_HOLD:          'On Hold',
+  PENDING_CLOSURE:  'Pending Closure',
   CLOSED:           'Closed',
 };
 
@@ -137,6 +149,7 @@ export function ProjectListPage() {
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalError, setModalError] = useState('');
+  const [closureProject, setClosureProject] = useState<Project | null>(null);
 
   const { data: projectsData, isLoading } = useProjects();
   const { data: workflowsData } = useWorkflows();
@@ -153,6 +166,8 @@ export function ProjectListPage() {
   const handleDeleteProject = (projectId: string) => {
     deleteProjectMutation.mutate(projectId);
   };
+
+  const queryClient = useQueryClient();
 
   const handlePhaseChange = (projectId: string, phase: ProjectPhase) => {
     updateProjectMutation.mutate({ projectId, phase });
@@ -258,7 +273,7 @@ export function ProjectListPage() {
                           {phaseLabels[(p as any).phase] ?? (p as any).phase}
                         </Badge>
                       )}
-                      <ProjectActionMenu project={p} onDelete={handleDeleteProject} onPhaseChange={handlePhaseChange} />
+                      <ProjectActionMenu project={p} onDelete={handleDeleteProject} onPhaseChange={handlePhaseChange} onCloseProject={setClosureProject} />
                     </div>
                   </div>
 
@@ -361,7 +376,7 @@ export function ProjectListPage() {
                       </td>
                       <td className="p-2 sm:p-4 text-muted-foreground hidden xl:table-cell text-xs sm:text-sm">{formatDate(p.due_date)}</td>
                       <td className="p-2 sm:p-4">
-                        <ProjectActionMenu project={p} onDelete={handleDeleteProject} onPhaseChange={handlePhaseChange} />
+                        <ProjectActionMenu project={p} onDelete={handleDeleteProject} onPhaseChange={handlePhaseChange} onCloseProject={setClosureProject} />
                       </td>
                     </tr>
                   );
@@ -370,6 +385,15 @@ export function ProjectListPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {closureProject && (
+        <ProjectClosureDialog
+          project={closureProject}
+          open={!!closureProject}
+          onClose={() => setClosureProject(null)}
+          onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['projects'] }); setClosureProject(null); }}
+        />
       )}
     </div>
   );

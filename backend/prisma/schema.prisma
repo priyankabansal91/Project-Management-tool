@@ -32,6 +32,7 @@ enum ProjectPhase {
   PENDING_APPROVAL
   ACTIVE
   ON_HOLD
+  PENDING_CLOSURE
   CLOSED
 }
 

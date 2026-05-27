@@ -9,7 +9,7 @@ import {
   Clock, Calendar, Zap, BarChart3, DollarSign, Target, FileText, CheckCircle,
   Download, Brain, Loader2, UserPlus, Trash2, Crown, Briefcase, UserCheck, Eye,
   Workflow, LayoutGrid, FolderKanban, Timer, ClipboardCheck, FormInput,
-  Gauge, BookOpen, Boxes,
+  Gauge, BookOpen, Boxes, Network,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -102,7 +102,8 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ROLE_ICONS: Record<string, any> = {
-  org_admin: Crown, division_admin: Briefcase, project_manager: Briefcase, member: UserCheck, viewer: Eye,
+  org_admin: Crown, division_admin: Briefcase, vertical_head: Network, project_manager: Briefcase,
+  team_lead: Users, member: UserCheck, executive: Crown, viewer: Eye,
 };
 
 const DIVISION_COLORS: Record<string, string> = {
@@ -200,7 +201,9 @@ function DivisionMembersSection({ divisionId }: { divisionId: string }) {
   const DEV_USERS = [
     { id: 'dev-org_admin-id', name: 'Priya Sharma', email: 'priya.sharma@qcin.org' },
     { id: 'dev-division_admin-id', name: 'Rahul Mehta', email: 'rahul.mehta@qcin.org' },
+    { id: 'dev-vertical_head-id', name: 'Kavya Reddy', email: 'kavya.reddy@qcin.org' },
     { id: 'dev-project_manager-id', name: 'Anjali Singh', email: 'anjali.singh@qcin.org' },
+    { id: 'dev-team_lead-id', name: 'Arjun Nair', email: 'arjun.nair@qcin.org' },
     { id: 'dev-member-id', name: 'Ravi Kumar', email: 'ravi.kumar@qcin.org' },
     { id: 'dev-viewer-id', name: 'Sneha Patel', email: 'sneha.patel@qcin.org' },
     { id: 'dev-executive-id', name: 'Vikram Nair', email: 'vikram.nair@qcin.org' },
@@ -224,10 +227,13 @@ function DivisionMembersSection({ divisionId }: { divisionId: string }) {
             {DEV_USERS.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}
           </select>
           <select value={newRole} onChange={(e) => setNewRole(e.target.value)} className="text-sm border rounded px-2 py-1.5 bg-background">
+            <option value="division_admin">Division Admin (HOD)</option>
+            <option value="vertical_head">Vertical Head</option>
             <option value="project_manager">Project Lead</option>
+            <option value="team_lead">Team Lead</option>
             <option value="member">Project Team Member</option>
+            <option value="executive">Executive</option>
             <option value="viewer">Others</option>
-            <option value="division_admin">Division Admin</option>
           </select>
           <Button size="sm" disabled={!newUserId || addMember.isPending} onClick={async () => {
             await addMember.mutateAsync({ divisionId, userId: newUserId, role: newRole });

@@ -379,10 +379,11 @@ export function SidebarConfigPage() {
               </p>
             </div>
             <div className="space-y-1">
-              <p className="font-semibold text-primary">User Favourites</p>
+              <p className="font-semibold text-primary">User Favourites (all roles)</p>
               <p className="text-muted-foreground text-xs">
-                Each user can ★ star any sidebar item to pin it to a "Favourites" section at the top.
-                Favourites persist per-user in their browser.
+                Any user — including System Admin — can ★ star nav items directly in the sidebar (hover over
+                an item to see the star). Favourites are personal and persist per-user in the browser.
+                They cannot be set from this admin page.
               </p>
             </div>
             <div className="space-y-1">

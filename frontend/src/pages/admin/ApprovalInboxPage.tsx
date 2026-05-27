@@ -223,6 +223,8 @@ function ApprovalCard({ approval, canAct }: { approval: any; canAct: boolean }) 
   const isDbApproval = !approval.stepStartedAt; // DB approvals don't have SLA fields
   const sla = !isDbApproval ? getSlaInfo(approval.stepStartedAt, approval.slaThreshold) : null;
   const isMilestoneClosure = approval.workflow_type === 'milestone_closure' || approval.workflowType === 'milestone_closure';
+  const isProjectClosure = approval.workflow_type === 'project_closure' || approval.workflowType === 'project_closure';
+  const isProjectCreation = approval.workflow_type === 'project_creation' || approval.workflowType === 'project_creation';
 
   const handleSubmit = async () => {
     if (!action) return;
@@ -290,6 +292,16 @@ function ApprovalCard({ approval, canAct }: { approval: any; canAct: boolean }) 
                 {isMilestoneClosure && (
                   <Badge className="text-[10px] bg-purple-100 text-purple-700 border border-purple-200">
                     <Flag className="h-2.5 w-2.5 mr-1" /> Milestone Closure
+                  </Badge>
+                )}
+                {isProjectClosure && (
+                  <Badge className="text-[10px] bg-rose-100 text-rose-700 border border-rose-200">
+                    <Flag className="h-2.5 w-2.5 mr-1" /> Project Closure
+                  </Badge>
+                )}
+                {isProjectCreation && (
+                  <Badge className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200">
+                    <Flag className="h-2.5 w-2.5 mr-1" /> New Project
                   </Badge>
                 )}
                 {approval.priority && (

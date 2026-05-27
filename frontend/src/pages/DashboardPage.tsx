@@ -147,51 +147,57 @@ function OrgAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate
   const execQ = useExecutiveRollup();
   const org = execQ.data?.orgSummary;
   const alerts = execQ.data?.alerts ?? [];
+  const { isWidgetVisible } = useDashboardCustomizer();
 
   return (
     <div className="space-y-4">
-      {/* Org health summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <MiniStatChip label="Divisions Active" value={org?.divisionsCount ?? '—'} color="text-blue-600" />
-        <MiniStatChip label="Projects Running" value={org?.activeProjects ?? '—'} color="text-green-600" />
-        <MiniStatChip label="Members" value={org?.totalMembers ?? '—'} color="text-purple-600" />
-        <MiniStatChip label="Pending Approvals" value="—" color="text-amber-600" />
-      </div>
+      {/* Org health summary — widget: org_health */}
+      {isWidgetVisible('org_health') && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <MiniStatChip label="Divisions Active" value={org?.divisionsCount ?? '—'} color="text-blue-600" />
+          <MiniStatChip label="Projects Running" value={org?.activeProjects ?? '—'} color="text-green-600" />
+          <MiniStatChip label="Members" value={org?.totalMembers ?? '—'} color="text-purple-600" />
+          <MiniStatChip label="Pending Approvals" value="—" color="text-amber-600" />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Division RAG overview */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" /> Division Health
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {execQ.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : (execQ.data?.scorecards ?? []).slice(0, 5).map((sc: any) => {
-              const pct = sc.completionRate ?? sc.completionPct ?? sc.health_score ?? 0;
-              const rag = ragColor(pct);
-              return (
-                <div key={sc.divisionId || sc.id} className={cn('rounded-lg border p-3 space-y-2', rag.bg, rag.border)}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{sc.divisionName || sc.name}</span>
-                    <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border', rag.text, rag.border)}>{rag.label}</span>
+        {/* Division RAG overview — widget: division_rag */}
+        {isWidgetVisible('division_rag') && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" /> Division Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {execQ.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : (execQ.data?.scorecards ?? []).slice(0, 5).map((sc: any) => {
+                const pct = sc.completionRate ?? sc.completionPct ?? sc.health_score ?? 0;
+                const rag = ragColor(pct);
+                return (
+                  <div key={sc.divisionId || sc.id} className={cn('rounded-lg border p-3 space-y-2', rag.bg, rag.border)}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{sc.divisionName || sc.name}</span>
+                      <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border', rag.text, rag.border)}>{rag.label}</span>
+                    </div>
+                    <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
+                    <p className="text-xs text-muted-foreground">{pct}% completion · {sc.activeProjects ?? sc.projectCount ?? 0} active projects</p>
                   </div>
-                  <ProgressBar value={pct} colorClass={pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'} />
-                  <p className="text-xs text-muted-foreground">{pct}% completion · {sc.activeProjects ?? sc.projectCount ?? 0} active projects</p>
-                </div>
-              );
-            })}
-            {!execQ.isLoading && (execQ.data?.scorecards ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No division data available</p>
-            )}
-          </CardContent>
-        </Card>
+                );
+              })}
+              {!execQ.isLoading && (execQ.data?.scorecards ?? []).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No division data available</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Alerts + Quick Actions */}
         <div className="space-y-4">
-          {alerts.length > 0 && (
+          {/* Alerts — widget: risk_alerts_exec */}
+          {isWidgetVisible('risk_alerts_exec') && alerts.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -213,6 +219,7 @@ function OrgAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate
             </Card>
           )}
 
+          {/* Quick Actions — always visible */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -237,7 +244,8 @@ function OrgAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate
         </div>
       </div>
 
-      <PendingApprovalsWidget navigate={navigate} />
+      {/* Pending approvals — widget: vh_approvals */}
+      {isWidgetVisible('vh_approvals') && <PendingApprovalsWidget navigate={navigate} />}
     </div>
   );
 }
@@ -2692,7 +2700,7 @@ export function DashboardPage() {
   const { user, currentRole } = useAuthStore();
   const navigate = useNavigate();
   const firstName = user?.first_name || user?.firstName || 'User';
-  const { density, autoRefreshSeconds } = useDashboardCustomizer();
+  const { density, autoRefreshSeconds, isWidgetVisible } = useDashboardCustomizer();
 
   const dashboardQuery = useDashboard();
 
@@ -2756,8 +2764,8 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Universal stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Universal stat cards — widget: stat_cards */}
+      {isWidgetVisible('stat_cards') && <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="cursor-pointer group" onClick={() => navigate('/projects')}>
           <StatCard
             title="Active Projects"
@@ -2794,7 +2802,7 @@ export function DashboardPage() {
             className={cn('group-hover:border-red-300', stats.overdue_tasks > 0 ? 'border-red-200' : '')}
           />
         </div>
-      </div>
+      </div>}
 
       {/* Project Progress + Recent Activity (lower roles) */}
       {showProjectProgress && (

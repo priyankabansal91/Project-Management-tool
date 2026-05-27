@@ -81,7 +81,7 @@ test.describe('Projects CRUD', () => {
   test('API: delete project returns 204', async ({ request }) => {
     const create = await request.post(`${BASE}/projects`, {
       headers: H,
-      data: { name: `Delete Me ${TS}`, visibility: 'private', color: '#EF4444' },
+      data: { name: `Delete Me ${TS}`, key: `DEL${TS % 9999}`, visibility: 'private', color: '#EF4444' },
     });
     const { data: proj } = await create.json();
 
@@ -145,26 +145,29 @@ test.describe('Projects CRUD', () => {
     await expect(newBtn).toBeVisible({ timeout: 8000 });
     await newBtn.click();
 
-    // Fill project name
-    const nameInput = page.locator('input').filter({ hasText: '' }).first();
-    const nameLabel = page.getByLabel(/project name/i);
-    const targetName = nameLabel.or(nameInput).first();
+    // Fill project name (modal is open - first text input is the name field)
+    const nameInput = page.locator('input[placeholder*="Customer Portal" i], input[placeholder*="project" i]').first();
+    const fallbackName = page.locator('input[type="text"]').first();
+    const targetName = nameInput.or(fallbackName).first();
     await expect(targetName).toBeVisible({ timeout: 5000 });
     await targetName.fill(`UI Test Project ${TS % 10000}`);
 
-    // Fill key field (required by form)
-    const keyInput = page.getByLabel(/project key/i).or(
-      page.locator('input[placeholder*="key" i]')
-    ).first();
+    // Fill key field (label says "Project Code")
+    const keyInput = page.locator('input[placeholder*="CPR" i], input[placeholder*="code" i], input[maxlength="10"]').first();
     if (await keyInput.isVisible({ timeout: 2000 }).catch(() => false)) {
       await keyInput.fill(`UT${TS % 9999}`);
     }
 
+    // Advance to step 2 if multi-step modal (Next: Add Milestones button)
+    const nextBtn = page.getByRole('button', { name: /next/i });
+    if (await nextBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await nextBtn.click();
+      await page.waitForTimeout(500);
+    }
+
     // Submit
-    const submitBtn = page.getByRole('button', { name: /create project/i }).or(
-      page.getByRole('button', { name: /^create$/i })
-    ).last();
-    await submitBtn.click();
+    const submitBtn = page.getByRole('button', { name: /create project|submit for approval|^create$/i }).last();
+    await submitBtn.click({ timeout: 10000 });
     await page.waitForLoadState('networkidle');
 
     // Should not show error

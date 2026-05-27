@@ -17,16 +17,16 @@ function requireParentReady(entityType) {
           });
         }
       } else if (entityType === 'project') {
+        // vertical_id is optional — if provided, validate it is ACTIVE
         const verticalId = req.body.verticalId || req.body.vertical_id;
-        if (!verticalId) {
-          return res.status(400).json({ success: false, error: { code: 'VERTICAL_REQUIRED', message: 'A vertical must be selected to create a project.' } });
-        }
-        const vertical = await prisma.vertical.findUnique({ where: { id: verticalId } });
-        if (!vertical) return res.status(404).json({ error: 'Vertical not found' });
-        if (vertical.lifecycleStatus !== 'ACTIVE') {
-          return res.status(403).json({
-            success: false, error: { code: 'PARENT_NOT_READY', message: 'Parent vertical is not active. Activate the vertical before creating projects.' }
-          });
+        if (verticalId) {
+          const vertical = await prisma.vertical.findUnique({ where: { id: verticalId } });
+          if (!vertical) return res.status(404).json({ error: 'Vertical not found' });
+          if (vertical.lifecycleStatus !== 'ACTIVE') {
+            return res.status(403).json({
+              success: false, error: { code: 'PARENT_NOT_READY', message: 'Parent vertical is not active. Activate the vertical before creating projects.' }
+            });
+          }
         }
       } else if (entityType === 'milestone') {
         const projectId = req.params.projectId || req.body.projectId || req.body.project_id;

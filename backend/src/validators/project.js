@@ -21,7 +21,7 @@ const createProjectSchema = z.object({
 });
 
 const updateProjectSchema = createProjectSchema.partial().extend({
-  phase: z.enum(['DRAFT', 'SETUP_PENDING', 'PENDING_APPROVAL', 'ACTIVE', 'ON_HOLD', 'CLOSED']).optional(),
+  phase: z.enum(['DRAFT', 'SETUP_PENDING', 'PENDING_APPROVAL', 'ACTIVE', 'ON_HOLD', 'PENDING_CLOSURE', 'CLOSED']).optional(),
   status: z.string().optional(),
 });
 

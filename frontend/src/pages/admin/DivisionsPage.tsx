@@ -82,7 +82,15 @@ function ReadinessBar({ checklist, setupStatus }: { checklist?: Record<string, b
 
 function getColor(index: number) { return DIV_COLORS[index % DIV_COLORS.length]; }
 
-interface DivisionFormData { name: string; code: string; description: string; budget: string; head_count: string; [key: string]: unknown; }
+const DIV_HEAD_USERS = [
+  { id: '', label: 'No head assigned' },
+  { id: 'dev-org_admin-id', label: 'Priya Sharma (Org Admin / CEO)' },
+  { id: 'dev-division_admin-id', label: 'Rahul Mehta (Division Admin / HOD)' },
+  { id: 'dev-vertical_head-id', label: 'Kavya Reddy (Vertical Head)' },
+  { id: 'dev-executive-id', label: 'Vikram Nair (Executive)' },
+];
+
+interface DivisionFormData { name: string; code: string; description: string; budget: string; head_count: string; manager_id: string; [key: string]: unknown; }
 
 function DivisionNode({
   division, depth, index, onEdit, onDelete, onLifecycleChange,
@@ -200,7 +208,7 @@ export function DivisionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
-  const [formData, setFormData] = useState<DivisionFormData>({ name: '', code: '', description: '', budget: '', head_count: '' });
+  const [formData, setFormData] = useState<DivisionFormData>({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
 
   const { data: hierarchy, isLoading } = useDivisionHierarchy();
   const createDivision = useCreateDivision();
@@ -209,7 +217,7 @@ export function DivisionsPage() {
 
   const handleEdit = (division: any) => {
     setEditingId(division.id);
-    setFormData({ name: division.name, code: division.code, description: division.description || '', budget: division.budget || '', head_count: division.head_count || '' });
+    setFormData({ name: division.name, code: division.code, description: division.description || '', budget: division.budget || '', head_count: division.head_count || '', manager_id: division.manager_id || division.managerId || '' });
     setShowForm(true);
   };
 
@@ -228,7 +236,7 @@ export function DivisionsPage() {
     try {
       if (editingId) await updateDivision.mutateAsync({ divisionId: editingId, ...formData });
       else await createDivision.mutateAsync(formData);
-      setFormData({ name: '', code: '', description: '', budget: '', head_count: '' });
+      setFormData({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
       setShowForm(false);
       setEditingId(null);
     } catch {}
@@ -273,7 +281,7 @@ export function DivisionsPage() {
               <Plus className="h-4 w-4 mr-2" /> Onboarding Wizard
             </Button>
           </Link>
-          <Button onClick={() => { setShowForm(true); setEditingId(null); setFormData({ name: '', code: '', description: '', budget: '', head_count: '' }); }}>
+          <Button onClick={() => { setShowForm(true); setEditingId(null); setFormData({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' }); }}>
             <Plus className="h-4 w-4 mr-2" /> New Division
           </Button>
         </div>
@@ -321,6 +329,21 @@ export function DivisionsPage() {
             <div className="grid grid-cols-2 gap-4">
               <Input placeholder="Budget" type="number" value={formData.budget} onChange={(e) => setFormData({ ...formData, budget: e.target.value })} />
               <Input placeholder="Head Count" type="number" value={formData.head_count} onChange={(e) => setFormData({ ...formData, head_count: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Division Head / HOD</label>
+              <select
+                value={formData.manager_id}
+                onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
+                className="w-full text-sm border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {DIV_HEAD_USERS.map((u) => (
+                  <option key={u.id} value={u.id}>{u.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                The Division Head (HOD/CEO) is responsible for approving project closures and major decisions.
+              </p>
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={createDivision.isPending || updateDivision.isPending}>
