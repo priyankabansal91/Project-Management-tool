@@ -36,6 +36,9 @@ router.get('/', async (req, res) => {
         actualEffort: Number(m.actualEffort || 0) + taskHours,
         taskCount: m.tasks.length,
         budget: m.budget ? Number(m.budget) : null,
+        actualBudget: m.actualBudget ? Number(m.actualBudget) : null,
+        budgetLocked: m.budgetLocked ?? false,
+        expenseHeads: m.expenseHeads ?? [],
         effortEstimate: m.effortEstimate ? Number(m.effortEstimate) : null,
         budgetUtilizationPct: m.budget && taskHours > 0
           ? Math.min(100, Math.round((taskHours / Number(m.effortEstimate || 1)) * 100))
@@ -58,8 +61,8 @@ router.post(
   async (req, res) => {
     const {
       title, description, status = 'pending', progress = 0,
-      startDate, dueDate, budget, effortEstimate, milestoneType = 'general',
-      approvalRequired = false, currency = 'INR',
+      startDate, dueDate, budget, actualBudget, budgetLocked = false, expenseHeads,
+      effortEstimate, milestoneType = 'general', approvalRequired = false, currency = 'INR',
       waterfallStatus,
     } = req.body;
 
@@ -121,6 +124,9 @@ router.post(
           orgId: req.user.orgId,
           createdBy: req.user.id,
           budget: budget ? parseFloat(budget) : null,
+          actualBudget: actualBudget ? parseFloat(actualBudget) : null,
+          budgetLocked: Boolean(budgetLocked),
+          expenseHeads: expenseHeads || null,
           effortEstimate: effortEstimate ? parseFloat(effortEstimate) : null,
           milestoneType,
           approvalRequired: Boolean(approvalRequired),
@@ -197,6 +203,9 @@ router.get('/:id', async (req, res) => {
       data: {
         ...milestone,
         budget: milestone.budget ? Number(milestone.budget) : null,
+        actualBudget: milestone.actualBudget ? Number(milestone.actualBudget) : null,
+        budgetLocked: milestone.budgetLocked ?? false,
+        expenseHeads: milestone.expenseHeads ?? [],
         effortEstimate: milestone.effortEstimate ? Number(milestone.effortEstimate) : null,
         actualEffort: Number(milestone.actualEffort || 0) + totalLoggedHours,
         taskCount: milestone.tasks.length,
@@ -221,8 +230,8 @@ router.patch(
       const prisma = require('../config/prisma');
       const {
         title, description, status, progress,
-        startDate, dueDate, budget, effortEstimate,
-        milestoneType, approvalRequired, currency,
+        startDate, dueDate, budget, actualBudget, budgetLocked, expenseHeads,
+        effortEstimate, milestoneType, approvalRequired, currency,
         waterfallStatus, blockedReason,
       } = req.body;
 
@@ -234,6 +243,9 @@ router.patch(
       if (startDate !== undefined) data.startDate = startDate ? new Date(startDate) : null;
       if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
       if (budget !== undefined) data.budget = budget ? parseFloat(budget) : null;
+      if (actualBudget !== undefined) data.actualBudget = actualBudget ? parseFloat(actualBudget) : null;
+      if (budgetLocked !== undefined) data.budgetLocked = Boolean(budgetLocked);
+      if (expenseHeads !== undefined) data.expenseHeads = expenseHeads;
       if (effortEstimate !== undefined) data.effortEstimate = effortEstimate ? parseFloat(effortEstimate) : null;
       if (milestoneType !== undefined) data.milestoneType = milestoneType;
       if (approvalRequired !== undefined) data.approvalRequired = Boolean(approvalRequired);
@@ -264,6 +276,14 @@ router.patch(
               },
             });
           }
+        }
+      }
+
+      // If planned budget is locked, prevent changes to it
+      if (budget !== undefined) {
+        const existing = await prisma.milestone.findFirst({ where: { id: req.params.id }, select: { budgetLocked: true } }).catch(() => null);
+        if (existing?.budgetLocked) {
+          delete data.budget;
         }
       }
 

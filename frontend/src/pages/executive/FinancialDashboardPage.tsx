@@ -32,22 +32,22 @@ export function FinancialDashboardPage() {
     {
       id: 'budget_1',
       entityName: 'Project Alpha',
-      totalBudget: 500000,
-      spent: 325000,
-      remaining: 175000,
-      revenue: 600000,
+      totalBudget: 5000000,
+      spent: 3250000,
+      remaining: 1750000,
+      revenue: 6000000,
       roi: 84.6,
-      burnRate: 15000,
+      burnRate: 150000,
     },
     {
       id: 'budget_2',
       entityName: 'Project Beta',
-      totalBudget: 300000,
-      spent: 180000,
-      remaining: 120000,
-      revenue: 250000,
+      totalBudget: 3000000,
+      spent: 1800000,
+      remaining: 1200000,
+      revenue: 2500000,
       roi: -16.7,
-      burnRate: 12000,
+      burnRate: 120000,
     },
   ]);
 
@@ -58,11 +58,11 @@ export function FinancialDashboardPage() {
   const avgROI = budgets.length > 0 ? budgets.reduce((sum, b) => sum + b.roi, 0) / budgets.length : 0;
 
   const costBreakdown = {
-    fte: 450000,
-    contractor: 150000,
-    vendor: 100000,
-    saasTools: 50000,
-    other: 25000,
+    fte: 4500000,
+    contractor: 1500000,
+    vendor: 1000000,
+    saasTools: 500000,
+    other: 250000,
   };
 
   const handleAddBudget = () => {
@@ -88,9 +88,9 @@ export function FinancialDashboardPage() {
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
       minimumFractionDigits: 0,
     }).format(value);
   };
@@ -316,21 +316,21 @@ export function FinancialDashboardPage() {
               <p className="font-medium">Shared Infrastructure Costs</p>
               <p className="text-sm text-gray-600">Allocated across 3 divisions</p>
             </div>
-            <p className="text-lg font-bold text-blue-600">{formatCurrency(50000)}</p>
+            <p className="text-lg font-bold text-blue-600">{formatCurrency(500000)}</p>
           </div>
           <div className="p-4 bg-green-50 rounded-lg flex items-center justify-between">
             <div>
               <p className="font-medium">Client Invoices (Paid)</p>
               <p className="text-sm text-gray-600">12 invoices</p>
             </div>
-            <p className="text-lg font-bold text-green-600">{formatCurrency(450000)}</p>
+            <p className="text-lg font-bold text-green-600">{formatCurrency(4500000)}</p>
           </div>
           <div className="p-4 bg-yellow-50 rounded-lg flex items-center justify-between">
             <div>
               <p className="font-medium">Pending Invoices</p>
               <p className="text-sm text-gray-600">3 invoices</p>
             </div>
-            <p className="text-lg font-bold text-yellow-600">{formatCurrency(75000)}</p>
+            <p className="text-lg font-bold text-yellow-600">{formatCurrency(750000)}</p>
           </div>
         </div>
       </Card>
@@ -360,27 +360,27 @@ export function FinancialDashboardPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Total Budget (USD) <span className="text-destructive">*</span></label>
+                  <label className="text-sm font-medium">Total Budget (₹ INR) <span className="text-destructive">*</span></label>
                   <Input
                     type="number"
                     min="0"
-                    placeholder="e.g. 500000"
+                    placeholder="e.g. 5000000"
                     value={form.totalBudget}
                     onChange={(e) => setForm((f) => ({ ...f, totalBudget: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Expected Revenue (USD)</label>
+                  <label className="text-sm font-medium">Expected Revenue (₹ INR)</label>
                   <Input
                     type="number"
                     min="0"
-                    placeholder="e.g. 600000"
+                    placeholder="e.g. 6000000"
                     value={form.revenue}
                     onChange={(e) => setForm((f) => ({ ...f, revenue: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Daily Burn Rate (USD/day)</label>
+                  <label className="text-sm font-medium">Daily Burn Rate (₹/day)</label>
                   <Input
                     type="number"
                     min="0"

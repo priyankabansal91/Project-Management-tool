@@ -114,6 +114,9 @@ export function MilestoneDetailPage() {
   const canClose = !['completed', 'review'].includes(milestone.status) && !isBlocked;
 
   const budget = milestone.budget ?? null;
+  const actualBudget = (milestone as any).actualBudget ?? null;
+  const budgetLocked = (milestone as any).budgetLocked ?? false;
+  const expenseHeads: any[] = (milestone as any).expenseHeads ?? [];
   const effortEst = milestone.effortEstimate ?? milestone.totalEstimatedHours ?? 0;
   const effortLogged = milestone.totalLoggedHours ?? milestone.actualEffort ?? 0;
   const burnRate = milestone.burnRate ?? (effortEst > 0 ? Math.round((effortLogged / effortEst) * 100) : 0);
@@ -212,9 +215,20 @@ export function MilestoneDetailPage() {
 
         {budget != null ? (
           <MetricCard
-            icon={DollarSign} label="Budget" value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: milestone.currency || 'INR', maximumFractionDigits: 0 }).format(budget)}
-            sub={milestone.milestoneType ? `Type: ${milestone.milestoneType}` : undefined}
-            colorClass="bg-emerald-500"
+            icon={DollarSign}
+            label={budgetLocked ? 'Planned Budget 🔒' : 'Planned Budget'}
+            value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: milestone.currency || 'INR', maximumFractionDigits: 0 }).format(budget)}
+            sub={actualBudget != null
+              ? `Actual: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: milestone.currency || 'INR', maximumFractionDigits: 0 }).format(actualBudget)}`
+              : milestone.milestoneType ? `Type: ${milestone.milestoneType}` : undefined
+            }
+            colorClass={actualBudget != null && actualBudget > budget ? 'bg-red-500' : 'bg-emerald-500'}
+          />
+        ) : actualBudget != null ? (
+          <MetricCard
+            icon={DollarSign} label="Actual Budget"
+            value={new Intl.NumberFormat('en-IN', { style: 'currency', currency: milestone.currency || 'INR', maximumFractionDigits: 0 }).format(actualBudget)}
+            colorClass="bg-blue-500"
           />
         ) : (
           <MetricCard icon={TrendingUp} label="Type" value={milestone.milestoneType || 'general'} colorClass="bg-purple-500" />
@@ -246,6 +260,38 @@ export function MilestoneDetailPage() {
             </span>
           )}
         </div>
+      )}
+
+      {/* Expense Heads */}
+      {expenseHeads.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Expense Heads
+              <span className="ml-auto text-xs font-normal text-muted-foreground">
+                Total: {new Intl.NumberFormat('en-IN', { style: 'currency', currency: milestone.currency || 'INR', maximumFractionDigits: 0 }).format(
+                  expenseHeads.reduce((s: number, eh: any) => s + (parseFloat(eh.amount) || 0), 0)
+                )}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y">
+              {expenseHeads.map((eh: any, i: number) => (
+                <div key={i} className="flex items-center justify-between px-4 py-3 text-sm">
+                  <div>
+                    <p className="font-medium capitalize">{eh.label || eh.head?.replace(/_/g, ' ')}</p>
+                    {eh.description && <p className="text-xs text-muted-foreground mt-0.5">{eh.description}</p>}
+                  </div>
+                  <span className="font-semibold text-foreground">
+                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: milestone.currency || 'INR', maximumFractionDigits: 0 }).format(parseFloat(eh.amount) || 0)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Task list */}

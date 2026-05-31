@@ -19,6 +19,13 @@ import api from '@/api/client';
 type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'review';
 type WaterfallStatus = 'NOT_STARTED' | 'BLOCKED' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'APPROVED' | 'COMPLETED';
 
+interface ExpenseHead {
+  head: string;
+  label: string;
+  amount: string;
+  description: string;
+}
+
 interface Milestone {
   id: string;
   title: string;
@@ -33,7 +40,10 @@ interface Milestone {
   projectId?: string;
   taskCount?: number;
   task_count?: number;
-  budget?: number | null;
+  budget?: number | null;          // planned budget
+  actualBudget?: number | null;
+  budgetLocked?: boolean;
+  expenseHeads?: ExpenseHead[];
   effortEstimate?: number | null;
   actualEffort?: number;
   burnRate?: number;
@@ -54,7 +64,10 @@ interface MilestoneFormData {
   start_date: string;
   due_date: string;
   progress: number;
-  budget: string;
+  budget: string;          // planned budget
+  actualBudget: string;
+  budgetLocked: boolean;
+  expenseHeads: ExpenseHead[];
   effortEstimate: string;
   milestoneType: string;
   approvalRequired: boolean;
@@ -74,12 +87,24 @@ const SEED_MILESTONES: Milestone[] = [
 const EMPTY_FORM: MilestoneFormData = {
   title: '', description: '', status: 'pending',
   start_date: '', due_date: '', progress: 0,
-  budget: '', effortEstimate: '', milestoneType: 'general',
+  budget: '', actualBudget: '', budgetLocked: false, expenseHeads: [],
+  effortEstimate: '', milestoneType: 'general',
   approvalRequired: false, currency: 'INR',
 };
 
 const MILESTONE_TYPES = ['general', 'planning', 'design', 'development', 'testing', 'deployment', 'review', 'closure'];
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
+
+const EXPENSE_HEAD_OPTIONS = [
+  { value: 'assessment_cost',    label: 'Assessment Cost' },
+  { value: 'technology_cost',    label: 'Technology Cost' },
+  { value: 'professional_cost',  label: 'Professional Cost' },
+  { value: 'travel_lodging',     label: 'Travel & Lodging' },
+  { value: 'infrastructure',     label: 'Infrastructure Cost' },
+  { value: 'training',           label: 'Training Cost' },
+  { value: 'overheads',          label: 'Overheads' },
+  { value: 'other',              label: 'Other' },
+];
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -254,22 +279,41 @@ function MilestoneCard({
           </div>
 
           {/* Budget + Effort row */}
-          {(milestone.budget != null || milestone.effortEstimate != null) && (
-            <div className="flex items-center gap-4 text-xs">
+          {(milestone.budget != null || milestone.actualBudget != null || milestone.effortEstimate != null) && (
+            <div className="flex flex-wrap items-center gap-3 text-xs">
               {milestone.budget != null && (
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Wallet className="h-3.5 w-3.5" />
+                  <span className="text-muted-foreground">Planned:</span>
                   <span className="font-medium text-foreground">{fmtCurrency(milestone.budget, milestone.currency)}</span>
-                  <span>budget</span>
+                  {milestone.budgetLocked && <span title="Budget locked"><Lock className="h-3 w-3 text-amber-500" /></span>}
+                </div>
+              )}
+              {milestone.actualBudget != null && (
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <span className="text-muted-foreground">Actual:</span>
+                  <span className={cn('font-medium', milestone.budget && milestone.actualBudget > milestone.budget ? 'text-red-600' : 'text-emerald-600')}>
+                    {fmtCurrency(milestone.actualBudget, milestone.currency)}
+                  </span>
                 </div>
               )}
               {milestone.effortEstimate != null && (
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Activity className="h-3.5 w-3.5" />
                   <span className="font-medium text-foreground">{milestone.actualEffort ?? 0}h / {milestone.effortEstimate}h</span>
-                  <span>effort</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Expense heads summary */}
+          {milestone.expenseHeads && milestone.expenseHeads.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {milestone.expenseHeads.map((eh, i) => (
+                <span key={i} className="text-[10px] bg-secondary px-2 py-0.5 rounded-full text-muted-foreground">
+                  {eh.label || eh.head}: {fmtCurrency(parseFloat(eh.amount) || 0, milestone.currency)}
+                </span>
+              ))}
             </div>
           )}
 
@@ -333,12 +377,39 @@ function MilestoneFormPanel({
   saving: boolean;
 }) {
   const [form, setForm] = useState<MilestoneFormData>(initialData);
+  const [lockConfirm, setLockConfirm] = useState(false);
   const set = (patch: Partial<MilestoneFormData>) => setForm((f) => ({ ...f, ...patch }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return;
     onSave(form);
+  };
+
+  const addExpenseHead = () => {
+    set({ expenseHeads: [...form.expenseHeads, { head: 'assessment_cost', label: 'Assessment Cost', amount: '', description: '' }] });
+  };
+
+  const updateExpenseHead = (index: number, patch: Partial<ExpenseHead>) => {
+    const updated = form.expenseHeads.map((eh, i) => {
+      if (i !== index) return eh;
+      const merged = { ...eh, ...patch };
+      if (patch.head) {
+        const opt = EXPENSE_HEAD_OPTIONS.find((o) => o.value === patch.head);
+        merged.label = opt?.label || patch.head;
+      }
+      return merged;
+    });
+    set({ expenseHeads: updated });
+  };
+
+  const removeExpenseHead = (index: number) => {
+    set({ expenseHeads: form.expenseHeads.filter((_, i) => i !== index) });
+  };
+
+  const handleLockBudget = () => {
+    set({ budgetLocked: true });
+    setLockConfirm(false);
   };
 
   return (
@@ -398,28 +469,149 @@ function MilestoneFormPanel({
             </div>
           </div>
 
-          {/* Budget + Currency */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2">
-              <label className="text-sm font-medium block mb-1 flex items-center gap-1">
-                <Wallet className="h-3.5 w-3.5" /> Budget
-              </label>
-              <Input type="number" min="0" placeholder="e.g., 100000"
-                value={form.budget} onChange={(e) => set({ budget: e.target.value })} />
+          {/* ── Budget Section ─────────────────────────────── */}
+          <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Wallet className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Budget</span>
             </div>
-            <div>
-              <label className="text-sm font-medium block mb-1">Currency</label>
+
+            {/* Currency */}
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-muted-foreground w-16 flex-shrink-0">Currency</label>
               <select value={form.currency} onChange={(e) => set({ currency: e.target.value })}
-                className="w-full px-3 py-2 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                className="flex-1 px-3 py-1.5 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring">
                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+
+            {/* Planned Budget */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  Planned / Proposed Budget
+                  {form.budgetLocked && (
+                    <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                      <Lock className="h-2.5 w-2.5" /> Locked
+                    </span>
+                  )}
+                </label>
+                {!form.budgetLocked && form.budget && (
+                  <button
+                    type="button"
+                    className="text-[10px] text-amber-600 hover:text-amber-700 underline"
+                    onClick={() => setLockConfirm(true)}
+                  >
+                    Lock budget
+                  </button>
+                )}
+              </div>
+              <Input
+                type="number" min="0"
+                placeholder="e.g., 500000"
+                value={form.budget}
+                disabled={form.budgetLocked}
+                className={form.budgetLocked ? 'bg-muted text-muted-foreground cursor-not-allowed' : ''}
+                onChange={(e) => set({ budget: e.target.value })}
+              />
+              {form.budgetLocked && (
+                <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                  <Lock className="h-2.5 w-2.5" /> Planned budget is locked and cannot be changed.
+                </p>
+              )}
+            </div>
+
+            {/* Lock confirmation prompt */}
+            {lockConfirm && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm space-y-2">
+                <p className="font-medium text-amber-800 flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5" /> Lock planned budget?
+                </p>
+                <p className="text-xs text-amber-700">
+                  Once locked, the planned budget of <strong>{fmtCurrency(parseFloat(form.budget) || 0, form.currency)}</strong> cannot be changed. The actual budget remains editable.
+                </p>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white" onClick={handleLockBudget}>
+                    Confirm Lock
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => setLockConfirm(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Actual Budget */}
+            <div>
+              <label className="text-sm font-medium block mb-1">Actual Budget (Editable)</label>
+              <Input
+                type="number" min="0"
+                placeholder="e.g., 480000"
+                value={form.actualBudget}
+                onChange={(e) => set({ actualBudget: e.target.value })}
+              />
+              {form.budget && form.actualBudget && parseFloat(form.actualBudget) > parseFloat(form.budget) && (
+                <p className="text-[10px] text-red-600 mt-1">⚠ Actual exceeds planned budget by {fmtCurrency(parseFloat(form.actualBudget) - parseFloat(form.budget), form.currency)}</p>
+              )}
+            </div>
+          </div>
+
+          {/* ── Expense Heads ──────────────────────────────── */}
+          <div className="rounded-lg border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" /> Expense Heads
+              </span>
+              <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={addExpenseHead}>
+                <Plus className="h-3 w-3 mr-1" /> Add
+              </Button>
+            </div>
+            {form.expenseHeads.length === 0 && (
+              <p className="text-xs text-muted-foreground">No expense heads added. Click Add to record cost categories.</p>
+            )}
+            {form.expenseHeads.map((eh, i) => (
+              <div key={i} className="rounded-md border bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={eh.head}
+                    onChange={(e) => updateExpenseHead(i, { head: e.target.value })}
+                    className="flex-1 px-2 py-1.5 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {EXPENSE_HEAD_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive flex-shrink-0"
+                    onClick={() => removeExpenseHead(i)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <Input
+                  type="number" min="0"
+                  placeholder="Amount (₹)"
+                  value={eh.amount}
+                  onChange={(e) => updateExpenseHead(i, { amount: e.target.value })}
+                />
+                <Input
+                  placeholder="Description (optional)"
+                  value={eh.description}
+                  onChange={(e) => updateExpenseHead(i, { description: e.target.value })}
+                />
+              </div>
+            ))}
+            {form.expenseHeads.length > 0 && (
+              <div className="text-xs text-muted-foreground text-right">
+                Total expense heads: <span className="font-semibold text-foreground">
+                  {fmtCurrency(form.expenseHeads.reduce((s, eh) => s + (parseFloat(eh.amount) || 0), 0), form.currency)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Effort Estimate */}
           <div>
             <label className="text-sm font-medium block mb-1 flex items-center gap-1">
-              <Activity className="h-3.5 w-3.5" /> Effort Estimate (hours)
+              <Clock className="h-3.5 w-3.5" /> Effort Estimate (hours)
             </label>
             <Input type="number" min="0" placeholder="e.g., 160"
               value={form.effortEstimate} onChange={(e) => set({ effortEstimate: e.target.value })} />
@@ -568,6 +760,9 @@ export function MilestonesPage() {
       title: data.title, description: data.description, status: data.status,
       startDate: data.start_date, dueDate: data.due_date, progress: data.progress,
       budget: data.budget ? parseFloat(data.budget) : undefined,
+      actualBudget: data.actualBudget ? parseFloat(data.actualBudget) : undefined,
+      budgetLocked: data.budgetLocked,
+      expenseHeads: data.expenseHeads.length > 0 ? data.expenseHeads : undefined,
       effortEstimate: data.effortEstimate ? parseFloat(data.effortEstimate) : undefined,
       milestoneType: data.milestoneType, approvalRequired: data.approvalRequired, currency: data.currency,
     };
@@ -581,6 +776,9 @@ export function MilestonesPage() {
           title: data.title, description: data.description, status: data.status,
           start_date: data.start_date, due_date: data.due_date, progress: data.progress,
           budget: data.budget ? parseFloat(data.budget) : null,
+          actualBudget: data.actualBudget ? parseFloat(data.actualBudget) : null,
+          budgetLocked: data.budgetLocked,
+          expenseHeads: data.expenseHeads,
           effortEstimate: data.effortEstimate ? parseFloat(data.effortEstimate) : null,
           milestoneType: data.milestoneType, approvalRequired: data.approvalRequired, currency: data.currency,
         };
@@ -596,6 +794,9 @@ export function MilestonesPage() {
           title: data.title, description: data.description, status: data.status,
           start_date: data.start_date, due_date: data.due_date, progress: data.progress,
           budget: data.budget ? parseFloat(data.budget) : null,
+          actualBudget: data.actualBudget ? parseFloat(data.actualBudget) : null,
+          budgetLocked: data.budgetLocked,
+          expenseHeads: data.expenseHeads,
           effortEstimate: data.effortEstimate ? parseFloat(data.effortEstimate) : null,
           milestoneType: data.milestoneType, approvalRequired: data.approvalRequired, currency: data.currency,
         };
@@ -653,6 +854,9 @@ export function MilestonesPage() {
         due_date: editingMilestone.due_date || editingMilestone.dueDate || '',
         progress: editingMilestone.progress,
         budget: editingMilestone.budget != null ? String(editingMilestone.budget) : '',
+        actualBudget: editingMilestone.actualBudget != null ? String(editingMilestone.actualBudget) : '',
+        budgetLocked: editingMilestone.budgetLocked ?? false,
+        expenseHeads: editingMilestone.expenseHeads ?? [],
         effortEstimate: editingMilestone.effortEstimate != null ? String(editingMilestone.effortEstimate) : '',
         milestoneType: editingMilestone.milestoneType || 'general',
         approvalRequired: editingMilestone.approvalRequired ?? false,
