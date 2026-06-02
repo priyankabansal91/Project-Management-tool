@@ -201,8 +201,8 @@ async function main() {
   for (const d of divisions) {
     await prisma.division.upsert({
       where: { id: d.id },
-      update: {},
-      create: { ...d, orgId: 'dev-org-id', createdBy: 'dev-org_admin-id', isActive: true },
+      update: { setupStatus: 'ACTIVE' },
+      create: { ...d, orgId: 'dev-org-id', createdBy: 'dev-org_admin-id', isActive: true, setupStatus: 'ACTIVE' },
     });
   }
 

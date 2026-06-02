@@ -1565,6 +1565,40 @@ export function useDeleteVertical() {
   });
 }
 
+// ─── Division Members (DB-backed, for Manage Members panel) ──────────────────
+
+export function useRealDivisionMembers(divisionId: string | null) {
+  return useQuery({
+    queryKey: ['realDivisionMembers', divisionId],
+    queryFn: async () => {
+      const { data } = await api.get(`/divisions/${divisionId}/members`);
+      return data.data as Array<{ id: string; user_id: string; first_name: string; last_name: string; email: string; role: string }>;
+    },
+    enabled: !!divisionId,
+  });
+}
+
+export function useRealAddDivisionMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ divisionId, userId, role }: { divisionId: string; userId: string; role: string }) => {
+      const { data } = await api.post(`/divisions/${divisionId}/members`, { user_id: userId, role });
+      return data.data;
+    },
+    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['realDivisionMembers', vars.divisionId] }),
+  });
+}
+
+export function useRealRemoveDivisionMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ divisionId, userId }: { divisionId: string; userId: string }) => {
+      await api.delete(`/divisions/${divisionId}/members/${userId}`);
+    },
+    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['realDivisionMembers', vars.divisionId] }),
+  });
+}
+
 // ─── Dashboard V2 ─────────────────────────────────────────────────────────────
 
 export function useDashboardV2() {

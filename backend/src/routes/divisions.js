@@ -111,10 +111,23 @@ router.delete('/:divisionId', authorize('org_admin'), async (req, res, next) => 
 });
 
 /**
+ * List members of a division
+ * GET /v1/divisions/:divisionId/members
+ */
+router.get('/:divisionId/members', async (req, res, next) => {
+  try {
+    const members = await divisionService.listMembers(req.user.orgId, req.params.divisionId);
+    res.json({ success: true, data: members });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * Add member to division
  * POST /v1/divisions/:divisionId/members
  */
-router.post('/:divisionId/members', authorize('org_admin'), async (req, res, next) => {
+router.post('/:divisionId/members', authorize('org_admin', 'division_admin'), async (req, res, next) => {
   try {
     const { user_id, role } = req.body;
 

@@ -7,11 +7,15 @@ import { Avatar } from '@/components/ui/avatar';
 import {
   Network, Plus, Edit2, Trash2, Users, FolderKanban, X,
   ChevronDown, Search, Building2, UserCheck, Loader2,
-  PlayCircle, Settings, PauseCircle,
+  PlayCircle, Settings, PauseCircle, UserPlus, UserMinus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical, useMembers, useDivisions } from '@/api/hooks';
+import {
+  useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical,
+  useMembers, useDivisions,
+  useRealDivisionMembers, useRealAddDivisionMember, useRealRemoveDivisionMember,
+} from '@/api/hooks';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 
 // ─── Seed Data ───────────────────────────────────────────
@@ -242,23 +246,38 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange, onManageM
 function VerticalModal({ editingId, initialData, onSave, onClose, members, divisions }: {
   editingId: string | null;
   initialData: VerticalFormData;
-  onSave: (id: string | null, data: VerticalFormData) => void;
+  onSave: (id: string | null, data: VerticalFormData) => Promise<void>;
   onClose: () => void;
   members: Array<{ id: string; firstName?: string; lastName?: string; first_name?: string; last_name?: string; email?: string }>;
   divisions: Array<{ id: string; name: string; code?: string }>;
 }) {
   const [form, setForm] = useState<VerticalFormData>(initialData);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const set = (patch: Partial<VerticalFormData>) => setForm((f) => ({ ...f, ...patch }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
     if (!form.head_id) {
-      alert('Please select a Vertical Head. This is required.');
+      setSaveError('Please select a Vertical Head. This is required.');
       return;
     }
-    onSave(editingId, form);
+    if (!form.division_id) {
+      setSaveError('Please select a Division.');
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(editingId, form);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || err?.message || 'Failed to save vertical. Please try again.';
+      setSaveError(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -412,12 +431,23 @@ function VerticalModal({ editingId, initialData, onSave, onClose, members, divis
               </button>
             </div>
 
+            {/* Error message */}
+            {saveError && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {saveError}
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2 pt-1">
-              <Button type="submit">
-                {editingId ? 'Update Vertical' : 'Create Vertical'}
+              <Button type="submit" disabled={saving}>
+                {saving ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{editingId ? 'Updating…' : 'Creating…'}</>
+                ) : (
+                  editingId ? 'Update Vertical' : 'Create Vertical'
+                )}
               </Button>
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
                 Cancel
               </Button>
             </div>
@@ -425,6 +455,112 @@ function VerticalModal({ editingId, initialData, onSave, onClose, members, divis
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─── Manage Members Panel ────────────────────────────────
+
+function ManageMembersPanel({ vertical, allOrgMembers, onClose }: {
+  vertical: Vertical;
+  allOrgMembers: Array<{ id: string; first_name?: string; last_name?: string; email?: string; role?: string }>;
+  onClose: () => void;
+}) {
+  const divisionId = (typeof vertical.division === 'object' && vertical.division !== null)
+    ? vertical.division.id
+    : (vertical.divisionId || vertical.division_id || null);
+
+  const { data: divMembers = [], isLoading } = useRealDivisionMembers(divisionId);
+  const addMember = useRealAddDivisionMember();
+  const removeMember = useRealRemoveDivisionMember();
+
+  const memberIds = new Set((divMembers as any[]).map((m: any) => m.user_id || m.id));
+
+  const [search, setSearch] = useState('');
+  const filtered = allOrgMembers.filter((m) => {
+    const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email || '';
+    return name.toLowerCase().includes(search.toLowerCase()) || (m.email || '').toLowerCase().includes(search.toLowerCase());
+  });
+
+  const toggle = (userId: string) => {
+    if (!divisionId) return;
+    if (memberIds.has(userId)) {
+      removeMember.mutate({ divisionId, userId });
+    } else {
+      addMember.mutate({ divisionId, userId, role: 'member' });
+    }
+  };
+
+  return (
+    <Card className="border-primary/40 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold">Manage Members — {vertical.name}</h2>
+        <Button size="sm" variant="ghost" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground mb-3">
+        Select org members to add or remove from this vertical's division.
+        {!divisionId && <span className="text-destructive ml-1">This vertical has no division assigned.</span>}
+      </p>
+      <div className="mb-3">
+        <Input
+          placeholder="Search members..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 text-sm"
+        />
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto">
+          {filtered.map((m) => {
+            const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email || '';
+            const roleLabel = m.role ? m.role.replace(/_/g, ' ') : '';
+            const isMember = memberIds.has(m.id);
+            const isPending = (addMember.isPending && (addMember.variables as any)?.userId === m.id)
+              || (removeMember.isPending && (removeMember.variables as any)?.userId === m.id);
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => toggle(m.id)}
+                disabled={!divisionId || isPending}
+                className={cn(
+                  'flex items-center gap-2 p-2 border rounded-md text-sm text-left transition-colors',
+                  isMember
+                    ? 'border-primary/40 bg-primary/5 hover:bg-primary/10'
+                    : 'hover:bg-muted/50',
+                  !divisionId && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                <div className={cn(
+                  'h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+                  isMember ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+                )}>
+                  {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium truncate">{name}</p>
+                  <p className="text-xs text-muted-foreground truncate capitalize">{roleLabel}</p>
+                </div>
+                {isMember ? (
+                  <UserMinus className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+                ) : (
+                  <UserPlus className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {filtered.length === 0 && !isLoading && (
+        <p className="text-sm text-muted-foreground text-center py-4">No members found.</p>
+      )}
+      <p className="text-xs text-muted-foreground mt-3">
+        {(divMembers as any[]).length} member{(divMembers as any[]).length !== 1 ? 's' : ''} assigned to this division.
+      </p>
+    </Card>
   );
 }
 
@@ -508,7 +644,7 @@ export function VerticalsPage() {
     }
   };
 
-  const handleSave = (id: string | null, data: VerticalFormData) => {
+  const handleSave = async (id: string | null, data: VerticalFormData): Promise<void> => {
     const payload = {
       name: data.name,
       description: data.description,
@@ -521,22 +657,22 @@ export function VerticalsPage() {
 
     if (id) {
       if (apiVerticals.length > 0) {
-        updateMutation.mutate({ id, ...payload });
+        await updateMutation.mutateAsync({ id, ...payload });
       } else {
         setLocalVerticals((prev) => prev.map((v) => v.id === id ? { ...v, ...payload } : v));
       }
     } else {
-      const newVertical: Vertical = {
-        ...payload,
-        division: null,
-        id: 'v_' + Date.now(),
-        member_count: 0,
-        project_count: 0,
-        status: payload.status,
-      };
       if (apiVerticals.length > 0) {
-        createMutation.mutate(payload);
+        await createMutation.mutateAsync(payload);
       } else {
+        const newVertical: Vertical = {
+          ...payload,
+          division: null,
+          id: 'v_' + Date.now(),
+          member_count: 0,
+          project_count: 0,
+          status: payload.status,
+        };
         setLocalVerticals((prev) => [newVertical, ...prev]);
       }
     }
@@ -697,37 +833,11 @@ export function VerticalsPage() {
 
       {/* Members management panel */}
       {managingMembersFor && (
-        <Card className="border-primary/40 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold">Team Members — {managingMembersFor.name}</h2>
-            <Button size="sm" variant="ghost" onClick={() => setManagingMembersFor(null)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground mb-3">
-            All org members available to be assigned to projects and tasks within this vertical.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto">
-            {allOrgMembers.map((m) => {
-              const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email || '';
-              const roleLabel = m.role ? m.role.replace(/_/g, ' ') : '';
-              return (
-                <div key={m.id} className="flex items-center gap-2 p-2 border rounded-md text-sm">
-                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
-                    {name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">{name}</p>
-                    <p className="text-xs text-muted-foreground truncate capitalize">{roleLabel}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {allOrgMembers.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">No members found. Add users via User Management.</p>
-          )}
-        </Card>
+        <ManageMembersPanel
+          vertical={managingMembersFor}
+          allOrgMembers={allOrgMembers}
+          onClose={() => setManagingMembersFor(null)}
+        />
       )}
 
       {/* Modal */}
