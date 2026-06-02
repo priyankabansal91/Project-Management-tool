@@ -158,15 +158,26 @@ test.describe('Projects CRUD', () => {
       await keyInput.fill(`UT${TS % 9999}`);
     }
 
-    // Advance to step 2 if multi-step modal (Next: Add Milestones button)
-    const nextBtn = page.getByRole('button', { name: /next/i });
+    // Select first available Project Lead (required to pass step 1 validation)
+    const leadSelect = page.locator('select').filter({ hasText: /select project lead/i });
+    if (await leadSelect.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const options = await leadSelect.locator('option').all();
+      // Pick first non-placeholder option (index 1+)
+      if (options.length > 1) {
+        const firstValue = await options[1].getAttribute('value');
+        if (firstValue) await leadSelect.selectOption(firstValue);
+      }
+    }
+
+    // Advance to step 2 (Next: Add Milestones →)
+    const nextBtn = page.getByRole('button', { name: /next.*milestones|next/i });
     if (await nextBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await nextBtn.click();
       await page.waitForTimeout(500);
     }
 
-    // Submit
-    const submitBtn = page.getByRole('button', { name: /create project|submit for approval|^create$/i }).last();
+    // Submit — button text is "Create Project" or "Submit for Approval"
+    const submitBtn = page.getByRole('button', { name: /create project|submit for approval/i }).last();
     await submitBtn.click({ timeout: 10000 });
     await page.waitForLoadState('networkidle');
 

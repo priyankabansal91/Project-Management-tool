@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(PGPASSWORD='' \"/c/Program Files/PostgreSQL/17/bin/psql.exe\" -U postgres -c '\\\\l')",
-      "Bash(PGPASSWORD='postgres' \"/c/Program Files/PostgreSQL/17/bin/psql.exe\" -U postgres -c '\\\\l')"
+      "Bash(PGPASSWORD='postgres' \"/c/Program Files/PostgreSQL/17/bin/psql.exe\" -U postgres -c '\\\\l')",
+      "Read(//mnt/c/Users/HP/OneDrive - Quality Council of India/Documents/GitHub/Project-Management-tool/**)",
+      "Bash(npx prisma *)",
+      "Bash(cp backend/.vercel/project.json .vercel/project.json)",
+      "Bash(vercel --prod --yes)",
+      "Bash(npm run *)"
     ]
   }
 }
