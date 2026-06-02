@@ -237,7 +237,7 @@ export function useCreateComment(taskId: string) {
 
 // ─── Members ────────────────────────────────────────────
 
-export function useMembers(params?: { role?: string; search?: string }) {
+export function useMembers(params?: { role?: string; search?: string; page?: number; page_size?: number }) {
   return useQuery({
     queryKey: ['members', params],
     queryFn: async () => {
@@ -1579,6 +1579,14 @@ export function useMilestoneBurnDashboard() {
   return useQuery({
     queryKey: ['milestoneBurnDashboard'],
     queryFn: () => api.get('/dashboard/v2/milestone-burn').then((r) => r.data.data),
+    staleTime: 60_000,
+  });
+}
+
+export function useExpenseHeadSummary() {
+  return useQuery<Array<{ head: string; label: string; amount: number }>>({
+    queryKey: ['expenseHeadSummary'],
+    queryFn: () => api.get('/dashboard/v2/expense-heads').then((r) => r.data.data ?? []),
     staleTime: 60_000,
   });
 }

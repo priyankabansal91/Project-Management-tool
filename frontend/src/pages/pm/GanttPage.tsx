@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useProjectTasks, useProject, useProjects } from '@/api/hooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, LayoutGrid, Calendar, List, FolderKanban } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutGrid, Calendar, List, FolderKanban, ArrowLeft } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import type { Task } from '@/types';
 
@@ -50,6 +50,7 @@ const ZOOM_COLS: Record<ZoomLevel, { count: number; dayWidth: number; stepDays: 
 
 export function GanttPage() {
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const { data: allProjects } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState('');
 
@@ -123,17 +124,24 @@ export function GanttPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
+        <div className="flex items-center gap-3">
           {routeProjectId && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-              <Link to="/projects" className="hover:text-primary">Projects</Link>
-              <span>/</span>
-              <span>{project?.name || 'Loading...'}</span>
-            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5 shrink-0">
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
           )}
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" /> Gantt Timeline
-          </h1>
+          <div>
+            {routeProjectId && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <Link to="/projects" className="hover:text-primary">Projects</Link>
+                <span>/</span>
+                <span>{project?.name || 'Loading...'}</span>
+              </div>
+            )}
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" /> Gantt Timeline
+            </h1>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">

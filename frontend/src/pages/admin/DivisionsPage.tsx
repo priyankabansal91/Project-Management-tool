@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDivisionHierarchy, useCreateDivision, useUpdateDivision, useDeleteDivision } from '@/api/hooks';
+import { useDivisionHierarchy, useCreateDivision, useUpdateDivision, useDeleteDivision, useMembers } from '@/api/hooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,27 +82,30 @@ function ReadinessBar({ checklist, setupStatus }: { checklist?: Record<string, b
 
 function getColor(index: number) { return DIV_COLORS[index % DIV_COLORS.length]; }
 
-const DIV_HEAD_USERS = [
-  { id: 'dev-org_admin-id', label: 'Priya Sharma (Org Admin / CEO)' },
-  { id: 'dev-division_admin-id', label: 'Rahul Mehta (Division Admin / HOD)' },
-  { id: 'dev-vertical_head-id', label: 'Kavya Reddy (Vertical Head)' },
-  { id: 'dev-executive-id', label: 'Vikram Nair (Executive)' },
-];
-
 interface DivisionFormData { name: string; code: string; description: string; budget: string; head_count: string; manager_id: string; [key: string]: unknown; }
+interface MemberOption { id: string; label: string; }
 
 function DivisionNode({
   division, depth, index, onEdit, onDelete, onLifecycleChange,
+  editingId, formData, setFormData, onUpdate, onCancelEdit, isPendingUpdate, membersList,
 }: {
   division: any; depth: number; index: number;
   onEdit: (d: any) => void; onDelete: (id: string) => void;
   onLifecycleChange: (id: string, status: string) => void;
+  editingId: string | null;
+  formData: DivisionFormData;
+  setFormData: (data: DivisionFormData) => void;
+  onUpdate: (e: React.FormEvent) => void;
+  onCancelEdit: () => void;
+  isPendingUpdate: boolean;
+  membersList: MemberOption[];
 }) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = division.children && division.children.length > 0;
   const color = getColor(index);
   const currentStatus: string = division.setupStatus || 'ACTIVE';
   const lifecycleNext = DIVISION_LIFECYCLE_NEXT[currentStatus];
+  const isEditing = editingId === division.id;
 
   return (
     <div className={cn('relative', depth > 0 && 'ml-8')}>
@@ -114,7 +117,7 @@ function DivisionNode({
         <div className="absolute -left-4 top-6 w-4 h-px bg-border" />
       )}
 
-      <Card className={cn('mb-2 border-l-4 hover:shadow-md transition-shadow', `border-l-[${color}]`)} style={{ borderLeftColor: color }}>
+      <Card className={cn('mb-2 border-l-4 hover:shadow-md transition-shadow', isEditing && 'ring-2 ring-primary/30')} style={{ borderLeftColor: color }}>
         <div className="p-3 sm:p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -179,7 +182,7 @@ function DivisionNode({
             </div>
 
             <div className="flex items-center gap-1 flex-shrink-0">
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => onEdit(division)} title="Edit">
+              <Button size="sm" variant={isEditing ? 'default' : 'ghost'} className="h-8 w-8 p-0" onClick={() => isEditing ? onCancelEdit() : onEdit(division)} title={isEditing ? 'Cancel' : 'Edit'}>
                 <Edit2 className="h-3.5 w-3.5" />
               </Button>
               <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => onDelete(division.id)} title="Delete">
@@ -188,6 +191,51 @@ function DivisionNode({
             </div>
           </div>
         </div>
+
+        {/* Inline edit form — expands below the card header */}
+        {isEditing && (
+          <div className="border-t border-primary/20 bg-muted/30 p-4">
+            <p className="text-xs font-semibold text-primary mb-3">Edit Division</p>
+            <form onSubmit={onUpdate} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium block mb-1">Division Name *</label>
+                  <Input placeholder="e.g., Engineering" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+                </div>
+                <div>
+                  <label className="text-xs font-medium block mb-1">Code *</label>
+                  <Input placeholder="e.g., ENG" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })} maxLength={8} required />
+                </div>
+              </div>
+              <textarea placeholder="Description (optional)" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3 py-2 border rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring" rows={2} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input placeholder="Budget" type="number" value={formData.budget} onChange={(e) => setFormData({ ...formData, budget: e.target.value })} />
+                <Input placeholder="Head Count" type="number" value={formData.head_count} onChange={(e) => setFormData({ ...formData, head_count: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1">Division Head / HOD *</label>
+                <select
+                  value={formData.manager_id}
+                  onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
+                  className="w-full text-sm border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  required
+                >
+                  <option value="">Select Division Head</option>
+                  {membersList.map((u) => (
+                    <option key={u.id} value={u.id}>{u.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={isPendingUpdate}>
+                  {isPendingUpdate && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                  Update Division
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={onCancelEdit}>Cancel</Button>
+              </div>
+            </form>
+          </div>
+        )}
       </Card>
 
       {/* Children */}
@@ -195,7 +243,12 @@ function DivisionNode({
         <div className="relative ml-4">
           <div className="absolute left-0 top-0 bottom-4 w-px bg-border" />
           {division.children.map((child: any, i: number) => (
-            <DivisionNode key={child.id} division={child} depth={depth + 1} index={index + i + 1} onEdit={onEdit} onDelete={onDelete} onLifecycleChange={onLifecycleChange} />
+            <DivisionNode key={child.id} division={child} depth={depth + 1} index={index + i + 1}
+              onEdit={onEdit} onDelete={onDelete} onLifecycleChange={onLifecycleChange}
+              editingId={editingId} formData={formData} setFormData={setFormData}
+              onUpdate={onUpdate} onCancelEdit={onCancelEdit} isPendingUpdate={isPendingUpdate}
+              membersList={membersList}
+            />
           ))}
         </div>
       )}
@@ -214,10 +267,21 @@ export function DivisionsPage() {
   const updateDivision = useUpdateDivision();
   const deleteDivision = useDeleteDivision();
 
+  const { data: membersData } = useMembers({ page_size: 200 });
+  const membersList: MemberOption[] = (membersData?.items ?? []).map((m: any) => ({
+    id: m.id,
+    label: `${m.first_name || ''} ${m.last_name || ''}`.trim() + (m.role ? ` (${m.role.replace(/_/g, ' ')})` : '') + (m.email ? ` — ${m.email}` : ''),
+  }));
+
   const handleEdit = (division: any) => {
     setEditingId(division.id);
     setFormData({ name: division.name, code: division.code, description: division.description || '', budget: division.budget || '', head_count: division.head_count || '', manager_id: division.manager_id || division.managerId || '' });
-    setShowForm(true);
+    setShowForm(false); // close create form if open
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setFormData({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
   };
 
   const handleDelete = async (id: string) => {
@@ -230,18 +294,26 @@ export function DivisionsPage() {
     await updateDivision.mutateAsync({ divisionId: id, setupStatus: status } as any).catch(() => {});
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.manager_id) {
       alert('Please select a Division Head (HOD/CEO). This is required.');
       return;
     }
     try {
-      if (editingId) await updateDivision.mutateAsync({ divisionId: editingId, ...formData });
-      else await createDivision.mutateAsync(formData);
+      await createDivision.mutateAsync(formData);
       setFormData({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
       setShowForm(false);
+    } catch {}
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId) return;
+    try {
+      await updateDivision.mutateAsync({ divisionId: editingId, ...formData });
       setEditingId(null);
+      setFormData({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
     } catch {}
   };
 
@@ -313,11 +385,11 @@ export function DivisionsPage() {
         })}
       </div>
 
-      {/* Create/Edit Form */}
-      {showForm && (
+      {/* Create Form (new division only) */}
+      {showForm && !editingId && (
         <Card className="border-primary/40 p-5">
-          <h2 className="text-base font-semibold mb-4">{editingId ? 'Edit Division' : 'Create Division'}</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <h2 className="text-base font-semibold mb-4">Create Division</h2>
+          <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium block mb-1">Division Name *</label>
@@ -341,7 +413,8 @@ export function DivisionsPage() {
                 className="w-full text-sm border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               >
-                {DIV_HEAD_USERS.map((u) => (
+                <option value="">Select Division Head</option>
+                {membersList.map((u) => (
                   <option key={u.id} value={u.id}>{u.label}</option>
                 ))}
               </select>
@@ -350,11 +423,11 @@ export function DivisionsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button type="submit" disabled={createDivision.isPending || updateDivision.isPending}>
-                {(createDivision.isPending || updateDivision.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {editingId ? 'Update Division' : 'Create Division'}
+              <Button type="submit" disabled={createDivision.isPending}>
+                {createDivision.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Create Division
               </Button>
-              <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => { setShowForm(false); }}>Cancel</Button>
             </div>
           </form>
         </Card>
@@ -373,7 +446,12 @@ export function DivisionsPage() {
       ) : viewMode === 'tree' ? (
         <div className="space-y-1">
           {divisions.map((div: any, i: number) => (
-            <DivisionNode key={div.id} division={div} depth={0} index={i} onEdit={handleEdit} onDelete={handleDelete} onLifecycleChange={handleLifecycleChange} />
+            <DivisionNode key={div.id} division={div} depth={0} index={i}
+              onEdit={handleEdit} onDelete={handleDelete} onLifecycleChange={handleLifecycleChange}
+              editingId={editingId} formData={formData} setFormData={setFormData}
+              onUpdate={handleUpdate} onCancelEdit={handleCancelEdit} isPendingUpdate={updateDivision.isPending}
+              membersList={membersList}
+            />
           ))}
         </div>
       ) : (

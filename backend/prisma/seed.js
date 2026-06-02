@@ -31,6 +31,13 @@ async function main() {
     { id: 'dev-member-id',          email: 'member@example.local',         firstName: 'Ravi',    lastName: 'Kumar' },
     { id: 'dev-executive-id',       email: 'executive@example.local',      firstName: 'Sunita',  lastName: 'Reddy' },
     { id: 'dev-viewer-id',          email: 'viewer@example.local',         firstName: 'Arjun',   lastName: 'Patel' },
+    { id: 'dev-hod-id',             email: 'hod@example.local',            firstName: 'Subroto', lastName: 'Ghosh' },
+    // PPID-specific users
+    { id: 'dev-ppid-divadmin-id',  email: 'ppid-divadmin@example.local',  firstName: 'PPID',    lastName: 'Admin' },
+    { id: 'dev-ppid-vh-id',        email: 'ppid-vh@example.local',        firstName: 'Aashna',  lastName: 'Kapoor' },
+    { id: 'dev-ppid-tm-id',        email: 'ppid-tm@example.local',        firstName: 'Meera',   lastName: 'Iyer' },
+    { id: 'dev-ppid-pl-id',        email: 'ppid-pl@example.local',        firstName: 'Sidharth',lastName: 'Verma' },
+    { id: 'dev-ppid-hod-id',       email: 'ppid-hod@example.local',       firstName: 'Nandita', lastName: 'Roy' },
   ];
 
   for (const u of users) {
@@ -51,6 +58,13 @@ async function main() {
     { userId: 'dev-member-id',          role: 'member',          isOwner: false },
     { userId: 'dev-executive-id',       role: 'executive',       isOwner: false },
     { userId: 'dev-viewer-id',          role: 'viewer',          isOwner: false },
+    { userId: 'dev-hod-id',             role: 'hod',             isOwner: false },
+    // PPID org members
+    { userId: 'dev-ppid-divadmin-id',  role: 'division_admin',  isOwner: false },
+    { userId: 'dev-ppid-vh-id',        role: 'vertical_head',   isOwner: false },
+    { userId: 'dev-ppid-tm-id',        role: 'member',          isOwner: false },
+    { userId: 'dev-ppid-pl-id',        role: 'project_manager', isOwner: false },
+    { userId: 'dev-ppid-hod-id',       role: 'hod',             isOwner: false },
   ];
 
   for (const m of orgMembers) {
@@ -181,6 +195,7 @@ async function main() {
     { id: 'div_hr',          name: 'Human Resources',    code: 'HR',    parentId: null,           color: '#F59E0B', description: 'People operations and HR',              managerId: null,                     budget: 1000000, headCount: 8,  displayOrder: 3 },
     { id: 'div_frontend',    name: 'Frontend Team',      code: 'FE',    parentId: 'div_engineering', color: '#8B5CF6', description: 'UI/UX and frontend development',    managerId: 'dev-member-id',          budget: 1500000, headCount: 7,  displayOrder: 1 },
     { id: 'div_backend',     name: 'Backend & DevOps',   code: 'BE',    parentId: 'div_engineering', color: '#06B6D4', description: 'API, infrastructure and DevOps',    managerId: null,                     budget: 2000000, headCount: 8,  displayOrder: 2 },
+    { id: 'div_ppid',        name: 'PPID',               code: 'PPID',  parentId: null,              color: '#EC4899', description: 'PPID Division',                     managerId: 'dev-ppid-divadmin-id',   budget: 3000000, headCount: 10, displayOrder: 4 },
   ];
 
   for (const d of divisions) {
@@ -199,6 +214,12 @@ async function main() {
     { divisionId: 'div_hr',          userId: 'dev-org_admin-id',       role: 'division_admin' },
     { divisionId: 'div_frontend',    userId: 'dev-member-id',          role: 'division_admin' },
     { divisionId: 'div_backend',     userId: 'dev-project_manager-id', role: 'member' },
+    // PPID division members
+    { divisionId: 'div_ppid',        userId: 'dev-ppid-divadmin-id',   role: 'division_admin' },
+    { divisionId: 'div_ppid',        userId: 'dev-ppid-vh-id',         role: 'member' },
+    { divisionId: 'div_ppid',        userId: 'dev-ppid-tm-id',         role: 'member' },
+    { divisionId: 'div_ppid',        userId: 'dev-ppid-pl-id',         role: 'member' },
+    { divisionId: 'div_ppid',        userId: 'dev-ppid-hod-id',        role: 'member' },
   ];
 
   for (const m of divisionMembers) {
@@ -214,6 +235,7 @@ async function main() {
     { id: 'vert_tech',   name: 'Technology',          description: 'All technology and platform projects', color: '#3B82F6', status: 'active', lifecycleStatus: 'ACTIVE', divisionId: 'div_engineering', headId: 'dev-vertical_head-id', budget: 3000000 },
     { id: 'vert_digital', name: 'Digital Products',   description: 'Web and mobile digital products',     color: '#8B5CF6', status: 'active', lifecycleStatus: 'ACTIVE', divisionId: 'div_frontend',    headId: null,                  budget: 1500000 },
     { id: 'vert_ops',    name: 'Operations & DevOps', description: 'Infrastructure and DevOps vertical',  color: '#06B6D4', status: 'active', lifecycleStatus: 'ACTIVE', divisionId: 'div_backend',     headId: null,                  budget: 2000000 },
+    { id: 'vert_ppid',   name: 'PPID Vertical',       description: 'PPID division vertical',              color: '#EC4899', status: 'active', lifecycleStatus: 'ACTIVE', divisionId: 'div_ppid',        headId: 'dev-ppid-vh-id',       budget: 2000000 },
   ];
 
   for (const v of verticals) {
@@ -231,6 +253,7 @@ async function main() {
     { id: 'proj_sales_1',   name: 'Q2 Lead Campaign',      key: 'Q2LEAD', divisionId: 'div_sales',       verticalId: null,           ownerId: 'dev-org_admin-id',       color: '#10B981', description: 'Q2 2026 sales and lead generation campaign across digital channels.', startDate: new Date('2026-04-01'), dueDate: new Date('2026-06-30'), createdBy: 'dev-org_admin-id',       workflowConfigId: 'wf_simple' },
     { id: 'proj_hr_1',      name: 'Annual Review 2026',    key: 'HR26',   divisionId: 'div_hr',          verticalId: null,           ownerId: 'dev-org_admin-id',       color: '#F59E0B', description: 'Annual performance review and appraisal cycle 2026.',                  startDate: new Date('2026-01-01'), dueDate: new Date('2026-03-31'), createdBy: 'dev-org_admin-id',       workflowConfigId: 'wf_approval' },
     { id: 'proj_mobile',    name: 'Mobile App v2',         key: 'MOB2',   divisionId: 'div_frontend',    verticalId: 'vert_digital', ownerId: 'dev-project_manager-id', color: '#EC4899', description: 'React Native mobile app — iOS & Android.',                             startDate: new Date('2026-03-01'), dueDate: new Date('2026-10-31'), createdBy: 'dev-project_manager-id', workflowConfigId: 'wf_default' },
+    { id: 'proj_ppid_1',    name: 'PPID Initiative 2026',  key: 'PPID1',  divisionId: 'div_ppid',        verticalId: 'vert_ppid',    ownerId: 'dev-ppid-pl-id',        color: '#EC4899', description: 'Primary project under PPID vertical for 2026 initiatives.',            startDate: new Date('2026-06-01'), dueDate: new Date('2026-12-31'), createdBy: 'dev-ppid-divadmin-id',   workflowConfigId: 'wf_default' },
   ];
 
   for (const p of projects) {
@@ -256,6 +279,11 @@ async function main() {
     { projectId: 'proj_hr_1',      userId: 'dev-division_admin-id',  role: 'member' },
     { projectId: 'proj_mobile',    userId: 'dev-project_manager-id', role: 'project_manager' },
     { projectId: 'proj_mobile',    userId: 'dev-member-id',          role: 'member' },
+    // PPID project members
+    { projectId: 'proj_ppid_1',    userId: 'dev-ppid-pl-id',         role: 'project_manager' },
+    { projectId: 'proj_ppid_1',    userId: 'dev-ppid-divadmin-id',   role: 'org_admin' },
+    { projectId: 'proj_ppid_1',    userId: 'dev-ppid-vh-id',         role: 'project_manager' },
+    { projectId: 'proj_ppid_1',    userId: 'dev-ppid-tm-id',         role: 'member' },
   ];
 
   for (const m of projectMembers) {
@@ -522,7 +550,8 @@ async function main() {
   }
 
   console.log('✅  Database seeded with comprehensive demo data');
-  console.log('   • 8 users + 8 org members');
+  console.log('   • 14 users (8 base + 5 PPID + 1 HoD)');
+  console.log('   • PPID division: div_ppid (divAdmin, VH, TM, PL, HoD)');
   console.log('   • 3 verticals (vert_tech headed by dev-vertical_head-id)');
   console.log('   • 4 workflow configs (Kanban, Agile, Simple, Approval-Gated)');
   console.log('   • 4 custom roles, 4 custom field definitions');

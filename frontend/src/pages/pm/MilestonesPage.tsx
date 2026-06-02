@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import {
   Plus, Edit2, Trash2, ChevronRight, Flag, Calendar,
   CheckCircle2, Circle, Clock, AlertCircle, Loader2, X,
   Wallet, Activity, Lock, CheckSquare2, Ban, PlayCircle,
-  ArrowRight, ShieldCheck, Hash,
+  ArrowRight, ShieldCheck, Hash, ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMilestones, useCreateMilestone, useUpdateMilestone, useDeleteMilestone, useProject } from '@/api/hooks';
@@ -368,21 +368,81 @@ function MilestoneCard({
 // ─── Slide-in Form Panel ──────────────────────────────────
 
 function MilestoneFormPanel({
-  editingId, initialData, onSave, onClose, saving,
+  editingId, initialData, onSave, onClose, saving, apiError,
+  projectBudget, usedBudget,
+  projectStartDate, projectDueDate,
 }: {
   editingId: string | null;
   initialData: MilestoneFormData;
   onSave: (data: MilestoneFormData) => void;
   onClose: () => void;
   saving: boolean;
+  apiError?: string | null;
+  projectBudget: number | null;
+  usedBudget: number;
+  projectStartDate?: string;
+  projectDueDate?: string;
 }) {
   const [form, setForm] = useState<MilestoneFormData>(initialData);
+  const [budgetError, setBudgetError] = useState('');
+  const [dateError, setDateError] = useState('');
   const [lockConfirm, setLockConfirm] = useState(false);
   const set = (patch: Partial<MilestoneFormData>) => setForm((f) => ({ ...f, ...patch }));
+
+  const isCreate = !editingId;
+
+  // Remaining budget = project total − already used (exclude current milestone when editing)
+  const remainingBudget = projectBudget != null
+    ? projectBudget - (isCreate ? usedBudget : (usedBudget - (parseFloat(initialData.budget) || 0)))
+    : null;
+
+  const handleBudgetChange = (val: string) => {
+    set({ budget: val });
+    if (projectBudget != null && val) {
+      const entered = parseFloat(val) || 0;
+      const used = isCreate ? usedBudget : (usedBudget - (parseFloat(initialData.budget) || 0));
+      if (used + entered > projectBudget) {
+        setBudgetError(`Exceeds project budget. Remaining: ₹${(projectBudget - used).toLocaleString('en-IN')}`);
+      } else {
+        setBudgetError('');
+      }
+    } else {
+      setBudgetError('');
+    }
+  };
+
+  const validateDates = (startDate: string, dueDate: string): string => {
+    if (projectStartDate && startDate && startDate < projectStartDate) {
+      return `Start date cannot be before project start date (${projectStartDate})`;
+    }
+    if (projectDueDate && dueDate && dueDate > projectDueDate) {
+      return `Due date cannot be after project end date (${projectDueDate})`;
+    }
+    if (projectStartDate && dueDate && dueDate < projectStartDate) {
+      return `Due date cannot be before project start date (${projectStartDate})`;
+    }
+    if (startDate && dueDate && dueDate < startDate) {
+      return `Due date cannot be before start date`;
+    }
+    return '';
+  };
+
+  const handleDateChange = (field: 'start_date' | 'due_date', val: string) => {
+    const updated = { ...form, [field]: val };
+    set({ [field]: val });
+    setDateError(validateDates(updated.start_date, updated.due_date));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return;
+    if (!form.budget || parseFloat(form.budget) <= 0) {
+      setBudgetError('Budget is required and must be greater than 0');
+      return;
+    }
+    if (budgetError) return;
+    const dErr = validateDates(form.start_date, form.due_date);
+    if (dErr) { setDateError(dErr); return; }
     onSave(form);
   };
 
@@ -458,15 +518,33 @@ function MilestoneFormPanel({
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium block mb-1">Start Date</label>
-              <Input type="date" value={form.start_date} onChange={(e) => set({ start_date: e.target.value })} />
+          <div className="space-y-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium block mb-1">Start Date</label>
+                <Input type="date" value={form.start_date}
+                  min={projectStartDate}
+                  max={projectDueDate}
+                  onChange={(e) => handleDateChange('start_date', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Due Date</label>
+                <Input type="date" value={form.due_date}
+                  min={projectStartDate || form.start_date}
+                  max={projectDueDate}
+                  onChange={(e) => handleDateChange('due_date', e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium block mb-1">Due Date</label>
-              <Input type="date" value={form.due_date} onChange={(e) => set({ due_date: e.target.value })} />
-            </div>
+            {dateError && (
+              <p className="text-[10px] text-red-600 flex items-center gap-1">⚠ {dateError}</p>
+            )}
+            {(projectStartDate || projectDueDate) && !dateError && (
+              <p className="text-[10px] text-muted-foreground">
+                Dates must be within project period:
+                {projectStartDate ? ` from ${projectStartDate}` : ''}
+                {projectDueDate ? ` to ${projectDueDate}` : ''}
+              </p>
+            )}
           </div>
 
           {/* ── Budget Section ─────────────────────────────── */}
@@ -489,14 +567,14 @@ function MilestoneFormPanel({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm font-medium flex items-center gap-1.5">
-                  Planned / Proposed Budget
+                  Planned / Proposed Budget <span className="text-destructive">*</span>
                   {form.budgetLocked && (
                     <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
                       <Lock className="h-2.5 w-2.5" /> Locked
                     </span>
                   )}
                 </label>
-                {!form.budgetLocked && form.budget && (
+                {!isCreate && !form.budgetLocked && form.budget && (
                   <button
                     type="button"
                     className="text-[10px] text-amber-600 hover:text-amber-700 underline"
@@ -512,9 +590,22 @@ function MilestoneFormPanel({
                 value={form.budget}
                 disabled={form.budgetLocked}
                 className={form.budgetLocked ? 'bg-muted text-muted-foreground cursor-not-allowed' : ''}
-                onChange={(e) => set({ budget: e.target.value })}
+                onChange={(e) => handleBudgetChange(e.target.value)}
               />
-              {form.budgetLocked && (
+              {budgetError && (
+                <p className="text-[10px] text-red-600 mt-1 flex items-center gap-1">⚠ {budgetError}</p>
+              )}
+              {!budgetError && remainingBudget != null && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Remaining project budget: <span className="font-semibold text-foreground">₹{remainingBudget.toLocaleString('en-IN')}</span>
+                </p>
+              )}
+              {isCreate && !budgetError && (
+                <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                  <Lock className="h-2.5 w-2.5" /> Budget will be auto-locked on save.
+                </p>
+              )}
+              {!isCreate && form.budgetLocked && (
                 <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
                   <Lock className="h-2.5 w-2.5" /> Planned budget is locked and cannot be changed.
                 </p>
@@ -643,6 +734,11 @@ function MilestoneFormPanel({
           </div>
         </form>
 
+        {apiError && (
+          <div className="px-5 py-2 bg-destructive/10 border-t border-destructive/20">
+            <p className="text-xs text-destructive">{apiError}</p>
+          </div>
+        )}
         <div className="px-5 py-4 border-t flex gap-2">
           <Button onClick={handleSubmit} disabled={saving} className="flex-1">
             {saving && <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />}
@@ -712,6 +808,7 @@ function CloseMilestoneDialog({
 
 export function MilestonesPage() {
   const { projectId = '' } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
 
   const projectQuery = useProject(projectId);
   const milestonesQuery = useMilestones(projectId);
@@ -731,6 +828,35 @@ export function MilestonesPage() {
   const apiMilestones: Milestone[] = (milestonesQuery.data ?? []) as Milestone[];
   const milestones = apiMilestones.length > 0 ? apiMilestones : localMilestones;
   const project = projectQuery.data as any;
+
+  // Auto-start milestones whose start_date has passed and are still NOT_STARTED (not BLOCKED)
+  useEffect(() => {
+    if (apiMilestones.length === 0) {
+      const today = new Date().toISOString().slice(0, 10);
+      setLocalMilestones((prev) =>
+        prev.map((m) => {
+          const sd = m.start_date || m.startDate || '';
+          if ((m.waterfallStatus === 'NOT_STARTED' || !m.waterfallStatus) && sd && sd <= today && m.status === 'pending') {
+            return { ...m, waterfallStatus: 'IN_PROGRESS' as WaterfallStatus, status: 'in_progress' as MilestoneStatus };
+          }
+          return m;
+        })
+      );
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const toAutoStart = apiMilestones.filter((m) => {
+      const sd = m.start_date || m.startDate || '';
+      return (m.waterfallStatus === 'NOT_STARTED' || !m.waterfallStatus) && sd && sd <= today && m.status === 'pending';
+    });
+    if (toAutoStart.length === 0) return;
+    Promise.all(
+      toAutoStart.map((m) =>
+        api.patch(`/projects/${projectId}/milestones/${m.id}`, { waterfallStatus: 'IN_PROGRESS', status: 'in_progress' }).catch(() => {})
+      )
+    ).then(() => milestonesQuery.refetch?.());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [milestonesQuery.data]);
   const projectName = project?.name || 'Project';
 
   const total = milestones.length;
@@ -828,16 +954,23 @@ export function MilestonesPage() {
 
   const handleStartMilestone = async (m: Milestone) => {
     setStartingSaving(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const originalStart = m.start_date || m.startDate || '';
+    // Shift start date to today if today is after original start date
+    const newStartDate = originalStart && today > originalStart ? today : originalStart;
     try {
       if (apiMilestones.length > 0) {
         await api.patch(`/projects/${projectId}/milestones/${m.id}`, {
           waterfallStatus: 'IN_PROGRESS',
           status: 'in_progress',
+          ...(newStartDate && newStartDate !== originalStart && { startDate: newStartDate }),
         });
         milestonesQuery.refetch?.();
       } else {
         setLocalMilestones((prev) => prev.map((ms) =>
-          ms.id === m.id ? { ...ms, waterfallStatus: 'IN_PROGRESS' as WaterfallStatus, status: 'in_progress' } : ms
+          ms.id === m.id
+            ? { ...ms, waterfallStatus: 'IN_PROGRESS' as WaterfallStatus, status: 'in_progress', start_date: newStartDate || ms.start_date }
+            : ms
         ));
       }
     } finally {
@@ -883,9 +1016,14 @@ export function MilestonesPage() {
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Flag className="h-6 w-6 text-primary" /> Milestones</h1>
-          <p className="text-muted-foreground text-sm mt-1">Track project milestones, budgets and delivery phases</p>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2"><Flag className="h-6 w-6 text-primary" /> Milestones</h1>
+            <p className="text-muted-foreground text-sm mt-1">Track project milestones, budgets and delivery phases</p>
+          </div>
         </div>
         <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> Add Milestone</Button>
       </div>
@@ -955,7 +1093,13 @@ export function MilestonesPage() {
       {/* Slide-in form panel */}
       {showPanel && (
         <MilestoneFormPanel editingId={editingMilestone?.id ?? null} initialData={panelInitial}
-          onSave={handleSave} onClose={() => { setShowPanel(false); setEditingMilestone(null); }} saving={isSaving} />
+          onSave={handleSave} onClose={() => { setShowPanel(false); setEditingMilestone(null); }} saving={isSaving}
+          apiError={(createMutation.error as any)?.response?.data?.error?.message || (updateMutation.error as any)?.response?.data?.error?.message || null}
+          projectBudget={project?.budget ? Number(project.budget) : null}
+          usedBudget={totalMilestoneBudget}
+          projectStartDate={project?.startDate || project?.start_date || undefined}
+          projectDueDate={project?.dueDate || project?.due_date || undefined}
+        />
       )}
 
       {/* Close milestone dialog */}

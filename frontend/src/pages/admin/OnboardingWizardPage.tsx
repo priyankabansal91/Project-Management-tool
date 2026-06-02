@@ -1,275 +1,367 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  useCreateDivision,
-  useInviteMember,
-  useCreateProject,
-  useWorkflows,
+  useCreateDivision, useAddDivisionMember, useCreateVertical,
+  useCreateProject, useWorkflows, useMembers,
+  useDivisions, useVerticals, useProjects, useMilestones,
+  useCreateMemberDirect, useInviteMember,
 } from '@/api/hooks';
-import { WorkflowPicker } from '@/components/shared/WorkflowPicker';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/api/client';
+import type { OrgRole } from '@/types';
 import {
-  Building2, Users, FolderKanban, Shield, ClipboardList,
-  CheckCircle, ChevronRight, ChevronLeft, Plus, Trash2, Loader2,
-  Sparkles, ArrowRight, BarChart3, LayoutDashboard, Kanban, Star,
-  UserCheck, AlertCircle, Upload, Download, Link2,
+  Building2, Network, FolderKanban, Flag, CheckSquare2,
+  CheckCircle, ChevronRight, ChevronLeft, Plus, Loader2,
+  Sparkles, ArrowRight, LayoutDashboard, Kanban, UserCheck,
+  AlertCircle, Users, Crown, Shield, X, Upload, Download,
+  UserPlus, List,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { OrgRole } from '@/types';
 
-// ─── Step definitions ──────────────────────────────────────────────────────
+// ─── Step config ────────────────────────────────────────────────────────────
 
-interface WizardStep { id: number; title: string; description: string; icon: React.ElementType }
+type StepType = 'division' | 'vertical' | 'project' | 'milestone' | 'task';
 
-const STEPS: WizardStep[] = [
-  { id: 1, title: 'Division',     description: 'Define your division',       icon: Building2     },
-  { id: 2, title: 'Team',         description: 'Invite members',             icon: Users         },
-  { id: 3, title: 'Project',      description: 'Create first project',       icon: FolderKanban  },
-  { id: 4, title: 'Assign Roles', description: 'Set PM & heads',             icon: Shield        },
-  { id: 5, title: 'Tasks',        description: 'Seed initial tasks',         icon: ClipboardList },
-  { id: 6, title: 'Launch',       description: 'Review & go live',           icon: CheckCircle   },
-];
+const ROLE_STEPS: Record<string, StepType[]> = {
+  org_admin:       ['division', 'vertical', 'project', 'milestone', 'task'],
+  hod:             ['vertical', 'project', 'milestone', 'task'],
+  division_admin:  ['vertical', 'project', 'milestone', 'task'],
+  vertical_head:   ['project', 'milestone', 'task'],
+  project_manager: ['milestone', 'task'],
+  team_lead:       ['task'],
+  member:          ['task'],
+  executive:       [],
+  viewer:          [],
+};
+
+const STEP_META: Record<StepType, { title: string; subtitle: string; icon: React.ElementType; color: string }> = {
+  division: { title: 'Division',  subtitle: 'Create a division & assign Division Admin', icon: Building2,    color: 'text-indigo-600'  },
+  vertical: { title: 'Vertical',  subtitle: 'Create a vertical & assign Vertical Head',  icon: Network,      color: 'text-purple-600'  },
+  project:  { title: 'Project',   subtitle: 'Create a project & assign Project Manager', icon: FolderKanban, color: 'text-blue-600'    },
+  milestone:{ title: 'Milestone', subtitle: 'Define a delivery phase with timeline',     icon: Flag,         color: 'text-orange-600'  },
+  task:     { title: 'Task',      subtitle: 'Create a task & assign to a team member',   icon: CheckSquare2, color: 'text-green-600'   },
+};
+
+const COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#EF4444','#10B981','#06B6D4','#EC4899','#6366F1'];
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface MemberEntry { email: string; role: OrgRole }
-interface TaskEntry   { title: string; priority: 'low' | 'medium' | 'high'; assigneeEmail: string }
+interface WizardCtx {
+  divisionId: string; divisionName: string;
+  verticalId:  string; verticalName:  string;
+  projectId:   string; projectName:   string;
+  milestoneId: string; milestoneName: string;
+}
 
-const ROLE_OPTIONS: { value: OrgRole; label: string; desc: string; color: string }[] = [
-  { value: 'division_admin',  label: 'Division Admin',      desc: 'Full control within division', color: 'text-purple-600' },
-  { value: 'project_manager', label: 'Project Lead',         desc: 'Manage projects & sprints',    color: 'text-blue-600'   },
-  { value: 'member',          label: 'Project Team Member',  desc: 'Work on tasks & log time',     color: 'text-green-600'  },
-  { value: 'viewer',          label: 'Others',               desc: 'Read-only access',             color: 'text-gray-500'   },
-];
-
-const COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#EF4444','#10B981','#06B6D4','#EC4899','#6366F1'];
-const PRIORITY_COLORS = { low: 'text-green-600', medium: 'text-yellow-600', high: 'text-red-600' };
+interface MemberOpt { id: string; label: string; }
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
 export function OnboardingWizardPage() {
-  const navigate = useNavigate();
-  const [step, setStep]       = useState(1);
-  const [creating, setCreating] = useState(false);
-  const [done, setDone]       = useState(false);
-  const [launchError, setLaunchError] = useState('');
-  const [createdProject, setCreatedProject] = useState<{ id: string; name: string } | null>(null);
+  const navigate  = useNavigate();
+  const { currentRole, currentDivisionId } = useAuthStore();
 
-  // Step 1 — Division
-  const [division, setDivision] = useState({ name: '', code: '', description: '' });
+  const activeSteps: StepType[] = ROLE_STEPS[currentRole || ''] ?? ['task'];
+  const totalSteps = activeSteps.length;
 
-  // Step 2 — Team members
-  const [members, setMembers] = useState<MemberEntry[]>([{ email: '', role: 'project_manager' }]);
-  const [csvMode, setCsvMode] = useState(false);
-  const [csvError, setCsvError] = useState('');
-  const [csvPreview, setCsvPreview] = useState<MemberEntry[]>([]);
+  const [stepIdx,    setStepIdx]    = useState(0);
+  const [isDone,     setIsDone]     = useState(false);
+  const [isLoading,  setIsLoading]  = useState(false);
+  const [stepError,  setStepError]  = useState('');
 
-  // Step 3 — Project
-  const [project, setProject] = useState({
-    name: '', key: '', description: '', visibility: 'org_wide' as const, color: '#3B82F6',
-    workflow_config_id: '',
+  // Context flows forward through steps
+  const [ctx, setCtx] = useState<WizardCtx>({
+    divisionId: currentDivisionId || '', divisionName: '',
+    verticalId: '',  verticalName:  '',
+    projectId:  '',  projectName:   '',
+    milestoneId:'',  milestoneName: '',
   });
 
-  // Step 4 — Roles
-  const [pmEmail, setPmEmail]         = useState('');
-  const [divHeadEmail, setDivHeadEmail] = useState('');
+  // Mode per step: 'create' | 'select'
+  const [modes, setModes] = useState<Partial<Record<StepType, 'create' | 'select'>>>({});
+  const getMode  = (s: StepType) => modes[s] ?? 'create';
+  const setMode  = (s: StepType, m: 'create' | 'select') => setModes(prev => ({ ...prev, [s]: m }));
 
-  // Step 5 — Tasks
-  const [tasks, setTasks] = useState<TaskEntry[]>([
-    { title: '', priority: 'medium', assigneeEmail: '' },
-  ]);
+  // ── Form states ──────────────────────────────────────────────────────────
 
-  const createDivision = useCreateDivision();
-  const inviteMember   = useInviteMember();
-  const createProject  = useCreateProject();
-  const { data: workflows } = useWorkflows();
+  const [divForm, setDivForm] = useState({
+    name: '', code: '', description: '', budget: '', head_count: '',
+    adminId: '', selectedId: '',
+  });
 
-  // ── helpers ──────────────────────────────────────────────────────────────
+  const [vertForm, setVertForm] = useState({
+    name: '', description: '', divisionId: '',
+    headId: '', memberIds: [] as string[], selectedId: '',
+  });
 
-  const validEmails = members.filter((m) => m.email.trim());
+  const [projForm, setProjForm] = useState({
+    name: '', key: '', description: '', visibility: 'org_wide',
+    color: '#3B82F6', workflow_config_id: '', verticalId: '',
+    managerId: '', teamLeadId: '', memberIds: [] as string[], selectedId: '',
+  });
 
-  const addMember    = () => setMembers((m) => [...m, { email: '', role: 'member' }]);
-  const removeMember = (i: number) => setMembers((m) => m.filter((_, idx) => idx !== i));
-  const updateMember = (i: number, field: keyof MemberEntry, value: string) =>
-    setMembers((m) => m.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
+  const [msForm, setMsForm] = useState({
+    title: '', description: '', due_date: '', status: 'upcoming', selectedId: '',
+  });
 
-  const downloadCsvTemplate = () => {
-    const csv = 'email,role\nmember1@company.com,member\npm@company.com,project_manager\nhead@company.com,division_admin\nviewer@company.com,viewer\n';
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'team-import-template.csv'; a.click();
-    URL.revokeObjectURL(url);
-  };
+  const [taskForm, setTaskForm] = useState({
+    title: '', description: '', priority: 'medium', due_date: '',
+    assigneeId: '', milestoneId: '',
+  });
 
-  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCsvError(''); setCsvPreview([]);
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(Boolean);
-      const header = lines[0]?.toLowerCase().replace(/\s/g, '');
-      if (!header?.includes('email')) { setCsvError('CSV must have an "email" column header.'); return; }
-      const rows = lines.slice(1).map((line) => {
-        const parts = line.split(',').map((s) => s.trim().replace(/^"|"$/g, ''));
-        const email = parts[0] ?? '';
-        const rawRole = (parts[1] ?? 'member').toLowerCase();
-        const validRoles: OrgRole[] = ['division_admin', 'project_manager', 'member', 'viewer'];
-        const role: OrgRole = validRoles.includes(rawRole as OrgRole) ? rawRole as OrgRole : 'member';
-        return { email, role };
-      }).filter((r) => r.email && r.email.includes('@'));
-      if (rows.length === 0) { setCsvError('No valid rows found. Check the email column.'); return; }
-      setCsvPreview(rows);
-    };
-    reader.readAsText(file);
-  };
+  // ── API hooks ────────────────────────────────────────────────────────────
 
-  const applyCSV = () => {
-    setMembers(csvPreview.length > 0 ? csvPreview : [{ email: '', role: 'member' }]);
-    setCsvMode(false); setCsvPreview([]); setCsvError('');
-  };
+  const createDivision   = useCreateDivision();
+  const addDivMember     = useAddDivisionMember();
+  const createVertical   = useCreateVertical();
+  const createProject    = useCreateProject();
+  const { data: wfList } = useWorkflows();
+  const workflows = (wfList ?? []) as any[];
 
-  const addTask    = () => setTasks((t) => [...t, { title: '', priority: 'medium', assigneeEmail: '' }]);
-  const removeTask = (i: number) => setTasks((t) => t.filter((_, idx) => idx !== i));
-  const updateTask = (i: number, field: keyof TaskEntry, value: string) =>
-    setTasks((t) => t.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
+  // Data for dropdowns
+  const { data: membersData } = useMembers({ page_size: 200 });
+  const allMembers: MemberOpt[] = useMemo(() =>
+    (membersData?.items ?? []).map((m: any) => ({
+      id: m.id,
+      label: `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email || m.id,
+    })), [membersData]);
 
-  const canNext = () => {
-    if (step === 1) return division.name.trim() && division.code.trim();
-    if (step === 2) return members.some((m) => m.email.trim());
-    if (step === 3) return project.name.trim() && project.key.trim();
-    return true;
-  };
+  const { data: divisionsData } = useDivisions();
+  const allDivisions: any[] = useMemo(() =>
+    (divisionsData as any)?.items ?? (Array.isArray(divisionsData) ? divisionsData : []),
+    [divisionsData]);
 
-  // auto-generate project key from name
-  const handleProjectName = (name: string) => {
-    const autoKey = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-    setProject((p) => ({ ...p, name, key: p.key || autoKey }));
-  };
+  const { data: verticalsData } = useVerticals(ctx.divisionId ? { divisionId: ctx.divisionId } : undefined);
+  const allVerticals: any[] = useMemo(() =>
+    Array.isArray(verticalsData) ? verticalsData : (verticalsData as any)?.items ?? [],
+    [verticalsData]);
 
-  // ── launch ───────────────────────────────────────────────────────────────
+  const { data: projectsData } = useProjects();
+  const allProjects: any[] = useMemo(() => projectsData?.items ?? [], [projectsData]);
 
-  const handleLaunch = async () => {
-    setCreating(true);
-    setLaunchError('');
-    try {
-      // 1. Create division
-      await createDivision.mutateAsync(division);
+  const { data: milestonesRaw } = useMilestones(ctx.projectId || '_none_');
+  const allMilestones: any[] = useMemo(() =>
+    Array.isArray(milestonesRaw) ? milestonesRaw : (milestonesRaw as any)?.items ?? [],
+    [milestonesRaw]);
 
-      // 2. Invite all members
-      const invitePromises = validEmails.map((m) =>
-        inviteMember.mutateAsync({ email: m.email, role: m.role }).catch(() => null)
-      );
-      await Promise.all(invitePromises);
+  // ── Step processing ──────────────────────────────────────────────────────
 
-      // 3. Invite PM explicitly if not already in members list
-      if (pmEmail && !validEmails.find((m) => m.email === pmEmail)) {
-        await inviteMember.mutateAsync({ email: pmEmail, role: 'project_manager' }).catch(() => null);
+  const currentStepType = activeSteps[stepIdx];
+  const isLastStep      = stepIdx === totalSteps - 1;
+  const isFirstStep     = stepIdx === 0;
+
+  const processStep = async () => {
+    const mode = getMode(currentStepType);
+
+    if (currentStepType === 'division') {
+      if (mode === 'create') {
+        if (!divForm.name.trim() || !divForm.code.trim()) throw new Error('Division name and code are required');
+        if (!divForm.adminId) throw new Error('Division Admin must be assigned');
+        const result: any = await createDivision.mutateAsync({
+          name: divForm.name.trim(),
+          code: divForm.code.trim().toUpperCase(),
+          description: divForm.description || undefined,
+          budget:      divForm.budget || undefined,
+          head_count:  divForm.head_count || undefined,
+          manager_id:  divForm.adminId,
+        });
+        const divId = result?.id || result?.data?.id;
+        if (divId) {
+          // Also add the admin as a division member with division_admin role
+          await addDivMember.mutateAsync({ divisionId: divId, userId: divForm.adminId, role: 'division_admin' }).catch(() => {});
+          setCtx(c => ({ ...c, divisionId: divId, divisionName: divForm.name }));
+        }
+      } else {
+        if (!divForm.selectedId) throw new Error('Please select a division');
+        const div = allDivisions.find((d: any) => d.id === divForm.selectedId);
+        setCtx(c => ({ ...c, divisionId: divForm.selectedId, divisionName: div?.name || '' }));
       }
+    }
 
-      // 4. Create project
-      const wfId = project.workflow_config_id || workflows?.[0]?.id;
-      const projResult = await createProject.mutateAsync({
-        name: project.name,
-        key: project.key.toUpperCase(),
-        description: project.description,
-        visibility: project.visibility,
-        color: project.color,
-        ...(wfId ? { workflow_config_id: wfId } : {}),
+    else if (currentStepType === 'vertical') {
+      const divId = ctx.divisionId || vertForm.divisionId;
+      if (mode === 'create') {
+        if (!vertForm.name.trim()) throw new Error('Vertical name is required');
+        if (!divId) throw new Error('Division must be selected');
+        if (!vertForm.headId) throw new Error('Vertical Head must be assigned');
+        const result: any = await createVertical.mutateAsync({
+          name:        vertForm.name.trim(),
+          description: vertForm.description || undefined,
+          divisionId:  divId,
+          headId:      vertForm.headId,
+        });
+        const vertId = result?.data?.data?.id || result?.data?.id || result?.id;
+        setCtx(c => ({ ...c, verticalId: vertId || '', verticalName: vertForm.name }));
+      } else {
+        if (!vertForm.selectedId) throw new Error('Please select a vertical');
+        const vert = allVerticals.find((v: any) => v.id === vertForm.selectedId);
+        setCtx(c => ({ ...c, verticalId: vertForm.selectedId, verticalName: vert?.name || '' }));
+      }
+    }
+
+    else if (currentStepType === 'project') {
+      const vertId = ctx.verticalId || projForm.verticalId;
+      if (mode === 'create') {
+        if (!projForm.name.trim() || !projForm.key.trim()) throw new Error('Project name and key are required');
+        if (!projForm.managerId) throw new Error('Project Manager must be assigned');
+        const wfId = projForm.workflow_config_id || workflows[0]?.id;
+        const result: any = await createProject.mutateAsync({
+          name:        projForm.name.trim(),
+          key:         projForm.key.trim().toUpperCase(),
+          description: projForm.description || undefined,
+          visibility:  projForm.visibility,
+          color:       projForm.color,
+          ...(vertId ? { verticalId: vertId } : {}),
+          ...(wfId   ? { workflow_config_id: wfId } : {}),
+        });
+        const projId = result?.id;
+        if (projId) {
+          const addMember = (userId: string, role: string) =>
+            api.post(`/projects/${projId}/members`, { userId, role }).catch(() => {});
+          await addMember(projForm.managerId, 'project_manager');
+          if (projForm.teamLeadId) await addMember(projForm.teamLeadId, 'team_lead');
+          for (const uid of projForm.memberIds) await addMember(uid, 'member');
+        }
+        setCtx(c => ({ ...c, projectId: projId || '', projectName: projForm.name }));
+      } else {
+        if (!projForm.selectedId) throw new Error('Please select a project');
+        const proj = allProjects.find((p: any) => p.id === projForm.selectedId);
+        setCtx(c => ({ ...c, projectId: projForm.selectedId, projectName: proj?.name || '' }));
+      }
+    }
+
+    else if (currentStepType === 'milestone') {
+      const projId = ctx.projectId;
+      if (!projId) throw new Error('A project must be set before creating a milestone. Go back and create/select a project.');
+      if (mode === 'create') {
+        if (!msForm.title.trim()) throw new Error('Milestone title is required');
+        const result: any = await api.post(`/projects/${projId}/milestones`, {
+          title:       msForm.title.trim(),
+          description: msForm.description || undefined,
+          due_date:    msForm.due_date || undefined,
+          status:      msForm.status || 'upcoming',
+        });
+        const msId = result?.data?.data?.id || result?.data?.id;
+        setCtx(c => ({ ...c, milestoneId: msId || '', milestoneName: msForm.title }));
+      } else {
+        if (!msForm.selectedId) throw new Error('Please select a milestone');
+        const ms = allMilestones.find((m: any) => m.id === msForm.selectedId);
+        setCtx(c => ({ ...c, milestoneId: msForm.selectedId, milestoneName: ms?.title || '' }));
+      }
+    }
+
+    else if (currentStepType === 'task') {
+      const projId = ctx.projectId;
+      if (!projId) throw new Error('A project must be set before creating a task. Go back and create/select a project.');
+      if (!taskForm.title.trim()) throw new Error('Task title is required');
+      await api.post(`/tasks/project/${projId}`, {
+        title:        taskForm.title.trim(),
+        description:  taskForm.description || undefined,
+        priority:     taskForm.priority,
+        due_date:     taskForm.due_date || undefined,
+        assignee_id:  taskForm.assigneeId || undefined,
+        milestone_id: ctx.milestoneId || taskForm.milestoneId || undefined,
       });
-
-      const projectId = projResult?.id as string | undefined;
-      if (projectId) {
-        setCreatedProject({ id: projectId, name: project.name });
-      }
-
-      setDone(true);
-    } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: { message?: string } } } })
-        ?.response?.data?.error?.message ?? 'Setup failed. Please try again.';
-      setLaunchError(msg);
-    } finally {
-      setCreating(false);
     }
   };
 
-  // ── done screen ──────────────────────────────────────────────────────────
+  const handleNext = async () => {
+    setStepError('');
+    setIsLoading(true);
+    try {
+      await processStep();
+      if (isLastStep) {
+        setIsDone(true);
+      } else {
+        setStepIdx(i => i + 1);
+      }
+    } catch (e: any) {
+      setStepError(e?.response?.data?.error?.message || e?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  if (done) {
+  // Auto-generate project key from name
+  const handleProjectName = (name: string) => {
+    const autoKey = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    setProjForm(p => ({ ...p, name, key: p.key || autoKey }));
+  };
+
+  // ── No steps available ───────────────────────────────────────────────────
+
+  if (totalSteps === 0) {
+    return (
+      <div className="max-w-xl mx-auto mt-16 text-center space-y-4">
+        <AlertCircle className="h-10 w-10 text-muted-foreground mx-auto" />
+        <h2 className="text-xl font-semibold">Onboarding not available for your role</h2>
+        <p className="text-muted-foreground text-sm">The onboarding wizard is available for Division Admins and above.</p>
+        <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+      </div>
+    );
+  }
+
+  // ── Done screen ──────────────────────────────────────────────────────────
+
+  if (isDone) {
     return (
       <div className="max-w-2xl mx-auto mt-8 space-y-6">
-        {/* Success header */}
         <div className="text-center space-y-3">
           <div className="flex justify-center">
             <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-950/40 flex items-center justify-center">
               <CheckCircle className="h-11 w-11 text-green-600" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold">You're all set!</h2>
-          <p className="text-muted-foreground">
-            <span className="font-semibold text-foreground">{division.name}</span> division,{' '}
-            <span className="font-semibold text-foreground">{project.name}</span> project, and{' '}
-            <span className="font-semibold text-foreground">{validEmails.length}</span> team member invitation{validEmails.length !== 1 ? 's' : ''} are ready.
+          <h2 className="text-2xl font-bold">Onboarding complete!</h2>
+          <p className="text-muted-foreground text-sm max-w-md mx-auto">
+            {[ctx.divisionName, ctx.verticalName, ctx.projectName, ctx.milestoneName]
+              .filter(Boolean).join(' → ')} has been set up and all user mappings are in place.
           </p>
         </div>
 
-        {/* Workflow summary */}
         <Card>
           <CardContent className="p-5 space-y-3">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">What happens next</h3>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary</p>
             {[
-              { icon: Users,        label: 'Team members receive invite emails and can join the platform' },
-              { icon: FolderKanban, label: 'Your project board is ready — create sprints and assign tasks' },
-              { icon: UserCheck,    label: 'Project Manager can manage workflows, sprints, and reports' },
-              { icon: BarChart3,    label: 'Reports and MIS update automatically as work progresses' },
-            ].map(({ icon: Icon, label }, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Icon className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <p className="text-sm">{label}</p>
+              { label: 'Division',  value: ctx.divisionName,  show: !!ctx.divisionName  },
+              { label: 'Vertical',  value: ctx.verticalName,  show: !!ctx.verticalName  },
+              { label: 'Project',   value: ctx.projectName,   show: !!ctx.projectName   },
+              { label: 'Milestone', value: ctx.milestoneName, show: !!ctx.milestoneName },
+            ].filter(r => r.show).map(r => (
+              <div key={r.label} className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{r.label}</span>
+                <span className="font-medium">{r.value}</span>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        {/* Quick-launch links */}
         <div className="grid grid-cols-2 gap-3">
           {[
-            { icon: Kanban,         label: 'Project Board',         desc: 'View & manage tasks',       onClick: () => navigate(createdProject ? `/projects/${createdProject.id}/board` : '/projects'), primary: true },
-            { icon: Users,          label: 'Team Management',       desc: 'Manage members & roles',    onClick: () => navigate('/team'),              primary: false },
-            { icon: BarChart3,      label: 'Reports',               desc: 'Track progress & velocity', onClick: () => navigate('/reports'),           primary: false },
-            { icon: LayoutDashboard,label: 'Division MIS',          desc: 'KPIs, attendance & output', onClick: () => navigate('/admin/division-mis'),primary: false },
-            { icon: Star,           label: 'Executive Dashboard',   desc: 'Portfolio-level view',      onClick: () => navigate('/executive'),         primary: false },
-            { icon: Sparkles,       label: 'AI Assistant',          desc: 'Smart summaries & help',    onClick: () => navigate('/ai'),                primary: false },
-          ].map(({ icon: Icon, label, desc, onClick, primary }) => (
-            <button
-              key={label}
-              onClick={onClick}
-              className={cn(
-                'flex items-center gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-md',
-                primary ? 'border-primary bg-primary/5 hover:bg-primary/10' : 'hover:bg-accent'
-              )}
-            >
-              <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0', primary ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                <Icon className="h-4.5 w-4.5 h-[18px] w-[18px]" />
+            { icon: Kanban,          label: 'Project Board',   onClick: () => navigate(ctx.projectId ? `/projects/${ctx.projectId}/board` : '/projects'), primary: true },
+            { icon: LayoutDashboard, label: 'Dashboard',       onClick: () => navigate('/dashboard'),          primary: false },
+            { icon: Users,           label: 'Team Management', onClick: () => navigate('/team'),               primary: false },
+            { icon: Flag,            label: 'Milestones',      onClick: () => navigate(ctx.projectId ? `/projects/${ctx.projectId}/milestones` : '/projects'), primary: false },
+          ].map(({ icon: Icon, label, onClick, primary }) => (
+            <button key={label} onClick={onClick}
+              className={cn('flex items-center gap-3 rounded-xl border p-4 text-left transition-all hover:shadow-md',
+                primary ? 'border-primary bg-primary/5 hover:bg-primary/10' : 'hover:bg-accent')}>
+              <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                primary ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                <Icon className="h-[18px] w-[18px]" />
               </div>
-              <div>
-                <p className={cn('text-sm font-semibold', primary && 'text-primary')}>{label}</p>
-                <p className="text-xs text-muted-foreground">{desc}</p>
-              </div>
+              <p className={cn('text-sm font-semibold', primary && 'text-primary')}>{label}</p>
             </button>
           ))}
         </div>
 
         <div className="flex justify-center gap-3">
-          <Button variant="outline" onClick={() => { setDone(false); setStep(1); setDivision({ name: '', code: '', description: '' }); setMembers([{ email: '', role: 'project_manager' }]); setProject({ name: '', key: '', description: '', visibility: 'org_wide', color: '#3B82F6', workflow_config_id: '' }); setTasks([{ title: '', priority: 'medium', assigneeEmail: '' }]); }}>
-            <Plus className="h-4 w-4 mr-2" /> Onboard Another Division
+          <Button variant="outline" onClick={() => { setIsDone(false); setStepIdx(0); setCtx({ divisionId: currentDivisionId || '', divisionName: '', verticalId: '', verticalName: '', projectId: '', projectName: '', milestoneId: '', milestoneName: '' }); }}>
+            <Plus className="h-4 w-4 mr-2" /> Start Another
           </Button>
           <Button onClick={() => navigate('/dashboard')}>
             Go to Dashboard <ArrowRight className="h-4 w-4 ml-2" />
@@ -279,49 +371,68 @@ export function OnboardingWizardPage() {
     );
   }
 
-  // ── wizard shell ─────────────────────────────────────────────────────────
+  // ── Wizard shell ─────────────────────────────────────────────────────────
+
+  const meta = STEP_META[currentStepType];
+  const Icon = meta.icon;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-primary" /> Org Admin Setup Wizard
+          <Sparkles className="h-6 w-6 text-primary" /> Onboarding Wizard
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Set up your division, team, project, roles, and initial tasks — all in one flow.
+          Set up your hierarchy step by step — each level must be mapped before proceeding.
         </p>
+      </div>
+
+      {/* Role badge + context breadcrumb */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant="secondary" className="capitalize">
+          {(currentRole || 'unknown').replace(/_/g, ' ')}
+        </Badge>
+        {[ctx.divisionName, ctx.verticalName, ctx.projectName, ctx.milestoneName]
+          .filter(Boolean).map((name, i) => (
+          <span key={i} className="flex items-center gap-1 text-xs text-muted-foreground">
+            <ChevronRight className="h-3 w-3" />
+            <span className="font-medium text-foreground">{name}</span>
+          </span>
+        ))}
       </div>
 
       {/* Step progress */}
       <div className="flex items-center">
-        {STEPS.map((s, i) => {
-          const Icon = s.icon;
-          const isActive = s.id === step;
-          const isDone   = s.id < step;
+        {activeSteps.map((sType, i) => {
+          const SMeta  = STEP_META[sType];
+          const SIcon  = SMeta.icon;
+          const isActive = i === stepIdx;
+          const isDoneS  = i < stepIdx;
           return (
-            <div key={s.id} className="flex items-center flex-1">
+            <div key={sType} className="flex items-center flex-1 min-w-0">
               <button
-                onClick={() => isDone && setStep(s.id)}
-                className={cn('flex flex-col items-center gap-1', isDone && 'cursor-pointer')}
-                title={s.description}
+                onClick={() => isDoneS && setStepIdx(i)}
+                className={cn('flex flex-col items-center gap-1 flex-shrink-0', isDoneS && 'cursor-pointer')}
+                title={SMeta.subtitle}
               >
                 <div className={cn(
                   'h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all',
                   isActive ? 'bg-primary text-primary-foreground border-primary scale-110' :
-                  isDone   ? 'bg-green-500 text-white border-green-500' :
-                             'bg-muted text-muted-foreground border-muted-foreground/20'
+                  isDoneS  ? 'bg-green-500 text-white border-green-500' :
+                             'bg-muted text-muted-foreground border-muted-foreground/20',
                 )}>
-                  {isDone ? <CheckCircle className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                  {isDoneS ? <CheckCircle className="h-4 w-4" /> : <SIcon className="h-4 w-4" />}
                 </div>
                 <p className={cn('hidden sm:block text-[10px] font-medium whitespace-nowrap',
-                  isActive ? 'text-primary' : isDone ? 'text-green-600' : 'text-muted-foreground'
+                  isActive ? 'text-primary' : isDoneS ? 'text-green-600' : 'text-muted-foreground',
                 )}>
-                  {s.title}
+                  {SMeta.title}
                 </p>
               </button>
-              {i < STEPS.length - 1 && (
-                <div className={cn('flex-1 h-0.5 mx-1 mb-4', isDone ? 'bg-green-400' : 'bg-muted')} />
+              {i < activeSteps.length - 1 && (
+                <div className={cn('flex-1 h-0.5 mx-1 mb-4', isDoneS ? 'bg-green-400' : 'bg-muted')} />
               )}
             </div>
           );
@@ -332,408 +443,389 @@ export function OnboardingWizardPage() {
       <Card>
         <CardContent className="p-6 space-y-5">
 
-          {/* ── Step 1: Division ── */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <StepHeader icon={Building2} title="Division Setup" desc="A division represents a department or business unit (e.g., Engineering, HR, Operations)." />
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium block mb-1">Division Name *</label>
-                  <Input placeholder="e.g., Engineering" value={division.name}
-                    onChange={(e) => setDivision({ ...division, name: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium block mb-1">Short Code *</label>
-                  <Input placeholder="e.g., ENG" value={division.code} maxLength={8}
-                    onChange={(e) => setDivision({ ...division, code: e.target.value.toUpperCase() })} />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium block mb-1">Description</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                  rows={3} placeholder="What does this division do?"
-                  value={division.description}
-                  onChange={(e) => setDivision({ ...division, description: e.target.value })}
-                />
-              </div>
-              <InfoBox>
-                The division will appear in reports, MIS dashboards, and capacity planning. You can configure it further from <strong>Admin → Division Config</strong>.
-              </InfoBox>
+          {/* Step header */}
+          <div className="flex items-center gap-3 pb-3 border-b">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Icon className={cn('h-5 w-5', meta.color)} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-base">
+                Step {stepIdx + 1} of {totalSteps}: {meta.title}
+              </h3>
+              <p className="text-sm text-muted-foreground">{meta.subtitle}</p>
+            </div>
+          </div>
+
+          {/* Mode toggle (not for task — always create) */}
+          {currentStepType !== 'task' && (
+            <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+              {(['create', 'select'] as const).map(m => (
+                <button key={m}
+                  onClick={() => setMode(currentStepType, m)}
+                  className={cn(
+                    'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
+                    getMode(currentStepType) === m
+                      ? 'bg-background shadow-sm text-foreground'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {m === 'create' ? '+ Create New' : '← Use Existing'}
+                </button>
+              ))}
             </div>
           )}
 
-          {/* ── Step 2: Team ── */}
-          {step === 2 && (
+          {/* Error */}
+          {stepError && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>{stepError}</span>
+            </div>
+          )}
+
+          {/* ── DIVISION STEP ── */}
+          {currentStepType === 'division' && (
             <div className="space-y-4">
-              <StepHeader icon={Users} title="Build Your Team" desc="Invite members by email and assign their roles. They'll receive invitation links." />
-
-              {/* Role reference */}
-              <div className="grid grid-cols-2 gap-2">
-                {ROLE_OPTIONS.map((r) => (
-                  <div key={r.value} className="flex items-start gap-2 rounded-lg border p-2.5">
-                    <Shield className={cn('h-4 w-4 mt-0.5 flex-shrink-0', r.color)} />
-                    <div>
-                      <p className="text-xs font-semibold">{r.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{r.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Import toggle */}
-              <div className="flex items-center gap-2 border-b pb-3">
-                <button
-                  onClick={() => { setCsvMode(false); setCsvPreview([]); setCsvError(''); }}
-                  className={cn('px-3 py-1.5 rounded-md text-sm font-medium transition-colors', !csvMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}
-                >
-                  Manual Entry
-                </button>
-                <button
-                  onClick={() => setCsvMode(true)}
-                  className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors', csvMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted')}
-                >
-                  <Upload className="h-3.5 w-3.5" /> Bulk Import (CSV)
-                </button>
-              </div>
-
-              {/* Manual entry */}
-              {!csvMode && (
+              {getMode('division') === 'create' ? (
                 <>
-                  <div className="space-y-2">
-                    {members.map((m, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <Input type="email" placeholder="member@company.com" value={m.email} className="flex-1"
-                          onChange={(e) => updateMember(i, 'email', e.target.value)} />
-                        <select
-                          value={m.role}
-                          onChange={(e) => updateMember(i, 'role', e.target.value as OrgRole)}
-                          className="px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                        >
-                          {ROLE_OPTIONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                        </select>
-                        <Button size="icon" variant="ghost" className="text-destructive h-9 w-9 flex-shrink-0"
-                          onClick={() => removeMember(i)} disabled={members.length === 1}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-2 gap-4">
+                    <FieldWrap label="Division Name *">
+                      <Input placeholder="e.g., Engineering" value={divForm.name}
+                        onChange={e => setDivForm(f => ({ ...f, name: e.target.value }))} />
+                    </FieldWrap>
+                    <FieldWrap label="Short Code *">
+                      <Input placeholder="e.g., ENG" maxLength={8} value={divForm.code}
+                        onChange={e => setDivForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} />
+                    </FieldWrap>
                   </div>
-                  <Button variant="outline" size="sm" onClick={addMember}>
-                    <Plus className="h-4 w-4 mr-2" /> Add Another Member
-                  </Button>
+                  <FieldWrap label="Description">
+                    <textarea rows={2} placeholder="What does this division do?"
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={divForm.description}
+                      onChange={e => setDivForm(f => ({ ...f, description: e.target.value }))} />
+                  </FieldWrap>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FieldWrap label="Budget">
+                      <Input type="number" placeholder="e.g., 500000" value={divForm.budget}
+                        onChange={e => setDivForm(f => ({ ...f, budget: e.target.value }))} />
+                    </FieldWrap>
+                    <FieldWrap label="Head Count">
+                      <Input type="number" placeholder="e.g., 25" value={divForm.head_count}
+                        onChange={e => setDivForm(f => ({ ...f, head_count: e.target.value }))} />
+                    </FieldWrap>
+                  </div>
+
+                  <UserMapSection
+                    icon={Crown} color="border-indigo-200 dark:border-indigo-800"
+                    bgColor="bg-indigo-100 dark:bg-indigo-950/40" iconColor="text-indigo-600"
+                    title="Division Admin *" desc="Has full control within this division"
+                    value={divForm.adminId} members={allMembers}
+                    onChange={v => setDivForm(f => ({ ...f, adminId: v }))}
+                    placeholder="Select Division Admin"
+                  />
                 </>
-              )}
-
-              {/* CSV import */}
-              {csvMode && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">Upload a CSV with <code className="bg-muted px-1 rounded text-xs">email</code> and <code className="bg-muted px-1 rounded text-xs">role</code> columns.</p>
-                    <Button variant="outline" size="sm" onClick={downloadCsvTemplate}>
-                      <Download className="h-3.5 w-3.5 mr-1.5" /> Download Template
-                    </Button>
-                  </div>
-
-                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-xl py-8 cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-all group">
-                    <Upload className="h-8 w-8 text-muted-foreground/50 group-hover:text-primary mb-2" />
-                    <p className="text-sm font-medium">Click to upload CSV</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Supported: email, role columns</p>
-                    <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvUpload} />
-                  </label>
-
-                  {csvError && (
-                    <div className="p-2.5 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 text-red-700 dark:text-red-300 text-sm">
-                      {csvError}
-                    </div>
-                  )}
-
-                  {csvPreview.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">{csvPreview.length} member{csvPreview.length !== 1 ? 's' : ''} found in CSV:</p>
-                      <div className="max-h-40 overflow-y-auto border rounded-lg divide-y">
-                        {csvPreview.map((m, i) => (
-                          <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
-                            <span className="font-mono text-xs">{m.email}</span>
-                            <Badge variant="secondary" className="text-[10px]">{ROLE_OPTIONS.find((r) => r.value === m.role)?.label}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                      <Button onClick={applyCSV} className="w-full">
-                        <CheckCircle className="h-4 w-4 mr-2" /> Apply {csvPreview.length} Members
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Third-party API note */}
-                  <div className="flex items-start gap-2.5 rounded-lg border border-muted p-3 bg-muted/30">
-                    <Link2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p className="font-semibold text-foreground">API / Third-Party Integration</p>
-                      <p>Use the REST API <code className="bg-background px-1 rounded">POST /v1/members/invite</code> to bulk-onboard members from HRMS, Active Directory, Google Workspace, or any HR system. Supports batch payloads with email + role.</p>
-                      <p className="mt-1">Coming soon: Azure AD sync, Okta SSO provisioning, Slack workspace import.</p>
-                    </div>
-                  </div>
-                </div>
+              ) : (
+                <FieldWrap label="Select an existing division">
+                  <Select value={divForm.selectedId}
+                    onChange={v => setDivForm(f => ({ ...f, selectedId: v }))}
+                    placeholder="— Choose Division —"
+                    options={allDivisions.map((d: any) => ({ value: d.id, label: `${d.name} (${d.code})` }))}
+                  />
+                </FieldWrap>
               )}
             </div>
           )}
 
-          {/* ── Step 3: Project ── */}
-          {step === 3 && (
+          {/* ── VERTICAL STEP ── */}
+          {currentStepType === 'vertical' && (
             <div className="space-y-4">
-              <StepHeader icon={FolderKanban} title="Create First Project" desc="Every project gets a Kanban board, sprint management, reports, and a Gantt chart." />
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                  <label className="text-sm font-medium block mb-1">Project Name *</label>
-                  <Input placeholder="e.g., Customer Portal Q3" value={project.name}
-                    onChange={(e) => handleProjectName(e.target.value)} />
+              {getMode('vertical') === 'create' ? (
+                <>
+                  <FieldWrap label="Vertical Name *">
+                    <Input placeholder="e.g., Software Development" value={vertForm.name}
+                      onChange={e => setVertForm(f => ({ ...f, name: e.target.value }))} />
+                  </FieldWrap>
+                  <FieldWrap label="Description">
+                    <textarea rows={2} placeholder="What does this vertical focus on?"
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={vertForm.description}
+                      onChange={e => setVertForm(f => ({ ...f, description: e.target.value }))} />
+                  </FieldWrap>
+
+                  {/* Division selector — only if not already set from context */}
+                  {!ctx.divisionId && (
+                    <FieldWrap label="Division *">
+                      <Select value={vertForm.divisionId}
+                        onChange={v => setVertForm(f => ({ ...f, divisionId: v }))}
+                        placeholder="— Select Division —"
+                        options={allDivisions.map((d: any) => ({ value: d.id, label: `${d.name} (${d.code})` }))}
+                      />
+                    </FieldWrap>
+                  )}
+                  {ctx.divisionId && (
+                    <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Division:</span>
+                      <span className="font-medium">{ctx.divisionName || ctx.divisionId}</span>
+                    </div>
+                  )}
+
+                  <UserMapSection
+                    icon={Network} color="border-purple-200 dark:border-purple-800"
+                    bgColor="bg-purple-100 dark:bg-purple-950/40" iconColor="text-purple-600"
+                    title="Vertical Head *" desc="Manages all projects within this vertical"
+                    value={vertForm.headId} members={allMembers}
+                    onChange={v => setVertForm(f => ({ ...f, headId: v }))}
+                    placeholder="Select Vertical Head"
+                  />
+
+                  <MultiUserSection
+                    title="Team Members" desc="Members who will work within this vertical (optional)"
+                    members={allMembers} selected={vertForm.memberIds}
+                    onChange={ids => setVertForm(f => ({ ...f, memberIds: ids }))}
+                  />
+                </>
+              ) : (
+                <FieldWrap label="Select an existing vertical">
+                  <Select value={vertForm.selectedId}
+                    onChange={v => setVertForm(f => ({ ...f, selectedId: v }))}
+                    placeholder="— Choose Vertical —"
+                    options={allVerticals.map((v: any) => ({ value: v.id, label: v.name }))}
+                  />
+                </FieldWrap>
+              )}
+            </div>
+          )}
+
+          {/* ── PROJECT STEP ── */}
+          {currentStepType === 'project' && (
+            <div className="space-y-4">
+              {getMode('project') === 'create' ? (
+                <>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2">
+                      <FieldWrap label="Project Name *">
+                        <Input placeholder="e.g., Customer Portal Q3" value={projForm.name}
+                          onChange={e => handleProjectName(e.target.value)} />
+                      </FieldWrap>
+                    </div>
+                    <FieldWrap label="Key *">
+                      <Input placeholder="CPQ3" maxLength={10} value={projForm.key}
+                        onChange={e => setProjForm(f => ({ ...f, key: e.target.value.toUpperCase() }))} />
+                    </FieldWrap>
+                  </div>
+
+                  <FieldWrap label="Description">
+                    <textarea rows={2} placeholder="What is this project about?"
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={projForm.description}
+                      onChange={e => setProjForm(f => ({ ...f, description: e.target.value }))} />
+                  </FieldWrap>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FieldWrap label="Visibility">
+                      <Select value={projForm.visibility}
+                        onChange={v => setProjForm(f => ({ ...f, visibility: v }))}
+                        options={[
+                          { value: 'org_wide', label: 'Organisation Wide' },
+                          { value: 'private',  label: 'Private' },
+                          { value: 'public',   label: 'Public' },
+                        ]}
+                      />
+                    </FieldWrap>
+                    {workflows.length > 0 && (
+                      <FieldWrap label="Workflow">
+                        <Select value={projForm.workflow_config_id || workflows[0]?.id || ''}
+                          onChange={v => setProjForm(f => ({ ...f, workflow_config_id: v }))}
+                          options={workflows.map((w: any) => ({ value: w.id, label: w.name }))}
+                        />
+                      </FieldWrap>
+                    )}
+                  </div>
+
+                  {/* Vertical context or selector */}
+                  {ctx.verticalId ? (
+                    <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+                      <Network className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Vertical:</span>
+                      <span className="font-medium">{ctx.verticalName || ctx.verticalId}</span>
+                    </div>
+                  ) : (
+                    <FieldWrap label="Vertical (optional)">
+                      <Select value={projForm.verticalId}
+                        onChange={v => setProjForm(f => ({ ...f, verticalId: v }))}
+                        placeholder="— Select Vertical (optional) —"
+                        options={allVerticals.map((v: any) => ({ value: v.id, label: v.name }))}
+                      />
+                    </FieldWrap>
+                  )}
+
+                  <FieldWrap label="Project Color">
+                    <div className="flex gap-2 mt-1">
+                      {COLORS.map(c => (
+                        <button key={c} type="button" onClick={() => setProjForm(f => ({ ...f, color: c }))}
+                          className={cn('h-7 w-7 rounded-full border-2 transition-transform',
+                            projForm.color === c ? 'border-foreground scale-110' : 'border-border')}
+                          style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                  </FieldWrap>
+
+                  <UserMapSection
+                    icon={FolderKanban} color="border-blue-200 dark:border-blue-800"
+                    bgColor="bg-blue-100 dark:bg-blue-950/40" iconColor="text-blue-600"
+                    title="Project Manager *" desc="Manages sprints, assigns tasks, and leads the team"
+                    value={projForm.managerId} members={allMembers}
+                    onChange={v => setProjForm(f => ({ ...f, managerId: v }))}
+                    placeholder="Select Project Manager"
+                  />
+
+                  <UserMapSection
+                    icon={Shield} color="border-emerald-200 dark:border-emerald-800"
+                    bgColor="bg-emerald-100 dark:bg-emerald-950/40" iconColor="text-emerald-600"
+                    title="Team Lead" desc="Leads the development team within this project"
+                    value={projForm.teamLeadId} members={allMembers}
+                    onChange={v => setProjForm(f => ({ ...f, teamLeadId: v }))}
+                    placeholder="Select Team Lead (optional)"
+                  />
+
+                  <MultiUserSection
+                    title="Team Members" desc="Add members who will work on this project"
+                    members={allMembers} selected={projForm.memberIds}
+                    onChange={ids => setProjForm(f => ({ ...f, memberIds: ids }))}
+                  />
+                </>
+              ) : (
+                <FieldWrap label="Select an existing project">
+                  <Select value={projForm.selectedId}
+                    onChange={v => setProjForm(f => ({ ...f, selectedId: v }))}
+                    placeholder="— Choose Project —"
+                    options={allProjects.map((p: any) => ({ value: p.id, label: `${p.name} [${p.key}]` }))}
+                  />
+                </FieldWrap>
+              )}
+            </div>
+          )}
+
+          {/* ── MILESTONE STEP ── */}
+          {currentStepType === 'milestone' && (
+            <div className="space-y-4">
+              {/* Project context */}
+              {ctx.projectName && (
+                <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+                  <FolderKanban className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Project:</span>
+                  <span className="font-medium">{ctx.projectName}</span>
                 </div>
-                <div>
-                  <label className="text-sm font-medium block mb-1">Key *</label>
-                  <Input placeholder="e.g., CPQ3" value={project.key} maxLength={10}
-                    onChange={(e) => setProject({ ...project, key: e.target.value.toUpperCase() })} />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium block mb-1">Description</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                  rows={2} placeholder="What is this project about?"
-                  value={project.description}
-                  onChange={(e) => setProject({ ...project, description: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium block mb-1">Visibility</label>
-                  <select
-                    value={project.visibility}
-                    onChange={(e) => setProject({ ...project, visibility: e.target.value as typeof project.visibility })}
-                    className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="private">Private</option>
-                    <option value="org_wide">Organization Wide</option>
-                    <option value="public">Public</option>
-                  </select>
-                </div>
-                {workflows && workflows.length > 0 && (
-                  <div>
-                    <label className="text-sm font-medium block mb-1">Workflow</label>
-                    <WorkflowPicker
-                      workflows={workflows}
-                      value={project.workflow_config_id || workflows[0]?.id || ''}
-                      onChange={(id) => setProject({ ...project, workflow_config_id: id })}
+              )}
+
+              {getMode('milestone') === 'create' ? (
+                <>
+                  <FieldWrap label="Milestone Title *">
+                    <Input placeholder="e.g., Phase 1 — Core Features" value={msForm.title}
+                      onChange={e => setMsForm(f => ({ ...f, title: e.target.value }))} />
+                  </FieldWrap>
+                  <FieldWrap label="Description">
+                    <textarea rows={2} placeholder="What will be delivered in this milestone?"
+                      className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                      value={msForm.description}
+                      onChange={e => setMsForm(f => ({ ...f, description: e.target.value }))} />
+                  </FieldWrap>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FieldWrap label="Due Date">
+                      <Input type="date" value={msForm.due_date}
+                        onChange={e => setMsForm(f => ({ ...f, due_date: e.target.value }))} />
+                    </FieldWrap>
+                    <FieldWrap label="Status">
+                      <Select value={msForm.status}
+                        onChange={v => setMsForm(f => ({ ...f, status: v }))}
+                        options={[
+                          { value: 'upcoming',    label: 'Upcoming'    },
+                          { value: 'in_progress', label: 'In Progress' },
+                          { value: 'completed',   label: 'Completed'   },
+                          { value: 'at_risk',     label: 'At Risk'     },
+                        ]}
+                      />
+                    </FieldWrap>
+                  </div>
+                </>
+              ) : (
+                <FieldWrap label="Select an existing milestone">
+                  {allMilestones.length === 0 ? (
+                    <p className="text-sm text-muted-foreground rounded-md border border-dashed p-3">
+                      No milestones found for this project. Switch to "Create New" to add one.
+                    </p>
+                  ) : (
+                    <Select value={msForm.selectedId}
+                      onChange={v => setMsForm(f => ({ ...f, selectedId: v }))}
+                      placeholder="— Choose Milestone —"
+                      options={allMilestones.map((m: any) => ({ value: m.id, label: m.title }))}
                     />
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium block mb-2">Project Color</label>
-                <div className="flex gap-2">
-                  {COLORS.map((c) => (
-                    <button key={c} type="button" onClick={() => setProject({ ...project, color: c })}
-                      className={cn('h-8 w-8 rounded-full border-2 transition-transform', project.color === c ? 'border-foreground scale-110' : 'border-border')}
-                      style={{ backgroundColor: c }} />
-                  ))}
-                </div>
-              </div>
+                  )}
+                </FieldWrap>
+              )}
             </div>
           )}
 
-          {/* ── Step 4: Assign Roles ── */}
-          {step === 4 && (
-            <div className="space-y-5">
-              <StepHeader icon={Shield} title="Assign Head Roles" desc="Designate who leads this project and division. These people get elevated permissions." />
-
-              <div className="space-y-4">
-                {/* Project Manager */}
-                <div className="rounded-xl border-2 border-blue-200 dark:border-blue-900 p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center">
-                      <Star className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">Project Manager (PM)</p>
-                      <p className="text-xs text-muted-foreground">Manages sprints, assigns tasks, views all reports</p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium block mb-1 text-muted-foreground">Select from invited members or enter email</label>
-                    <select
-                      value={pmEmail}
-                      onChange={(e) => setPmEmail(e.target.value)}
-                      className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="">— Choose PM —</option>
-                      {validEmails.map((m) => (
-                        <option key={m.email} value={m.email}>{m.email}</option>
-                      ))}
-                      <option value="__custom__">Enter a different email...</option>
-                    </select>
-                    {pmEmail === '__custom__' && (
-                      <Input className="mt-2" type="email" placeholder="pm@company.com"
-                        onChange={(e) => setPmEmail(e.target.value)} />
-                    )}
-                  </div>
-                </div>
-
-                {/* Division Head */}
-                <div className="rounded-xl border-2 border-purple-200 dark:border-purple-900 p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-950/40 flex items-center justify-center">
-                      <Building2 className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">Division Head</p>
-                      <p className="text-xs text-muted-foreground">Admin rights within this division, approves handoffs</p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium block mb-1 text-muted-foreground">Select from invited members or enter email</label>
-                    <select
-                      value={divHeadEmail}
-                      onChange={(e) => setDivHeadEmail(e.target.value)}
-                      className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="">— Choose Division Head —</option>
-                      {validEmails.map((m) => (
-                        <option key={m.email} value={m.email}>{m.email}</option>
-                      ))}
-                      <option value="__custom__">Enter a different email...</option>
-                    </select>
-                    {divHeadEmail === '__custom__' && (
-                      <Input className="mt-2" type="email" placeholder="head@company.com"
-                        onChange={(e) => setDivHeadEmail(e.target.value)} />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <InfoBox icon={AlertCircle}>
-                Role assignments take effect once invitees accept. You can also change roles anytime from <strong>Admin → Users</strong>.
-              </InfoBox>
-            </div>
-          )}
-
-          {/* ── Step 5: Tasks ── */}
-          {step === 5 && (
+          {/* ── TASK STEP ── */}
+          {currentStepType === 'task' && (
             <div className="space-y-4">
-              <StepHeader icon={ClipboardList} title="Seed Initial Tasks" desc={`Add the first tasks for ${project.name || 'your project'}. You can add more from the Kanban board.`} />
-
-              {/* Team member capabilities info */}
-              <div className="rounded-xl bg-muted/40 border p-4 space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Team Member Capabilities</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  {[
-                    'View & update assigned tasks',
-                    'Log time on tasks',
-                    'Add comments & attachments',
-                    'Mark tasks complete',
-                    'Join sprint ceremonies',
-                    'View personal reports',
-                  ].map((cap) => (
-                    <div key={cap} className="flex items-center gap-1.5 text-xs">
-                      <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
-                      {cap}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {tasks.map((t, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Input placeholder={`Task ${i + 1} title...`} value={t.title} className="flex-1"
-                      onChange={(e) => updateTask(i, 'title', e.target.value)} />
-                    <select
-                      value={t.priority}
-                      onChange={(e) => updateTask(i, 'priority', e.target.value as TaskEntry['priority'])}
-                      className="px-2 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                    </select>
-                    <select
-                      value={t.assigneeEmail}
-                      onChange={(e) => updateTask(i, 'assigneeEmail', e.target.value)}
-                      className="px-2 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="">Unassigned</option>
-                      {validEmails.map((m) => (
-                        <option key={m.email} value={m.email}>{m.email.split('@')[0]}</option>
-                      ))}
-                    </select>
-                    <Button size="icon" variant="ghost" className="text-destructive h-9 w-9 flex-shrink-0"
-                      onClick={() => removeTask(i)} disabled={tasks.length === 1}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button variant="outline" size="sm" onClick={addTask}>
-                <Plus className="h-4 w-4 mr-2" /> Add Task
-              </Button>
-              <p className="text-xs text-muted-foreground">Tasks will be created in the project backlog. Assign to sprints from the board.</p>
-            </div>
-          )}
-
-          {/* ── Step 6: Review & Launch ── */}
-          {step === 6 && (
-            <div className="space-y-5">
-              <StepHeader icon={CheckCircle} title="Review & Launch" desc="Everything looks good? Hit Launch to create your division and project." />
-
-              {launchError && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm dark:bg-red-950/30 dark:border-red-900 dark:text-red-300">
-                  {launchError}
+              {/* Context breadcrumb */}
+              {(ctx.projectName || ctx.milestoneName) && (
+                <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm flex-wrap">
+                  {ctx.projectName && <><FolderKanban className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{ctx.projectName}</span></>}
+                  {ctx.milestoneName && <><ChevronRight className="h-4 w-4 text-muted-foreground" /><span className="font-medium">{ctx.milestoneName}</span></>}
                 </div>
               )}
 
-              <div className="space-y-3">
-                {/* Division */}
-                <ReviewSection title="Division" icon={Building2} color="bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600">
-                  <ReviewRow label="Name" value={`${division.name} (${division.code})`} />
-                  {division.description && <ReviewRow label="Description" value={division.description} />}
-                </ReviewSection>
+              <FieldWrap label="Task Title *">
+                <Input placeholder="e.g., Implement user authentication" value={taskForm.title}
+                  onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} />
+              </FieldWrap>
+              <FieldWrap label="Description">
+                <textarea rows={2} placeholder="What needs to be done?"
+                  className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={taskForm.description}
+                  onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} />
+              </FieldWrap>
 
-                {/* Team */}
-                <ReviewSection title="Team" icon={Users} color="bg-green-100 dark:bg-green-950/40 text-green-600">
-                  <ReviewRow label="Members" value={`${validEmails.length} invitation${validEmails.length !== 1 ? 's' : ''}`} />
-                  {pmEmail && pmEmail !== '__custom__' && <ReviewRow label="Project Manager" value={pmEmail} />}
-                  {divHeadEmail && divHeadEmail !== '__custom__' && <ReviewRow label="Division Head" value={divHeadEmail} />}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {validEmails.map((m) => (
-                      <Badge key={m.email} variant="secondary" className="text-[10px]">
-                        {m.email.split('@')[0]} · {ROLE_OPTIONS.find((r) => r.value === m.role)?.label}
-                      </Badge>
-                    ))}
-                  </div>
-                </ReviewSection>
-
-                {/* Project */}
-                <ReviewSection title="Project" icon={FolderKanban} color="bg-blue-100 dark:bg-blue-950/40 text-blue-600">
-                  <ReviewRow label="Name" value={`${project.name} [${project.key.toUpperCase()}]`} />
-                  <ReviewRow label="Visibility" value={project.visibility.replace('_', ' ')} />
-                </ReviewSection>
-
-                {/* Tasks */}
-                {tasks.some((t) => t.title.trim()) && (
-                  <ReviewSection title="Initial Tasks" icon={ClipboardList} color="bg-orange-100 dark:bg-orange-950/40 text-orange-600">
-                    {tasks.filter((t) => t.title.trim()).map((t, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <span className={cn('text-[10px] font-semibold uppercase', PRIORITY_COLORS[t.priority])}>{t.priority}</span>
-                        <span className="flex-1">{t.title}</span>
-                        {t.assigneeEmail && <span className="text-xs text-muted-foreground">{t.assigneeEmail.split('@')[0]}</span>}
-                      </div>
-                    ))}
-                  </ReviewSection>
-                )}
+              <div className="grid grid-cols-2 gap-4">
+                <FieldWrap label="Priority">
+                  <Select value={taskForm.priority}
+                    onChange={v => setTaskForm(f => ({ ...f, priority: v }))}
+                    options={[
+                      { value: 'low',      label: 'Low'      },
+                      { value: 'medium',   label: 'Medium'   },
+                      { value: 'high',     label: 'High'     },
+                      { value: 'critical', label: 'Critical' },
+                    ]}
+                  />
+                </FieldWrap>
+                <FieldWrap label="Due Date">
+                  <Input type="date" value={taskForm.due_date}
+                    onChange={e => setTaskForm(f => ({ ...f, due_date: e.target.value }))} />
+                </FieldWrap>
               </div>
 
-              <div className="rounded-lg border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/30 p-4 text-sm text-green-800 dark:text-green-300">
-                <strong>Ready to launch!</strong> Clicking Launch creates the division, sends invite emails, and sets up your project board. Task creation happens after members accept invites.
-              </div>
+              <UserMapSection
+                icon={UserCheck} color="border-green-200 dark:border-green-800"
+                bgColor="bg-green-100 dark:bg-green-950/40" iconColor="text-green-600"
+                title="Assign To" desc="Team member responsible for this task"
+                value={taskForm.assigneeId} members={allMembers}
+                onChange={v => setTaskForm(f => ({ ...f, assigneeId: v }))}
+                placeholder="Select Assignee (optional)"
+              />
+
+              {/* Milestone link — if not set from context, allow selection */}
+              {!ctx.milestoneId && allMilestones.length > 0 && (
+                <FieldWrap label="Milestone (optional)">
+                  <Select value={taskForm.milestoneId}
+                    onChange={v => setTaskForm(f => ({ ...f, milestoneId: v }))}
+                    placeholder="— Link to Milestone —"
+                    options={allMilestones.map((m: any) => ({ value: m.id, label: m.title }))}
+                  />
+                </FieldWrap>
+              )}
             </div>
           )}
 
@@ -742,23 +834,20 @@ export function OnboardingWizardPage() {
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" disabled={step === 1} onClick={() => setStep((s) => s - 1)}>
+        <Button variant="outline" disabled={isFirstStep || isLoading}
+          onClick={() => setStepIdx(i => i - 1)}>
           <ChevronLeft className="h-4 w-4 mr-1" /> Back
         </Button>
 
-        <span className="text-xs text-muted-foreground">Step {step} of {STEPS.length}</span>
+        <span className="text-xs text-muted-foreground">Step {stepIdx + 1} of {totalSteps}</span>
 
-        {step < 6 ? (
-          <Button disabled={!canNext()} onClick={() => setStep((s) => s + 1)}>
-            Next <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        ) : (
-          <Button onClick={handleLaunch} disabled={creating} size="lg">
-            {creating
-              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Launching...</>
-              : <><Sparkles className="h-4 w-4 mr-2" /> Launch</>}
-          </Button>
-        )}
+        <Button onClick={handleNext} disabled={isLoading} size="lg">
+          {isLoading
+            ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
+            : isLastStep
+            ? <><CheckCircle className="h-4 w-4 mr-2" /> Finish</>
+            : <>Next <ChevronRight className="h-4 w-4 ml-1" /></>}
+        </Button>
       </div>
     </div>
   );
@@ -766,48 +855,380 @@ export function OnboardingWizardPage() {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function StepHeader({ icon: Icon, title, desc }: { icon: React.ElementType; title: string; desc: string }) {
+function FieldWrap({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 pb-3 border-b">
-      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <Icon className="h-5 w-5 text-primary" />
-      </div>
-      <div>
-        <h3 className="font-semibold">{title}</h3>
-        <p className="text-sm text-muted-foreground">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
-function InfoBox({ children, icon: Icon = AlertCircle }: { children: React.ReactNode; icon?: React.ElementType }) {
-  return (
-    <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30 p-3 text-sm text-blue-800 dark:text-blue-300">
-      <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-      <p>{children}</p>
-    </div>
-  );
-}
-
-function ReviewSection({ title, icon: Icon, color, children }: { title: string; icon: React.ElementType; color: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border p-4 space-y-2">
-      <div className="flex items-center gap-2 mb-1">
-        <div className={cn('h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0', color)}>
-          <Icon className="h-3.5 w-3.5" />
-        </div>
-        <span className="text-sm font-semibold">{title}</span>
-      </div>
+    <div>
+      <label className="text-sm font-medium block mb-1">{label}</label>
       {children}
     </div>
   );
 }
 
-function ReviewRow({ label, value }: { label: string; value: string }) {
+function Select({ value, onChange, options, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}) {
   return (
-    <div className="flex items-start justify-between gap-4 text-sm">
-      <span className="text-muted-foreground w-28 flex-shrink-0">{label}</span>
-      <span className="font-medium text-right">{value}</span>
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+}
+
+// ─── UserMapSection: select existing | create manually ───────────────────────
+
+function UserMapSection({ icon: Icon, color, bgColor, iconColor, title, desc, value, members, onChange, placeholder, suggestedRole }: {
+  icon: React.ElementType;
+  color: string; bgColor: string; iconColor: string;
+  title: string; desc: string;
+  value: string;
+  members: MemberOpt[];
+  onChange: (id: string) => void;
+  placeholder: string;
+  suggestedRole?: OrgRole;
+}) {
+  const [mode, setMode] = useState<'select' | 'create'>('select');
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '' });
+  const [formError, setFormError] = useState('');
+  const createUser = useCreateMemberDirect();
+
+  const handleCreate = async () => {
+    setFormError('');
+    if (!form.first_name.trim() || !form.email.trim() || !form.password.trim()) {
+      setFormError('First name, email and password are required');
+      return;
+    }
+    try {
+      const result = await createUser.mutateAsync({
+        email: form.email.trim(),
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        password: form.password,
+        role: suggestedRole || 'member',
+      });
+      onChange(result.id);
+      setMode('select');
+      setForm({ first_name: '', last_name: '', email: '', password: '' });
+    } catch (e: any) {
+      setFormError(e?.response?.data?.error?.message || 'Failed to create user');
+    }
+  };
+
+  const selected = members.find(m => m.id === value);
+
+  return (
+    <div className={cn('rounded-xl border-2 p-4 space-y-3', color)}>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className={cn('h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0', bgColor)}>
+            <Icon className={cn('h-4 w-4', iconColor)} />
+          </div>
+          <div>
+            <p className="font-semibold text-sm">{title}</p>
+            <p className="text-xs text-muted-foreground">{desc}</p>
+          </div>
+        </div>
+        {/* Mode tabs */}
+        <div className="flex gap-1 text-xs">
+          <button onClick={() => setMode('select')}
+            className={cn('flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors',
+              mode === 'select' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground')}>
+            <List className="h-3 w-3" /> Existing
+          </button>
+          <button onClick={() => setMode('create')}
+            className={cn('flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors',
+              mode === 'create' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground')}>
+            <UserPlus className="h-3 w-3" /> New User
+          </button>
+        </div>
+      </div>
+
+      {/* Select existing */}
+      {mode === 'select' && (
+        <div className="space-y-1">
+          <select value={value} onChange={e => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="">{placeholder}</option>
+            {members.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+          {selected && (
+            <p className="text-xs text-muted-foreground pl-1">Selected: <span className="font-medium text-foreground">{selected.label}</span></p>
+          )}
+        </div>
+      )}
+
+      {/* Create new user */}
+      {mode === 'create' && (
+        <div className="space-y-2 pt-1">
+          {formError && <p className="text-xs text-destructive">{formError}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="First name *" value={form.first_name}
+              onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
+            <Input placeholder="Last name" value={form.last_name}
+              onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
+          </div>
+          <Input type="email" placeholder="Email address *" value={form.email}
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          <Input type="password" placeholder="Password *" value={form.password}
+            onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+          {suggestedRole && (
+            <p className="text-xs text-muted-foreground">
+              Will be created with role: <Badge variant="secondary" className="text-[10px] ml-1">{suggestedRole.replace(/_/g, ' ')}</Badge>
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleCreate} disabled={createUser.isPending} className="flex-1">
+              {createUser.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <UserPlus className="h-3.5 w-3.5 mr-1.5" />}
+              Create & Assign
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setMode('select')}>Cancel</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MultiUserSection: select existing | add manually | CSV import ────────────
+
+interface NewMemberRow { first_name: string; last_name: string; email: string; password: string; role: OrgRole; }
+
+function MultiUserSection({ title, desc, members, selected, onChange }: {
+  title: string; desc: string;
+  members: MemberOpt[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [mode, setMode] = useState<'select' | 'manual' | 'csv'>('select');
+  const [pickedId,  setPickedId]  = useState('');
+  const [manualForm, setManualForm] = useState<NewMemberRow>({ first_name: '', last_name: '', email: '', password: '', role: 'member' });
+  const [manualError, setManualError] = useState('');
+  const [csvRows, setCsvRows]     = useState<NewMemberRow[]>([]);
+  const [csvError, setCsvError]   = useState('');
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvDone, setCsvDone]     = useState(false);
+
+  const createUser  = useCreateMemberDirect();
+  const inviteMember = useInviteMember();
+
+  const remove = (id: string) => onChange(selected.filter(s => s !== id));
+
+  // Select existing
+  const addExisting = () => {
+    if (!pickedId || selected.includes(pickedId)) return;
+    onChange([...selected, pickedId]);
+    setPickedId('');
+  };
+  const available = members.filter(m => !selected.includes(m.id));
+
+  // Manual create
+  const handleManualAdd = async () => {
+    setManualError('');
+    if (!manualForm.first_name.trim() || !manualForm.email.trim() || !manualForm.password.trim()) {
+      setManualError('First name, email and password are required');
+      return;
+    }
+    try {
+      const result = await createUser.mutateAsync({ ...manualForm, first_name: manualForm.first_name.trim(), last_name: manualForm.last_name.trim(), email: manualForm.email.trim() });
+      onChange([...selected, result.id]);
+      setManualForm({ first_name: '', last_name: '', email: '', password: '', role: 'member' });
+    } catch (e: any) {
+      setManualError(e?.response?.data?.error?.message || 'Failed to create user');
+    }
+  };
+
+  // CSV parsing
+  const downloadTemplate = () => {
+    const csv = 'first_name,last_name,email,password,role\nJohn,Doe,john@example.com,Pass@123,member\nJane,Smith,jane@example.com,Pass@123,team_lead\n';
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'members-template.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCsvError(''); setCsvRows([]); setCsvDone(false);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) { setCsvError('CSV must have a header row and at least one data row'); return; }
+      const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''));
+      const emailIdx     = header.indexOf('email');
+      const fnIdx        = header.indexOf('first_name');
+      const lnIdx        = header.indexOf('last_name');
+      const passIdx      = header.indexOf('password');
+      const roleIdx      = header.indexOf('role');
+      if (emailIdx === -1) { setCsvError('CSV must have an "email" column'); return; }
+      const validRoles: OrgRole[] = ['org_admin','division_admin','vertical_head','project_manager','team_lead','member','viewer'];
+      const rows: NewMemberRow[] = lines.slice(1).map(line => {
+        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        const rawRole = cols[roleIdx]?.toLowerCase() || 'member';
+        return {
+          first_name: cols[fnIdx]   || '',
+          last_name:  cols[lnIdx]   || '',
+          email:      cols[emailIdx] || '',
+          password:   cols[passIdx] || 'Welcome@123',
+          role:       (validRoles.includes(rawRole as OrgRole) ? rawRole : 'member') as OrgRole,
+        };
+      }).filter(r => r.email.includes('@'));
+      if (rows.length === 0) { setCsvError('No valid rows found — check the email column'); return; }
+      setCsvRows(rows);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCsvImport = async () => {
+    setCsvImporting(true);
+    const newIds: string[] = [];
+    for (const row of csvRows) {
+      try {
+        if (row.password) {
+          const r = await createUser.mutateAsync(row);
+          newIds.push(r.id);
+        } else {
+          await inviteMember.mutateAsync({ email: row.email, role: row.role });
+        }
+      } catch { /* skip duplicates */ }
+    }
+    if (newIds.length > 0) onChange([...selected, ...newIds]);
+    setCsvImporting(false);
+    setCsvDone(true);
+    setCsvRows([]);
+  };
+
+  const ROLE_OPTIONS: OrgRole[] = ['member','team_lead','project_manager','vertical_head','division_admin'];
+
+  return (
+    <div className="rounded-xl border border-dashed p-4 space-y-3">
+      {/* Header + mode tabs */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <div>
+            <p className="font-semibold text-sm">{title}</p>
+            <p className="text-xs text-muted-foreground">{desc}</p>
+          </div>
+        </div>
+        <div className="flex gap-1 p-1 bg-muted rounded-lg text-xs">
+          {([['select','List', List], ['manual','Add', UserPlus], ['csv','CSV', Upload]] as const).map(([m, label, MIcon]) => (
+            <button key={m} onClick={() => setMode(m as any)}
+              className={cn('flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors',
+                mode === m ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground')}>
+              <MIcon className="h-3 w-3" />{label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Selected chips */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map(id => {
+            const m = members.find(x => x.id === id);
+            return (
+              <span key={id} className="flex items-center gap-1 bg-primary/10 text-primary text-xs rounded-full px-2.5 py-1">
+                {m?.label || id}
+                <button onClick={() => remove(id)} className="hover:text-destructive ml-0.5"><X className="h-3 w-3" /></button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Select existing ── */}
+      {mode === 'select' && (
+        <div className="flex gap-2">
+          <select value={pickedId} onChange={e => setPickedId(e.target.value)}
+            className="flex-1 px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="">— Select a team member —</option>
+            {available.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+          <Button size="sm" variant="outline" onClick={addExisting} disabled={!pickedId}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* ── Add manually ── */}
+      {mode === 'manual' && (
+        <div className="space-y-2">
+          {manualError && <p className="text-xs text-destructive">{manualError}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="First name *" value={manualForm.first_name}
+              onChange={e => setManualForm(f => ({ ...f, first_name: e.target.value }))} />
+            <Input placeholder="Last name" value={manualForm.last_name}
+              onChange={e => setManualForm(f => ({ ...f, last_name: e.target.value }))} />
+          </div>
+          <Input type="email" placeholder="Email *" value={manualForm.email}
+            onChange={e => setManualForm(f => ({ ...f, email: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="password" placeholder="Password *" value={manualForm.password}
+              onChange={e => setManualForm(f => ({ ...f, password: e.target.value }))} />
+            <select value={manualForm.role} onChange={e => setManualForm(f => ({ ...f, role: e.target.value as OrgRole }))}
+              className="px-3 py-2 border border-input rounded-md text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+              {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
+            </select>
+          </div>
+          <Button size="sm" className="w-full" onClick={handleManualAdd} disabled={createUser.isPending}>
+            {createUser.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <UserPlus className="h-3.5 w-3.5 mr-1.5" />}
+            Create & Add to Team
+          </Button>
+        </div>
+      )}
+
+      {/* ── CSV import ── */}
+      {mode === 'csv' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">Upload CSV with columns: <code className="bg-muted px-1 rounded">first_name, last_name, email, password, role</code></p>
+            <Button size="sm" variant="outline" onClick={downloadTemplate}>
+              <Download className="h-3.5 w-3.5 mr-1.5" /> Template
+            </Button>
+          </div>
+
+          <label className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/30 rounded-xl py-6 cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-all group">
+            <Upload className="h-7 w-7 text-muted-foreground/50 group-hover:text-primary mb-2" />
+            <p className="text-sm font-medium">Click to upload CSV</p>
+            <p className="text-xs text-muted-foreground mt-0.5">first_name, last_name, email, password, role</p>
+            <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvUpload} />
+          </label>
+
+          {csvError && <p className="text-xs text-destructive">{csvError}</p>}
+
+          {csvDone && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 dark:bg-green-950/30 rounded-md px-3 py-2">
+              <CheckCircle className="h-4 w-4" /> Users imported successfully
+            </div>
+          )}
+
+          {csvRows.length > 0 && !csvDone && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium">{csvRows.length} user{csvRows.length !== 1 ? 's' : ''} found:</p>
+              <div className="max-h-36 overflow-y-auto border rounded-lg divide-y text-xs">
+                {csvRows.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5">
+                    <span className="font-medium">{r.first_name} {r.last_name}</span>
+                    <span className="text-muted-foreground">{r.email}</span>
+                    <Badge variant="secondary" className="text-[10px]">{r.role.replace(/_/g,' ')}</Badge>
+                  </div>
+                ))}
+              </div>
+              <Button size="sm" className="w-full" onClick={handleCsvImport} disabled={csvImporting}>
+                {csvImporting
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Importing...</>
+                  : <><CheckCircle className="h-3.5 w-3.5 mr-1.5" /> Import {csvRows.length} Users</>}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

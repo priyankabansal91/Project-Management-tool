@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAllDivisionConfigs, useUpdateDivisionConfig, useDivisionMembers, useAddDivisionMember, useRemoveDivisionMember, useWorkflows } from '@/api/hooks';
+import { useAuthStore } from '@/store/authStore';
 import type { WorkflowConfig } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -255,7 +257,7 @@ function DivisionMembersSection({ divisionId }: { divisionId: string }) {
                 <p className="text-xs text-muted-foreground truncate">{m.email}</p>
               </div>
               <span className="flex items-center gap-1 text-xs bg-secondary px-2 py-0.5 rounded-full">
-                <RoleIcon className="h-3 w-3" />{m.role.replace('_', ' ')}
+                <RoleIcon className="h-3 w-3" />{m.role?.replace('_', ' ')}
               </span>
               <button onClick={() => removeMember.mutate({ divisionId, userId: m.userId })} className="text-muted-foreground hover:text-destructive transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
@@ -537,7 +539,10 @@ function DivisionCard({ division }: { division: any }) {
 // ─── Main Page ────────────────────────────────────────────
 
 export function DivisionConfigPage() {
+  const { currentRole } = useAuthStore();
   const { data: divisions, isLoading } = useAllDivisionConfigs();
+
+  if (currentRole !== 'org_admin') return <Navigate to="/dashboard" replace />;
 
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">

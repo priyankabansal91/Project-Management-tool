@@ -6,14 +6,14 @@ const memberService = require('../services/memberService');
 const router = Router();
 router.use(authenticate);
 
-const VALID_ROLES = new Set(['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'team_lead', 'member', 'viewer', 'executive']);
+const VALID_ROLES = new Set(['org_admin', 'division_admin', 'hod', 'vertical_head', 'project_manager', 'team_lead', 'member', 'viewer', 'executive']);
 
 // List members
 router.get('/', async (req, res, next) => {
   try {
     const { role, search } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const page_size = Math.min(Math.max(1, parseInt(req.query.page_size, 10) || 20), 100);
+    const page_size = Math.min(Math.max(1, parseInt(req.query.page_size, 10) || 20), 500);
 
     const result = await memberService.list(req.user.orgId, { role, search, page, page_size });
     res.json({ success: true, data: result });
@@ -54,7 +54,7 @@ router.post('/create-direct', authorize('org_admin'), async (req, res, next) => 
     const { email, first_name, last_name, password, role } = req.body;
     if (!email) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'email is required' } });
     if (!first_name || !last_name) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'first_name and last_name are required' } });
-    if (!password || password.length < 6) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'password must be at least 6 characters' } });
+    if (!password || password.length < 8) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'password must be at least 8 characters' } });
     if (role && !VALID_ROLES.has(role)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid role' } });
     const member = await memberService.createDirect(req.user.orgId, { email, firstName: first_name, lastName: last_name, password, role });
     res.status(201).json({ success: true, data: member });

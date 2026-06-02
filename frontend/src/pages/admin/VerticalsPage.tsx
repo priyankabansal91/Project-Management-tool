@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import { useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical, useMembers } from '@/api/hooks';
+import { useVerticals, useCreateVertical, useUpdateVertical, useDeleteVertical, useMembers, useDivisions } from '@/api/hooks';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 
 // ─── Seed Data ───────────────────────────────────────────
@@ -42,6 +42,7 @@ interface Vertical {
   lifecycleStatus?: VerticalLifecycle;
   lifecycle_status?: VerticalLifecycle;
   budget?: number | string | null;
+  actualBudget?: number | null;
 }
 
 function getDivisionName(v: Vertical): string {
@@ -65,7 +66,6 @@ const SEED_VERTICALS: Vertical[] = [
   { id: 'v6', name: 'Infrastructure', description: 'IT infrastructure and DevOps', division: 'IT Division', division_id: 'div_it', head_name: 'David Park', color: '#06B6D4', member_count: 4, project_count: 1, status: 'active' },
 ];
 
-const DIVISIONS = ['All Divisions', 'IT Division', 'Finance Division', 'Accreditation Division', 'Operations Division'];
 const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
 
 // ─── Form State ──────────────────────────────────────────
@@ -73,7 +73,7 @@ const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'
 interface VerticalFormData {
   name: string;
   description: string;
-  division: string;
+  division_id: string;
   head_id: string;
   color: string;
   status: 'active' | 'inactive';
@@ -83,7 +83,7 @@ interface VerticalFormData {
 const EMPTY_FORM: VerticalFormData = {
   name: '',
   description: '',
-  division: DIVISIONS[1],
+  division_id: '',
   head_id: '',
   color: COLORS[0],
   status: 'active',
@@ -204,8 +204,17 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange, onManageM
             <span className="font-medium text-foreground">{vertical.project_count}</span> projects
           </span>
           {vertical.budget != null && Number(vertical.budget) > 0 && (
-            <span className="flex items-center gap-1 ml-auto font-medium text-green-600">
-              ₹{Number(vertical.budget).toLocaleString('en-IN')}
+            <span className="flex items-center gap-1 ml-auto text-xs">
+              <span className="text-muted-foreground">Budget:</span>
+              <span className="font-medium text-green-600">₹{Number(vertical.budget).toLocaleString('en-IN')}</span>
+              {vertical.actualBudget != null && vertical.actualBudget > 0 && (
+                <>
+                  <span className="text-muted-foreground">· Actual:</span>
+                  <span className={`font-medium ${vertical.actualBudget > Number(vertical.budget) ? 'text-red-600' : 'text-blue-600'}`}>
+                    ₹{Number(vertical.actualBudget).toLocaleString('en-IN')}
+                  </span>
+                </>
+              )}
             </span>
           )}
         </div>
@@ -230,12 +239,13 @@ function VerticalCard({ vertical, onEdit, onDelete, onLifecycleChange, onManageM
 
 // ─── Modal ───────────────────────────────────────────────
 
-function VerticalModal({ editingId, initialData, onSave, onClose, members }: {
+function VerticalModal({ editingId, initialData, onSave, onClose, members, divisions }: {
   editingId: string | null;
   initialData: VerticalFormData;
   onSave: (id: string | null, data: VerticalFormData) => void;
   onClose: () => void;
   members: Array<{ id: string; firstName?: string; lastName?: string; first_name?: string; last_name?: string; email?: string }>;
+  divisions: Array<{ id: string; name: string; code?: string }>;
 }) {
   const [form, setForm] = useState<VerticalFormData>(initialData);
 
@@ -310,15 +320,17 @@ function VerticalModal({ editingId, initialData, onSave, onClose, members }: {
 
             {/* Division */}
             <div>
-              <label className="text-sm font-medium block mb-1">Division</label>
+              <label className="text-sm font-medium block mb-1">Division <span className="text-destructive">*</span></label>
               <div className="relative">
                 <select
-                  value={form.division}
-                  onChange={(e) => set({ division: e.target.value })}
+                  value={form.division_id}
+                  onChange={(e) => set({ division_id: e.target.value })}
+                  required
                   className="w-full appearance-none px-3 py-2 pr-8 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  {DIVISIONS.filter((d) => d !== 'All Divisions').map((d) => (
-                    <option key={d} value={d}>{d}</option>
+                  <option value="">— Select a Division —</option>
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}{d.code ? ` (${d.code})` : ''}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -340,7 +352,8 @@ function VerticalModal({ editingId, initialData, onSave, onClose, members }: {
                   <option value="">— Select a user —</option>
                   {members.map((m) => {
                     const name = `${m.firstName || m.first_name || ''} ${m.lastName || m.last_name || ''}`.trim() || m.email || m.id;
-                    return <option key={m.id} value={m.id}>{name}</option>;
+                    const role = (m as any).role ? ` (${((m as any).role as string).replace(/_/g, ' ')})` : '';
+                    return <option key={m.id} value={m.id}>{name}{role}</option>;
                   })}
                 </select>
                 <ChevronDown className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -427,8 +440,11 @@ export function VerticalsPage() {
   const updateMutation = useUpdateVertical();
   const deleteMutation = useDeleteVertical();
 
-  const membersQ = useMembers({ role: 'vertical_head' });
+  const membersQ = useMembers({ page_size: 200 });
   const orgMembers = (membersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; first_name?: string; last_name?: string; email?: string }>;
+
+  const { data: divisionsData } = useDivisions();
+  const allDivisionsList = ((divisionsData as any)?.items ?? (Array.isArray(divisionsData) ? divisionsData : [])) as Array<{ id: string; name: string; code?: string }>;
 
   // Fall back to seed data if API returns nothing
   const [localVerticals, setLocalVerticals] = useState<Vertical[]>(SEED_VERTICALS);
@@ -439,7 +455,7 @@ export function VerticalsPage() {
   const [managingMembersFor, setManagingMembersFor] = useState<Vertical | null>(null);
 
   const [search, setSearch] = useState('');
-  const [divisionFilter, setDivisionFilter] = useState('All Divisions');
+  const [divisionFilter, setDivisionFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   // ── Filtered list ────────────────────────────────────
@@ -448,7 +464,8 @@ export function VerticalsPage() {
     const matchSearch = v.name.toLowerCase().includes(q)
       || (v.description || '').toLowerCase().includes(q)
       || getHeadName(v).toLowerCase().includes(q);
-    const matchDivision = divisionFilter === 'All Divisions' || getDivisionName(v) === divisionFilter;
+    const vDivId = (typeof v.division === 'object' && v.division !== null) ? v.division.id : (v.divisionId || v.division_id || '');
+    const matchDivision = !divisionFilter || vDivId === divisionFilter;
     const matchStatus = statusFilter === 'all' || v.status === statusFilter;
     return matchSearch && matchDivision && matchStatus;
   });
@@ -490,8 +507,7 @@ export function VerticalsPage() {
     const payload = {
       name: data.name,
       description: data.description,
-      division: data.division,
-      division_id: `div_${data.division.toLowerCase().replace(/\s+/g, '_')}`,
+      division_id: data.division_id,
       headId: data.head_id,
       color: data.color,
       status: data.status,
@@ -507,9 +523,11 @@ export function VerticalsPage() {
     } else {
       const newVertical: Vertical = {
         ...payload,
+        division: null,
         id: 'v_' + Date.now(),
         member_count: 0,
         project_count: 0,
+        status: payload.status,
       };
       if (apiVerticals.length > 0) {
         createMutation.mutate(payload);
@@ -525,7 +543,9 @@ export function VerticalsPage() {
     ? {
         name: editingVertical.name,
         description: editingVertical.description || '',
-        division: getDivisionName(editingVertical),
+        division_id: (typeof editingVertical.division === 'object' && editingVertical.division !== null)
+          ? editingVertical.division.id
+          : (editingVertical.divisionId || editingVertical.division_id || ''),
         head_id: editingVertical.head?.id || '',
         color: editingVertical.color,
         status: editingVertical.status,
@@ -590,8 +610,9 @@ export function VerticalsPage() {
             onChange={(e) => setDivisionFilter(e.target.value)}
             className="appearance-none pl-9 pr-8 py-2 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring min-w-[180px]"
           >
-            {DIVISIONS.map((d) => (
-              <option key={d} value={d}>{d}</option>
+            <option value="">All Divisions</option>
+            {allDivisionsList.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
           <ChevronDown className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -617,7 +638,7 @@ export function VerticalsPage() {
       </div>
 
       {/* Results count */}
-      {(search || divisionFilter !== 'All Divisions' || statusFilter !== 'all') && (
+      {(search || divisionFilter !== '' || statusFilter !== 'all') && (
         <p className="text-xs text-muted-foreground">
           Showing {filtered.length} of {verticals.length} verticals
         </p>
@@ -650,7 +671,7 @@ export function VerticalsPage() {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => { setSearch(''); setDivisionFilter('All Divisions'); setStatusFilter('all'); }}
+                onClick={() => { setSearch(''); setDivisionFilter(''); setStatusFilter('all'); }}
               >
                 Clear Filters
               </Button>
@@ -711,6 +732,7 @@ export function VerticalsPage() {
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditingVertical(null); }}
           members={orgMembers}
+          divisions={allDivisionsList}
         />
       )}
     </div>

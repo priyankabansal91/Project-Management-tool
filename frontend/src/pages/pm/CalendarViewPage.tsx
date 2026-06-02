@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
-import { ChevronLeft, ChevronRight, Plus, Filter, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Filter, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
 import { useMyTasks, useCreateTask, useProjects, useWorkflows, useMilestones } from '@/api/hooks';
@@ -64,6 +65,8 @@ function dateKey(d: Date) {
 }
 
 export function CalendarViewPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date(2026, 3, 1)); // April 2026
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDateForTask, setSelectedDateForTask] = useState<string | null>(null);
@@ -155,11 +158,18 @@ export function CalendarViewPage() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Calendar</h1>
-          <p className="text-muted-foreground">
-            View tasks by due date &middot; {filteredTasks.length} tasks across {visibleProjects.size} projects
-          </p>
+        <div className="flex items-center gap-3">
+          {projectId && (
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5 shrink-0">
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">Calendar</h1>
+            <p className="text-muted-foreground">
+              View tasks by due date &middot; {filteredTasks.length} tasks across {visibleProjects.size} projects
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowProjectPanel(!showProjectPanel)}>

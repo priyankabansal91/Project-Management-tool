@@ -3,6 +3,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { X, Plus, Trash2 } from 'lucide-react';
+
+const EXPENSE_HEAD_OPTIONS = [
+  { value: 'assessment_cost', label: 'Assessment Cost' },
+  { value: 'travel_expenses', label: 'Travel Expenses' },
+  { value: 'manpower_cost', label: 'Manpower Cost' },
+  { value: 'infrastructure_cost', label: 'Infrastructure Cost' },
+  { value: 'training_cost', label: 'Training Cost' },
+  { value: 'documentation_cost', label: 'Documentation Cost' },
+  { value: 'contingency', label: 'Contingency' },
+  { value: 'miscellaneous', label: 'Miscellaneous' },
+];
+
+interface ExpenseHead { head: string; label: string; amount: string; description: string; }
 import { WorkflowPicker } from './WorkflowPicker';
 import type { WorkflowConfig } from '@/types';
 import { useMembers } from '@/api/hooks';
@@ -31,6 +44,7 @@ export interface ProjectFormData {
   due_date?: string;
   vertical_id?: string;
   budget?: string;
+  expense_heads?: ExpenseHead[];
   project_manager_id?: string;
   milestones?: Array<{ title: string; budget: string; due_date: string }>;
   submit_for_approval?: boolean;
@@ -63,6 +77,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
   const isEdit = !!project;
   const [step, setStep] = useState<1 | 2>(1);
   const [milestoneRows, setMilestoneRows] = useState<Array<{ title: string; budget: string; due_date: string }>>([]);
+  const [expenseHeads, setExpenseHeads] = useState<ExpenseHead[]>([]);
   const [submitForApproval, setSubmitForApproval] = useState(true);
   const [form, setForm] = useState<ProjectFormData>({
     name: '',
@@ -114,10 +129,11 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     setSubmitError('');
     setStep(1);
     setMilestoneRows([]);
+    setExpenseHeads([]);
     setSubmitForApproval(true);
   }, [project, open, workflows]);
 
-  const membersQ = useMembers();
+  const membersQ = useMembers({ page_size: 200 });
   const orgMembers = (membersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; email?: string }>;
 
   const validateStep1 = () => {
@@ -147,6 +163,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
         ...form,
         key: form.key.toUpperCase(),
         budget: form.budget || undefined,
+        expense_heads: expenseHeads.length > 0 ? expenseHeads : undefined,
         milestones: milestoneRows.filter((r) => r.title.trim()),
         submit_for_approval: submitForApproval,
       });
@@ -168,6 +185,22 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
   };
 
   const milestoneTotal = milestoneRows.reduce((s, r) => s + (Number(r.budget) || 0), 0);
+
+  const addExpenseHead = () => {
+    setExpenseHeads([...expenseHeads, { head: 'assessment_cost', label: 'Assessment Cost', amount: '', description: '' }]);
+  };
+  const removeExpenseHead = (i: number) => setExpenseHeads(expenseHeads.filter((_, idx) => idx !== i));
+  const updateExpenseHead = (i: number, patch: Partial<ExpenseHead>) => {
+    setExpenseHeads(expenseHeads.map((eh, idx) => {
+      if (idx !== i) return eh;
+      const merged = { ...eh, ...patch };
+      if (patch.head) {
+        const opt = EXPENSE_HEAD_OPTIONS.find((o) => o.value === patch.head);
+        merged.label = opt?.label || patch.head;
+      }
+      return merged;
+    }));
+  };
 
   if (!open) return null;
 
@@ -323,7 +356,8 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
                       <option value="">— Select Project Lead —</option>
                       {orgMembers.map((m) => {
                         const name = `${m.firstName || ''} ${m.lastName || ''}`.trim() || m.email || m.id;
-                        return <option key={m.id} value={m.id}>{name}</option>;
+                        const role = (m as any).role ? ` (${((m as any).role as string).replace(/_/g, ' ')})` : '';
+                        return <option key={m.id} value={m.id}>{name}{role}</option>;
                       })}
                     </select>
                   )}
@@ -366,14 +400,51 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
 
               {/* Project Budget */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Project Budget (₹)</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Project Budget (₹) <span className="text-destructive">*</span></label>
                 <Input
                   type="number"
                   min="0"
                   value={form.budget || ''}
                   onChange={(e) => setForm({ ...form, budget: e.target.value })}
                   placeholder="e.g., 5000000"
+                  required
                 />
+              </div>
+
+              {/* Expense Heads */}
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Expense Heads</label>
+                  <button type="button" onClick={addExpenseHead}
+                    className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium">
+                    <Plus className="h-3.5 w-3.5" /> Add
+                  </button>
+                </div>
+                {expenseHeads.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No expense heads. Click Add to categorize project costs.</p>
+                )}
+                {expenseHeads.map((eh, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                    <select value={eh.head} onChange={(e) => updateExpenseHead(i, { head: e.target.value })}
+                      className="px-2 py-1.5 border rounded-md text-xs bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                      {EXPENSE_HEAD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <Input type="number" min="0" placeholder="Amount (₹)" value={eh.amount}
+                      className="h-8 text-xs"
+                      onChange={(e) => updateExpenseHead(i, { amount: e.target.value })} />
+                    <button type="button" onClick={() => removeExpenseHead(i)}
+                      className="text-destructive hover:text-destructive/80 p-1">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {expenseHeads.length > 0 && (
+                  <p className="text-xs text-muted-foreground text-right">
+                    Total: <span className="font-semibold text-foreground">
+                      ₹{expenseHeads.reduce((s, eh) => s + (parseFloat(eh.amount) || 0), 0).toLocaleString('en-IN')}
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* Actions — Step 1 */}
