@@ -133,7 +133,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     setSubmitForApproval(true);
   }, [project, open, workflows]);
 
-  const membersQ = useMembers({ page_size: 200 });
+  const membersQ = useMembers({ role: 'project_manager', page_size: 200 });
   const orgMembers = (membersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; email?: string }>;
 
   const validateStep1 = () => {

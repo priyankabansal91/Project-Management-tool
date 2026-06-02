@@ -44,7 +44,7 @@ router.post('/', authorize('org_admin'), async (req, res, next) => {
  */
 router.get('/hierarchy', async (req, res, next) => {
   try {
-    const hierarchy = await divisionService.getHierarchy(req.user.orgId);
+    const hierarchy = await divisionService.getHierarchy(req.user.orgId, req.user.id, req.user.role);
     res.json({ success: true, data: hierarchy });
   } catch (err) {
     next(err);

@@ -122,13 +122,25 @@ export function OnboardingWizardPage() {
   const { data: wfList } = useWorkflows();
   const workflows = (wfList ?? []) as any[];
 
-  // Data for dropdowns
-  const { data: membersData } = useMembers({ page_size: 200 });
-  const allMembers: MemberOpt[] = useMemo(() =>
-    (membersData?.items ?? []).map((m: any) => ({
+  // Data for dropdowns — role-filtered per step
+  const { data: divAdminData }  = useMembers({ role: 'division_admin',  page_size: 200 });
+  const { data: vhData }        = useMembers({ role: 'vertical_head',   page_size: 200 });
+  const { data: pmData }        = useMembers({ role: 'project_manager', page_size: 200 });
+  const { data: tlData }        = useMembers({ role: 'team_lead',       page_size: 200 });
+  const { data: allMembersData} = useMembers({ page_size: 200 });
+
+  function toOpts(data: any): MemberOpt[] {
+    return (data?.items ?? []).map((m: any) => ({
       id: m.id,
       label: `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email || m.id,
-    })), [membersData]);
+    }));
+  }
+
+  const divAdminMembers = useMemo(() => toOpts(divAdminData),  [divAdminData]);
+  const vhMembers       = useMemo(() => toOpts(vhData),        [vhData]);
+  const pmMembers       = useMemo(() => toOpts(pmData),        [pmData]);
+  const tlMembers       = useMemo(() => toOpts(tlData),        [tlData]);
+  const allMembers      = useMemo(() => toOpts(allMembersData),[allMembersData]);
 
   const { data: divisionsData } = useDivisions();
   const allDivisions: any[] = useMemo(() =>
@@ -519,7 +531,7 @@ export function OnboardingWizardPage() {
                     icon={Crown} color="border-indigo-200 dark:border-indigo-800"
                     bgColor="bg-indigo-100 dark:bg-indigo-950/40" iconColor="text-indigo-600"
                     title="Division Admin *" desc="Has full control within this division"
-                    value={divForm.adminId} members={allMembers}
+                    value={divForm.adminId} members={divAdminMembers}
                     onChange={v => setDivForm(f => ({ ...f, adminId: v }))}
                     placeholder="Select Division Admin"
                   />
@@ -574,7 +586,7 @@ export function OnboardingWizardPage() {
                     icon={Network} color="border-purple-200 dark:border-purple-800"
                     bgColor="bg-purple-100 dark:bg-purple-950/40" iconColor="text-purple-600"
                     title="Vertical Head *" desc="Manages all projects within this vertical"
-                    value={vertForm.headId} members={allMembers}
+                    value={vertForm.headId} members={vhMembers}
                     onChange={v => setVertForm(f => ({ ...f, headId: v }))}
                     placeholder="Select Vertical Head"
                   />
@@ -675,7 +687,7 @@ export function OnboardingWizardPage() {
                     icon={FolderKanban} color="border-blue-200 dark:border-blue-800"
                     bgColor="bg-blue-100 dark:bg-blue-950/40" iconColor="text-blue-600"
                     title="Project Manager *" desc="Manages sprints, assigns tasks, and leads the team"
-                    value={projForm.managerId} members={allMembers}
+                    value={projForm.managerId} members={pmMembers}
                     onChange={v => setProjForm(f => ({ ...f, managerId: v }))}
                     placeholder="Select Project Manager"
                   />
@@ -684,7 +696,7 @@ export function OnboardingWizardPage() {
                     icon={Shield} color="border-emerald-200 dark:border-emerald-800"
                     bgColor="bg-emerald-100 dark:bg-emerald-950/40" iconColor="text-emerald-600"
                     title="Team Lead" desc="Leads the development team within this project"
-                    value={projForm.teamLeadId} members={allMembers}
+                    value={projForm.teamLeadId} members={tlMembers}
                     onChange={v => setProjForm(f => ({ ...f, teamLeadId: v }))}
                     placeholder="Select Team Lead (optional)"
                   />

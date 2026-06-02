@@ -135,9 +135,20 @@ class DivisionService {
     return { success: true };
   }
 
-  async getHierarchy(orgId) {
+  async getHierarchy(orgId, userId, role) {
+    let where = { orgId, deletedAt: null };
+
+    if (role === 'division_admin') {
+      const myDivs = await prisma.divisionMember.findMany({
+        where: { userId },
+        select: { divisionId: true },
+      });
+      const ids = myDivs.map((m) => m.divisionId);
+      where = { id: { in: ids }, orgId, deletedAt: null };
+    }
+
     const all = await prisma.division.findMany({
-      where: { orgId, deletedAt: null },
+      where,
       include: DIV_INCLUDE,
       orderBy: { displayOrder: 'asc' },
     });

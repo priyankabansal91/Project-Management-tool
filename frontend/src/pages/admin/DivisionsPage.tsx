@@ -267,10 +267,10 @@ export function DivisionsPage() {
   const updateDivision = useUpdateDivision();
   const deleteDivision = useDeleteDivision();
 
-  const { data: membersData } = useMembers({ page_size: 200 });
+  const { data: membersData } = useMembers({ role: 'division_admin', page_size: 200 });
   const membersList: MemberOption[] = (membersData?.items ?? []).map((m: any) => ({
     id: m.id,
-    label: `${m.first_name || ''} ${m.last_name || ''}`.trim() + (m.role ? ` (${m.role.replace(/_/g, ' ')})` : '') + (m.email ? ` — ${m.email}` : ''),
+    label: `${m.first_name || ''} ${m.last_name || ''}`.trim() + (m.email ? ` — ${m.email}` : ''),
   }));
 
   const handleEdit = (division: any) => {

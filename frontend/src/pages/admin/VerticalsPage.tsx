@@ -440,8 +440,13 @@ export function VerticalsPage() {
   const updateMutation = useUpdateVertical();
   const deleteMutation = useDeleteVertical();
 
-  const membersQ = useMembers({ page_size: 200 });
-  const orgMembers = (membersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; first_name?: string; last_name?: string; email?: string }>;
+  // For the Vertical Head dropdown — only vertical_head role users
+  const vhMembersQ = useMembers({ role: 'vertical_head', page_size: 200 });
+  const orgMembers = (vhMembersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; first_name?: string; last_name?: string; email?: string; role?: string }>;
+
+  // For Manage Members panel — all org members
+  const allMembersQ = useMembers({ page_size: 200 });
+  const allOrgMembers = (allMembersQ.data?.items ?? []) as Array<{ id: string; first_name?: string; last_name?: string; email?: string; role?: string }>;
 
   const { data: divisionsData } = useDivisions();
   const allDivisionsList = ((divisionsData as any)?.items ?? (Array.isArray(divisionsData) ? divisionsData : [])) as Array<{ id: string; name: string; code?: string }>;
@@ -507,7 +512,7 @@ export function VerticalsPage() {
     const payload = {
       name: data.name,
       description: data.description,
-      division_id: data.division_id,
+      divisionId: data.division_id,
       headId: data.head_id,
       color: data.color,
       status: data.status,
@@ -694,17 +699,18 @@ export function VerticalsPage() {
       {managingMembersFor && (
         <Card className="border-primary/40 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold">Members — {managingMembersFor.name}</h2>
+            <h2 className="text-base font-semibold">Team Members — {managingMembersFor.name}</h2>
             <Button size="sm" variant="ghost" onClick={() => setManagingMembersFor(null)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
           <p className="text-sm text-muted-foreground mb-3">
-            Add org members to this vertical so Project Managers can assign them to projects and tasks.
+            All org members available to be assigned to projects and tasks within this vertical.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-            {orgMembers.map((m) => {
-              const name = `${m.firstName || m.first_name || ''} ${m.lastName || m.last_name || ''}`.trim() || m.email || '';
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-y-auto">
+            {allOrgMembers.map((m) => {
+              const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email || '';
+              const roleLabel = m.role ? m.role.replace(/_/g, ' ') : '';
               return (
                 <div key={m.id} className="flex items-center gap-2 p-2 border rounded-md text-sm">
                   <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
@@ -712,15 +718,15 @@ export function VerticalsPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">{name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{m.email || ''}</p>
+                    <p className="text-xs text-muted-foreground truncate capitalize">{roleLabel}</p>
                   </div>
                 </div>
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            All org members are available to Project Managers. Use User Management to invite new members.
-          </p>
+          {allOrgMembers.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">No members found. Add users via User Management.</p>
+          )}
         </Card>
       )}
 
