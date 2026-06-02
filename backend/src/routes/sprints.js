@@ -1,6 +1,6 @@
 const express = require('express');
 const { z } = require('zod');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const sprintService = require('../services/sprintService');
 
 const router = express.Router();
@@ -42,7 +42,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // Create sprint
-router.post('/', async (req, res, next) => {
+router.post('/', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager', 'team_lead'), async (req, res, next) => {
   try {
     const { project_id } = req.query;
     if (!project_id) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'project_id is required' } });
@@ -53,7 +53,7 @@ router.post('/', async (req, res, next) => {
 });
 
 // Update sprint
-router.patch('/:sprintId', async (req, res, next) => {
+router.patch('/:sprintId', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager', 'team_lead'), async (req, res, next) => {
   try {
     const data = updateSchema.parse(req.body);
     const sprint = await sprintService.update(req.user.orgId, req.params.sprintId, data);
@@ -62,7 +62,7 @@ router.patch('/:sprintId', async (req, res, next) => {
 });
 
 // Delete sprint
-router.delete('/:sprintId', async (req, res, next) => {
+router.delete('/:sprintId', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager', 'team_lead'), async (req, res, next) => {
   try {
     const result = await sprintService.delete(req.user.orgId, req.params.sprintId);
     res.json({ success: true, data: result });

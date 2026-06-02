@@ -11,12 +11,15 @@ router.post('/generate-tasks', async (req, res) => {
   if (!prompt?.trim()) {
     return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'prompt is required' } });
   }
+  if (prompt.length > 2000) {
+    return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Prompt too long (max 2000 characters)' } });
+  }
   try {
     const tasks = await aiService.generateTasks(prompt);
     res.json({ success: true, data: { tasks } });
   } catch (err) {
     logger.error('AI generate-tasks error', { error: err.message });
-    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: 'Internal server error' } });
   }
 });
 
@@ -30,7 +33,7 @@ router.post('/summarize-task', async (req, res) => {
     res.json({ success: true, data: { summary } });
   } catch (err) {
     logger.error('AI summarize-task error', { error: err.message });
-    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: 'Internal server error' } });
   }
 });
 
@@ -44,7 +47,7 @@ router.post('/suggest-assignee', async (req, res) => {
     res.json({ success: true, data: { suggestions } });
   } catch (err) {
     logger.error('AI suggest-assignee error', { error: err.message });
-    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: 'Internal server error' } });
   }
 });
 
@@ -58,7 +61,7 @@ router.post('/generate-report', async (req, res) => {
     res.json({ success: true, data: { report } });
   } catch (err) {
     logger.error('AI generate-report error', { error: err.message });
-    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: 'Internal server error' } });
   }
 });
 
@@ -72,7 +75,7 @@ router.post('/review-task', async (req, res) => {
     res.json({ success: true, data: { review } });
   } catch (err) {
     logger.error('AI review-task error', { error: err.message });
-    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'AI_ERROR', message: 'Internal server error' } });
   }
 });
 

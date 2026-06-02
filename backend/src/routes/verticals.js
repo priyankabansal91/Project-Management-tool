@@ -22,10 +22,28 @@ router.get('/', async (req, res) => {
       include: {
         division: { select: { id: true, name: true } },
         head: { select: { id: true, firstName: true, lastName: true, email: true } },
+        projects: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            budget: true,
+            milestones: { select: { actualBudget: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
-    res.json({ success: true, data: { items: verticals } });
+
+    // Compute actualBudget = sum of all milestone actualBudgets across all projects in vertical
+    const enriched = verticals.map((v) => {
+      const actualBudget = (v.projects || []).reduce((sum, p) => {
+        return sum + (p.milestones || []).reduce((ms, m) => ms + Number(m.actualBudget || 0), 0);
+      }, 0);
+      const { projects, ...rest } = v;
+      return { ...rest, actualBudget };
+    });
+
+    res.json({ success: true, data: { items: enriched } });
   } catch (err) {
     // Prisma model not yet migrated — return empty list
     res.json({ success: true, data: { items: [] } });

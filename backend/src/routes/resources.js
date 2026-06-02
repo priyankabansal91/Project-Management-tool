@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const ResourceService = require('../services/resourceService');
 
 router.use(authenticate);
@@ -23,14 +23,14 @@ router.get('/', (req, res) => {
     const resources = ResourceService.listResources(filters);
     res.json({ success: true, data: resources });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/resources - Create resource
  */
-router.post('/', (req, res) => {
+router.post('/', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const resource = ResourceService.createResource(req.body);
     res.status(201).json({ success: true, data: resource });
@@ -50,14 +50,14 @@ router.get('/:id', (req, res) => {
     }
     res.json({ success: true, data: resource });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/resources/:id/allocate - Allocate resource to project
  */
-router.post('/:id/allocate', (req, res) => {
+router.post('/:id/allocate', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const resource = ResourceService.allocateResource(req.params.id, req.body.projectId, req.body);
     if (!resource) {
@@ -72,7 +72,7 @@ router.post('/:id/allocate', (req, res) => {
 /**
  * POST /v1/resources/:id/deallocate - Deallocate resource from project
  */
-router.post('/:id/deallocate', (req, res) => {
+router.post('/:id/deallocate', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const resource = ResourceService.deallocateResource(req.params.id, req.body.projectId);
     if (!resource) {
@@ -87,7 +87,7 @@ router.post('/:id/deallocate', (req, res) => {
 /**
  * POST /v1/resources/:id/skills - Add skill
  */
-router.post('/:id/skills', (req, res) => {
+router.post('/:id/skills', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const resource = ResourceService.addSkill(req.params.id, req.body.skill);
     if (!resource) {
@@ -107,14 +107,14 @@ router.get('/skills/:skill', (req, res) => {
     const matrix = ResourceService.getSkillMatrix(req.params.skill);
     res.json({ success: true, data: matrix });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/resources/skills/gaps - Get skill gaps
  */
-router.post('/skills/gaps', (req, res) => {
+router.post('/skills/gaps', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const gaps = ResourceService.getSkillGaps(req.body.requiredSkills);
     res.json({ success: true, data: gaps });
@@ -131,7 +131,7 @@ router.get('/capacity/heatmap', (req, res) => {
     const heatmap = ResourceService.getCapacityHeatmap();
     res.json({ success: true, data: heatmap });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -143,7 +143,7 @@ router.get('/bench/report', (req, res) => {
     const report = ResourceService.getBenchReport();
     res.json({ success: true, data: report });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -156,14 +156,14 @@ router.get('/hiring/plan', (req, res) => {
     const plan = ResourceService.getHiringPlan(quarters);
     res.json({ success: true, data: plan });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/resources/:id/pto - Add PTO/holiday
  */
-router.post('/:id/pto', (req, res) => {
+router.post('/:id/pto', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const resource = ResourceService.addPTO(req.params.id, req.body);
     if (!resource) {
@@ -187,7 +187,7 @@ router.get('/pto/calendar', (req, res) => {
     const calendar = ResourceService.getPTOCalendar(filters);
     res.json({ success: true, data: calendar });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -199,7 +199,7 @@ router.get('/utilization/comparison', (req, res) => {
     const comparison = ResourceService.getUtilizationComparison();
     res.json({ success: true, data: comparison });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -211,7 +211,7 @@ router.get('/dashboard', (req, res) => {
     const summary = ResourceService.getDashboardSummary();
     res.json({ success: true, data: summary });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

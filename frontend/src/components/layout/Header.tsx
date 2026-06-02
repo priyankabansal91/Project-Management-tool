@@ -186,14 +186,15 @@ export function Header() {
                     Preview how the app looks for each role
                   </p>
                 </div>
-                <div className="p-2 space-y-0.5">
-                  {STAKEHOLDER_PERSONAS.map((persona) => (
+                <div className="p-2 space-y-0.5 max-h-[420px] overflow-y-auto">
+                  <p className="px-2 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Core Roles</p>
+                  {STAKEHOLDER_PERSONAS.filter(p => p.defaultDivisionId !== 'div_ppid').map((persona) => (
                     <button
-                      key={persona.role}
+                      key={persona.email}
                       onClick={() => handleSwitchRole(persona)}
                       className={cn(
                         'flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-muted',
-                        currentRole === persona.role && 'bg-muted'
+                        user?.id === persona.devUserId && 'bg-muted'
                       )}
                     >
                       <div className={cn(
@@ -205,7 +206,41 @@ export function Header() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{persona.name}</span>
-                          {currentRole === persona.role && (
+                          {user?.id === persona.devUserId && (
+                            <span className="text-[10px] rounded-full bg-primary/10 text-primary px-1.5 py-0.5 font-medium">
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <span className={cn('text-[10px] font-semibold rounded px-1 py-0.5', persona.color)}>
+                          {persona.label}
+                        </span>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{persona.description}</p>
+                      </div>
+                    </button>
+                  ))}
+                  <div className="pt-1.5 pb-0.5 border-t mt-1">
+                    <p className="px-2 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">PPID Division</p>
+                  </div>
+                  {STAKEHOLDER_PERSONAS.filter(p => p.defaultDivisionId === 'div_ppid').map((persona) => (
+                    <button
+                      key={persona.email}
+                      onClick={() => handleSwitchRole(persona)}
+                      className={cn(
+                        'flex w-full items-start gap-3 rounded-lg p-2.5 text-left transition-colors hover:bg-muted',
+                        user?.id === persona.devUserId && 'bg-muted'
+                      )}
+                    >
+                      <div className={cn(
+                        'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0',
+                        persona.color
+                      )}>
+                        {persona.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{persona.name}</span>
+                          {user?.id === persona.devUserId && (
                             <span className="text-[10px] rounded-full bg-primary/10 text-primary px-1.5 py-0.5 font-medium">
                               Active
                             </span>
@@ -269,15 +304,31 @@ export function Header() {
                 {/* Mobile role switcher */}
                 <div className="border-t p-2 lg:hidden">
                   <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
-                    Switch View
+                    Core Roles
                   </p>
-                  {STAKEHOLDER_PERSONAS.map((persona) => (
+                  {STAKEHOLDER_PERSONAS.filter(p => p.defaultDivisionId !== 'div_ppid').map((persona) => (
                     <button
-                      key={persona.role}
+                      key={persona.email}
                       onClick={() => handleSwitchRole(persona)}
                       className={cn(
                         'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted',
-                        currentRole === persona.role && 'bg-muted font-medium'
+                        user?.id === persona.devUserId && 'bg-muted font-medium'
+                      )}
+                    >
+                      <span className={cn('h-2 w-2 rounded-full flex-shrink-0', persona.color.split(' ')[0])} />
+                      {persona.label}
+                    </button>
+                  ))}
+                  <p className="px-2 py-1 mt-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest border-t pt-2">
+                    PPID Division
+                  </p>
+                  {STAKEHOLDER_PERSONAS.filter(p => p.defaultDivisionId === 'div_ppid').map((persona) => (
+                    <button
+                      key={persona.email}
+                      onClick={() => handleSwitchRole(persona)}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted',
+                        user?.id === persona.devUserId && 'bg-muted font-medium'
                       )}
                     >
                       <span className={cn('h-2 w-2 rounded-full flex-shrink-0', persona.color.split(' ')[0])} />

@@ -55,6 +55,7 @@ enum UserStatus {
 enum OrgRole {
   org_admin
   division_admin
+  hod
   vertical_head
   project_manager
   team_lead
@@ -447,6 +448,7 @@ model Project {
   deletedAt        DateTime?         @map("deleted_at")
   phase            ProjectPhase      @default(ACTIVE) @map("phase")
   budget           Decimal?          @map("budget")
+  expenseHeads     Json?             @map("expense_heads")
 
   organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   division       Division?       @relation(fields: [divisionId], references: [id])

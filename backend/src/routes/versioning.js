@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const versioningService = require('../services/versioningService');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 
 const router = Router();
 
@@ -52,7 +52,7 @@ router.get('/:entityType/:entityId/version/:version', async (req, res, next) => 
  * Restore to specific version
  * POST /v1/versioning/:entityType/:entityId/restore/:version
  */
-router.post('/:entityType/:entityId/restore/:version', async (req, res, next) => {
+router.post('/:entityType/:entityId/restore/:version', authorize('org_admin', 'division_admin', 'project_manager'), async (req, res, next) => {
   try {
     const result = await versioningService.restoreVersion(
       req.user.orgId,

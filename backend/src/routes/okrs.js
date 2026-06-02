@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const OKRService = require('../services/okrService');
 
 router.use(authenticate);
@@ -25,14 +25,14 @@ router.get('/', (req, res) => {
     const okrs = OKRService.listOKRs(filters);
     res.json({ success: true, data: okrs });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/okrs - Create new OKR
  */
-router.post('/', (req, res) => {
+router.post('/', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const okr = OKRService.createOKR(req.body);
     res.status(201).json({ success: true, data: okr });
@@ -52,14 +52,14 @@ router.get('/:id', (req, res) => {
     }
     res.json({ success: true, data: okr });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * PATCH /v1/okrs/:id - Update OKR
  */
-router.patch('/:id', (req, res) => {
+router.patch('/:id', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const okr = OKRService.updateOKR(req.params.id, req.body);
     if (!okr) {
@@ -74,7 +74,7 @@ router.patch('/:id', (req, res) => {
 /**
  * DELETE /v1/okrs/:id - Delete OKR
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const deleted = OKRService.deleteOKR(req.params.id);
     if (!deleted) {
@@ -82,14 +82,14 @@ router.delete('/:id', (req, res) => {
     }
     res.json({ success: true, message: 'OKR deleted' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/okrs/:id/key-results - Add key result
  */
-router.post('/:id/key-results', (req, res) => {
+router.post('/:id/key-results', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const kr = OKRService.addKeyResult(req.params.id, req.body);
     if (!kr) {
@@ -104,7 +104,7 @@ router.post('/:id/key-results', (req, res) => {
 /**
  * PATCH /v1/okrs/:id/key-results/:krId - Update key result
  */
-router.patch('/:id/key-results/:krId', (req, res) => {
+router.patch('/:id/key-results/:krId', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const kr = OKRService.updateKeyResult(req.params.id, req.params.krId, req.body);
     if (!kr) {
@@ -119,7 +119,7 @@ router.patch('/:id/key-results/:krId', (req, res) => {
 /**
  * POST /v1/okrs/:id/link-project - Link project to OKR
  */
-router.post('/:id/link-project', (req, res) => {
+router.post('/:id/link-project', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const okr = OKRService.linkProject(req.params.id, req.body.projectId);
     if (!okr) {
@@ -134,7 +134,7 @@ router.post('/:id/link-project', (req, res) => {
 /**
  * POST /v1/okrs/:id/link-task - Link task to OKR
  */
-router.post('/:id/link-task', (req, res) => {
+router.post('/:id/link-task', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const okr = OKRService.linkTask(req.params.id, req.body.taskId);
     if (!okr) {
@@ -157,7 +157,7 @@ router.get('/:id/cascade', (req, res) => {
     }
     res.json({ success: true, data: cascade });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -174,7 +174,7 @@ router.get('/alignment/view', (req, res) => {
     const alignment = OKRService.getAlignmentView(filters);
     res.json({ success: true, data: alignment });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -188,7 +188,7 @@ router.get('/quarterly-checkin', (req, res) => {
     const checkIn = OKRService.getQuarterlyCheckIn(quarter, year);
     res.json({ success: true, data: checkIn });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -200,7 +200,7 @@ router.get('/health/scores', (req, res) => {
     const scores = OKRService.getHealthScores();
     res.json({ success: true, data: scores });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

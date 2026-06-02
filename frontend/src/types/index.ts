@@ -12,7 +12,7 @@ export interface User {
   organizations?: OrgMembership[];
 }
 
-export type OrgRole = 'org_admin' | 'division_admin' | 'vertical_head' | 'project_manager' | 'team_lead' | 'member' | 'viewer' | 'executive';
+export type OrgRole = 'org_admin' | 'division_admin' | 'hod' | 'vertical_head' | 'project_manager' | 'team_lead' | 'member' | 'viewer' | 'executive';
 
 export interface OrgMembership {
   id: string;

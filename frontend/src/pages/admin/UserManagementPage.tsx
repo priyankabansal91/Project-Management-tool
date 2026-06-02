@@ -27,6 +27,7 @@ type Member = {
 const roleColors: Record<string, string> = {
   org_admin:       'bg-red-100 text-red-700',
   division_admin:  'bg-orange-100 text-orange-700',
+  hod:             'bg-indigo-100 text-indigo-700',
   vertical_head:   'bg-teal-100 text-teal-700',
   project_manager: 'bg-blue-100 text-blue-700',
   team_lead:       'bg-cyan-100 text-cyan-700',
@@ -370,7 +371,7 @@ export function UserManagementPage() {
                       </td>
                       <td className="p-4">
                         <Badge className={cn('text-xs', roleColors[m.role] ?? 'bg-gray-100 text-gray-700')}>
-                          {m.role.replace(/_/g, ' ')}
+                          {m.role?.replace(/_/g, ' ')}
                         </Badge>
                       </td>
                       <td className="p-4">
@@ -434,7 +435,7 @@ export function UserManagementPage() {
                       </td>
                       <td className="p-4">
                         <Badge className={cn('text-xs', roleColors[inv.role] ?? 'bg-gray-100 text-gray-700')}>
-                          {inv.role.replace(/_/g, ' ')}
+                          {inv.role?.replace(/_/g, ' ')}
                         </Badge>
                       </td>
                       <td className="p-4 text-muted-foreground">{inv.invited_by}</td>
@@ -566,6 +567,7 @@ export function UserManagementPage() {
                           <option value="team_lead">Team Lead</option>
                           <option value="project_manager">Project Lead</option>
                           <option value="vertical_head">Vertical Head</option>
+                          <option value="hod">Head of Department (HoD)</option>
                           <option value="division_admin">Division Admin</option>
                           <option value="org_admin">System Admin</option>
                           <option value="executive">Leadership</option>
@@ -620,6 +622,7 @@ export function UserManagementPage() {
                           <option value="team_lead">Team Lead</option>
                           <option value="project_manager">Project Lead</option>
                           <option value="vertical_head">Vertical Head</option>
+                          <option value="hod">Head of Department (HoD)</option>
                           <option value="division_admin">Division Admin</option>
                           <option value="org_admin">System Admin</option>
                           <option value="executive">Leadership</option>

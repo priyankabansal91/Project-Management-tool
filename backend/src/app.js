@@ -75,19 +75,29 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS — validate origin against explicit whitelist + Vercel preview domains
-const ALLOWED_ORIGINS = new Set(
-  [config.frontendUrl, process.env.FRONTEND_URL_ALT].filter(Boolean)
+// CORS — explicit origin allowlist (no wildcard Vercel domains)
+const STATIC_ORIGINS = new Set([
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://frontend-liart-one-33.vercel.app',
+  'https://qflow-backend-umber.vercel.app',
+  config.frontendUrl,
+  process.env.FRONTEND_URL_ALT,
+].filter(Boolean));
+
+// Additional origins from ALLOWED_ORIGINS env var (comma-separated)
+const ENV_ORIGINS = new Set(
+  (process.env.ALLOWED_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean)
 );
-const IS_DEV = config.nodeEnv !== 'production';
+
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // same-origin / curl
-    if (ALLOWED_ORIGINS.has(origin)) return cb(null, true);
-    // Allow all Vercel deployments (preview + production URLs shared for testing)
-    if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return cb(null, true);
-    // In development allow any localhost port (Vite picks 5173, 5174, etc.)
-    if (IS_DEV && /^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true);
+    // Allow same-origin requests (no Origin header: curl, Postman, server-to-server)
+    if (!origin) return cb(null, true);
+    // Check static allowlist
+    if (STATIC_ORIGINS.has(origin)) return cb(null, true);
+    // Check env-var allowlist
+    if (ENV_ORIGINS.size > 0 && ENV_ORIGINS.has(origin)) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -95,8 +105,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-User-Id'],
 }));
 
-app.use(express.json({ limit: '2mb' }));   // tightened from 10mb
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(express.json({ limit: '500kb' }));
+app.use(express.urlencoded({ extended: true, limit: '500kb' }));
 app.use(cookieParser());
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 

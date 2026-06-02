@@ -13,6 +13,9 @@ import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
 import { Card } from '@/components/ui/card';
 import { useKanbanTasks, useCreateTask, useMoveTask, useProject, useDeleteTask, useUpdateTask, useMembers, useMilestones, useAddProjectMember, useRemoveProjectMember } from '@/api/hooks';
 import type { Task, KanbanColumn, WorkflowStatus } from '@/types';
+import { useAuthStore } from '@/store/authStore';
+
+const TASK_EDIT_ROLES = ['org_admin', 'division_admin', 'hod', 'vertical_head', 'project_manager', 'team_lead', 'member'];
 
 // ─── Fallback mock data (used when API is unavailable) ──
 
@@ -52,8 +55,8 @@ const fallbackMembers = [
 
 // ─── Sortable Task Card ─────────────────────────────────
 
-function SortableTaskCard({ task, onClick, onDelete }: { task: Task; onClick: () => void; onDelete: (id: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { task } });
+function SortableTaskCard({ task, onClick, onDelete, canEdit }: { task: Task; onClick: () => void; onDelete: (id: string) => void; canEdit: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { task }, disabled: !canEdit });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -63,12 +66,12 @@ function SortableTaskCard({ task, onClick, onDelete }: { task: Task; onClick: ()
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <TaskCardContent task={task} onClick={onClick} dragListeners={listeners} onDelete={onDelete} />
+      <TaskCardContent task={task} onClick={onClick} dragListeners={listeners} onDelete={onDelete} canEdit={canEdit} />
     </div>
   );
 }
 
-function TaskCardMenu({ task, onDelete, onOpen }: { task: Task; onDelete: (id: string) => void; onOpen: (task: Task) => void }) {
+function TaskCardMenu({ task, onDelete, onOpen, canEdit }: { task: Task; onDelete: (id: string) => void; onOpen: (task: Task) => void; canEdit: boolean }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -95,22 +98,26 @@ function TaskCardMenu({ task, onDelete, onOpen }: { task: Task; onDelete: (id: s
           >
             <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /> Open Task
           </button>
-          <div className="my-1 border-t" />
-          {!confirmDelete ? (
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted"
-              onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Delete Task
-            </button>
-          ) : (
-            <div className="px-3 py-2 space-y-1" onClick={(e) => e.stopPropagation()}>
-              <p className="text-xs text-destructive font-medium">Delete this task?</p>
-              <div className="flex gap-1">
-                <button className="flex-1 rounded bg-destructive text-destructive-foreground text-xs py-1" onClick={() => { onDelete(task.id); setOpen(false); }}>Delete</button>
-                <button className="flex-1 rounded border text-xs py-1" onClick={() => setConfirmDelete(false)}>Cancel</button>
-              </div>
-            </div>
+          {canEdit && (
+            <>
+              <div className="my-1 border-t" />
+              {!confirmDelete ? (
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted"
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete Task
+                </button>
+              ) : (
+                <div className="px-3 py-2 space-y-1" onClick={(e) => e.stopPropagation()}>
+                  <p className="text-xs text-destructive font-medium">Delete this task?</p>
+                  <div className="flex gap-1">
+                    <button className="flex-1 rounded bg-destructive text-destructive-foreground text-xs py-1" onClick={() => { onDelete(task.id); setOpen(false); }}>Delete</button>
+                    <button className="flex-1 rounded border text-xs py-1" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -118,7 +125,7 @@ function TaskCardMenu({ task, onDelete, onOpen }: { task: Task; onDelete: (id: s
   );
 }
 
-function TaskCardContent({ task, onClick, dragListeners, onDelete }: { task: Task; onClick?: () => void; dragListeners?: any; onDelete?: (id: string) => void }) {
+function TaskCardContent({ task, onClick, dragListeners, onDelete, canEdit }: { task: Task; onClick?: () => void; dragListeners?: any; onDelete?: (id: string) => void; canEdit?: boolean }) {
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && !task.completed_at;
 
   return (
@@ -128,12 +135,14 @@ function TaskCardContent({ task, onClick, dragListeners, onDelete }: { task: Tas
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-1">
-          <button {...dragListeners} className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity">
-            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
+          {canEdit !== false && (
+            <button {...dragListeners} className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity">
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          )}
           <span className="text-xs font-mono text-muted-foreground">{task.task_key}</span>
         </div>
-        {onDelete && <TaskCardMenu task={task} onDelete={onDelete} onOpen={(t) => onClick && onClick()} />}
+        {onDelete && <TaskCardMenu task={task} onDelete={onDelete} onOpen={(t) => onClick && onClick()} canEdit={canEdit !== false} />}
       </div>
 
       <h4 className="text-sm font-medium mb-2 leading-snug">{task.title}</h4>
@@ -174,7 +183,7 @@ function TaskCardContent({ task, onClick, dragListeners, onDelete }: { task: Tas
 
 // ─── Droppable Column ───────────────────────────────────
 
-function KanbanColumnComponent({ column, onAddTask, onTaskClick, onDeleteTask }: { column: KanbanColumn; onAddTask: (statusId: string) => void; onTaskClick: (task: Task) => void; onDeleteTask: (id: string) => void }) {
+function KanbanColumnComponent({ column, onAddTask, onTaskClick, onDeleteTask, canEdit }: { column: KanbanColumn; onAddTask: (statusId: string) => void; onTaskClick: (task: Task) => void; onDeleteTask: (id: string) => void; canEdit: boolean }) {
   return (
     <div className="flex flex-col w-72 shrink-0">
       <div className="flex items-center justify-between px-2 py-2 mb-3">
@@ -185,15 +194,17 @@ function KanbanColumnComponent({ column, onAddTask, onTaskClick, onDeleteTask }:
             {column.tasks.length}
           </span>
         </div>
-        <button onClick={() => onAddTask(column.id)} className="rounded p-1 hover:bg-muted">
-          <Plus className="h-4 w-4 text-muted-foreground" />
-        </button>
+        {canEdit && (
+          <button onClick={() => onAddTask(column.id)} className="rounded p-1 hover:bg-muted">
+            <Plus className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="flex-1 space-y-2 overflow-y-auto rounded-lg bg-secondary/30 p-2 min-h-[200px]" data-column-id={column.id}>
           {column.tasks.map((task) => (
-            <SortableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} onDelete={onDeleteTask} />
+            <SortableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} onDelete={onDeleteTask} canEdit={canEdit} />
           ))}
           {column.tasks.length === 0 && (
             <div className="flex h-24 items-center justify-center rounded-lg border-2 border-dashed text-sm text-muted-foreground">
@@ -211,6 +222,8 @@ function KanbanColumnComponent({ column, onAddTask, onTaskClick, onDeleteTask }:
 export function KanbanBoardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const { currentRole } = useAuthStore();
+  const canEditTasks = TASK_EDIT_ROLES.includes(currentRole || '');
 
   // API hooks (fallback to mock data if API unavailable)
   const kanbanQuery = useKanbanTasks(projectId || '');
@@ -427,9 +440,11 @@ export function KanbanBoardPage() {
           <Button size="sm" variant="outline" onClick={() => setShowTeamPanel((s) => !s)}>
             <Users className="h-3.5 w-3.5" /> Team
           </Button>
-          <Button size="sm" onClick={() => handleAddTask(columns[0]?.id || modalStatuses[0]?.id || 'backlog')}>
-            <Plus className="h-3.5 w-3.5" /> Add Task
-          </Button>
+          {canEditTasks && (
+            <Button size="sm" onClick={() => handleAddTask(columns[0]?.id || modalStatuses[0]?.id || 'backlog')}>
+              <Plus className="h-3.5 w-3.5" /> Add Task
+            </Button>
+          )}
         </div>
       </div>
 
@@ -477,7 +492,7 @@ export function KanbanBoardPage() {
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
           <div className="flex gap-4 h-full min-w-max">
             {filteredColumns.map((column) => (
-              <KanbanColumnComponent key={column.id} column={column} onAddTask={handleAddTask} onTaskClick={handleTaskClick} onDeleteTask={(id) => deleteTask.mutate(id)} />
+              <KanbanColumnComponent key={column.id} column={column} onAddTask={handleAddTask} onTaskClick={handleTaskClick} onDeleteTask={(id) => deleteTask.mutate(id)} canEdit={canEditTasks} />
             ))}
           </div>
 
@@ -490,13 +505,16 @@ export function KanbanBoardPage() {
 
       {/* Project Team Panel */}
       {showTeamPanel && (
-        <div className="fixed inset-y-0 right-0 z-40 w-80 bg-card border-l shadow-xl flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 border-b">
+        <>
+          {/* Backdrop — click anywhere outside to close */}
+          <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setShowTeamPanel(false)} />
+          <div className="fixed inset-y-0 right-0 z-40 w-96 bg-card border-l shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/40">
             <h2 className="font-semibold text-sm flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" /> Project Team
             </h2>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setShowTeamPanel(false)}>
-              <X className="h-4 w-4" />
+            <Button size="sm" variant="outline" className="h-8 px-3 gap-1.5 text-xs" onClick={() => setShowTeamPanel(false)}>
+              <X className="h-3.5 w-3.5" /> Close
             </Button>
           </div>
 
@@ -584,7 +602,8 @@ export function KanbanBoardPage() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Task Modal */}

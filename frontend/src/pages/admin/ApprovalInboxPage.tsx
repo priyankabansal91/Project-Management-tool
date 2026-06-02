@@ -177,7 +177,7 @@ function DelegateModal({
                 </div>
                 <div>
                   <p className="text-sm font-medium">{m.name}</p>
-                  <p className="text-[10px] text-muted-foreground capitalize">{m.role.replace('_', ' ')} · {m.division}</p>
+                  <p className="text-[10px] text-muted-foreground capitalize">{m.role?.replace('_', ' ')} · {m.division}</p>
                 </div>
               </button>
             ))}
@@ -518,7 +518,7 @@ export function ApprovalInboxPage() {
   const canActOn = (a: any) =>
     a.requiredRole
       ? a.requiredRole === currentRole
-      : ['org_admin', 'division_admin', 'executive'].includes(currentRole || '');
+      : ['org_admin', 'division_admin', 'hod', 'executive'].includes(currentRole || '');
 
   const displayed = useMemo(() => {
     if (tab === 'mine') return allApprovals.filter(canActOn);

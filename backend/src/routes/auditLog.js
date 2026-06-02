@@ -19,7 +19,7 @@ router.use(authenticate);
  *   start_date  {string}  ISO date — lower bound for created_at
  *   end_date    {string}  ISO date — upper bound for created_at (inclusive up to end of day)
  */
-router.get('/', authorize('org_admin', 'division_admin'), async (req, res, next) => {
+router.get('/', authorize('org_admin', 'hod', 'division_admin'), async (req, res, next) => {
   try {
     const page      = Math.max(1, parseInt(req.query.page, 10)      || 1);
     const page_size = Math.min(100, Math.max(1, parseInt(req.query.page_size, 10) || 25));

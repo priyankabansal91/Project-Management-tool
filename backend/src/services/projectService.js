@@ -18,6 +18,7 @@ function fmt(p) {
     start_date: p.startDate,
     due_date: p.dueDate,
     budget: p.budget ? Number(p.budget) : null,
+    expense_heads: p.expenseHeads ?? [],
     member_count: p.members?.length ?? 0,
     task_count: tasks.length,
     completed: tasks.filter((t) => t.completedAt).length,
@@ -125,6 +126,8 @@ class ProjectService {
         ownerId: userId,
         startDate: data.start_date ? new Date(data.start_date) : null,
         dueDate: data.due_date ? new Date(data.due_date) : null,
+        budget: data.budget ? Number(data.budget) : null,
+        expenseHeads: data.expense_heads || null,
         createdBy: userId,
         members: { create: membersToCreate },
       },
@@ -148,7 +151,8 @@ class ProjectService {
         ...(data.division_id  !== undefined && { divisionId: data.division_id || null }),
         ...(data.vertical_id  !== undefined && { verticalId: data.vertical_id || null }),
         ...(data.phase        !== undefined && { phase: data.phase }),
-        ...(data.budget       !== undefined && { budget: data.budget ? Number(data.budget) : null }),
+        ...(data.budget        !== undefined && { budget: data.budget ? Number(data.budget) : null }),
+        ...(data.expense_heads !== undefined && { expenseHeads: data.expense_heads || null }),
       },
       include: { ...TASK_INCLUDE, ...MEMBER_INCLUDE },
     });
@@ -157,7 +161,7 @@ class ProjectService {
 
   async delete(orgId, projectId) {
     await this.getById(orgId, projectId);
-    await prisma.project.update({ where: { id: projectId }, data: { deletedAt: new Date() } });
+    await prisma.project.delete({ where: { id: projectId } });
     return { success: true };
   }
 }

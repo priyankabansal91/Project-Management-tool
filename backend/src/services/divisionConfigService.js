@@ -34,6 +34,13 @@ const DIVISION_METADATA = new Map([
     description: 'People operations and HR',
     budget: 1000000,
   }],
+  ['div_ppid', {
+    id: 'div_ppid',
+    name: 'PPID',
+    color: '#EC4899',
+    description: 'PPID Division',
+    budget: 3000000,
+  }],
 ]);
 
 // divisionConfigs: Map<divisionId, configObject>
@@ -107,6 +114,29 @@ const divisionConfigs = new Map([
       formats: ['pdf'],
     },
   }],
+  ['div_ppid', {
+    workflowTemplate: 'wf_default',
+    enabled_modules: [...ALL_MODULES],
+    features: {
+      timeTracking: true,
+      sprints: true,
+      calendar: true,
+      ai: true,
+      exports: true,
+      financialDashboard: true,
+      okrDashboard: true,
+      resourceDashboard: true,
+      approvals: true,
+      forms: true,
+    },
+    roleOverrides: {
+      member: { task_delete: false, project_create: false },
+    },
+    reportAccess: {
+      download: ['division_admin', 'project_manager', 'hod'],
+      formats: ['pdf', 'csv', 'excel'],
+    },
+  }],
 ]);
 
 // divisionMemberships: Map<userId, Array<{ divisionId, role }>>
@@ -137,7 +167,7 @@ const divisionMemberships = new Map([
   ]],
 ]);
 
-const SCOPE_ALL_ROLES = new Set(['org_admin', 'executive']);
+const SCOPE_ALL_ROLES = new Set(['org_admin', 'executive', 'hod', 'division_admin']);
 
 class DivisionConfigService {
   /**

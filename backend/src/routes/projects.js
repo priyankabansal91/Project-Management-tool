@@ -243,7 +243,7 @@ router.post('/:projectId/close', authorize('org_admin', 'division_admin', 'proje
   }
 });
 
-router.delete('/:projectId', authorize('org_admin', 'division_admin'), async (req, res, next) => {
+router.delete('/:projectId', authorize('org_admin', 'division_admin', 'vertical_head'), async (req, res, next) => {
   try {
     await projectService.delete(req.user.orgId, req.params.projectId);
     res.status(204).end();

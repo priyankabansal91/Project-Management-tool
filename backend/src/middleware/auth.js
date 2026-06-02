@@ -12,6 +12,13 @@ const DEV_USERS = {
   'dev-executive-id':       { id: 'dev-executive-id',       orgId: 'dev-org-id', role: 'executive',       email: 'executive@example.local' },
   'dev-vertical_head-id':  { id: 'dev-vertical_head-id',  orgId: 'dev-org-id', role: 'vertical_head',  email: 'vertical-head@example.local' },
   'dev-team_lead-id':      { id: 'dev-team_lead-id',      orgId: 'dev-org-id', role: 'team_lead',      email: 'team-lead@example.local' },
+  'dev-hod-id':            { id: 'dev-hod-id',            orgId: 'dev-org-id', role: 'hod',            email: 'hod@example.local' },
+  // PPID-specific personas
+  'dev-ppid-divadmin-id':  { id: 'dev-ppid-divadmin-id',  orgId: 'dev-org-id', role: 'division_admin',  email: 'ppid-divadmin@example.local' },
+  'dev-ppid-vh-id':        { id: 'dev-ppid-vh-id',        orgId: 'dev-org-id', role: 'vertical_head',   email: 'ppid-vh@example.local' },
+  'dev-ppid-tm-id':        { id: 'dev-ppid-tm-id',        orgId: 'dev-org-id', role: 'member',          email: 'ppid-tm@example.local' },
+  'dev-ppid-pl-id':        { id: 'dev-ppid-pl-id',        orgId: 'dev-org-id', role: 'project_manager', email: 'ppid-pl@example.local' },
+  'dev-ppid-hod-id':       { id: 'dev-ppid-hod-id',       orgId: 'dev-org-id', role: 'hod',             email: 'ppid-hod@example.local' },
 };
 
 // Allowed dev user ID values — only exact keys from above are accepted

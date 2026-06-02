@@ -123,7 +123,7 @@ router.get('/overview', async (req, res) => {
 
     res.json({ success: true, data: overview });
   } catch (err) {
-    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   }
 });
 
@@ -139,7 +139,7 @@ router.get('/milestone-burn', async (req, res) => {
     const prisma = require('../config/prisma');
     const { projectId } = req.query;
 
-    const where = { orgId: req.user.orgId };
+    const where = { orgId: req.user.orgId, project: { deletedAt: null } };
     if (projectId) where.projectId = projectId;
 
     const milestones = await prisma.milestone.findMany({
@@ -173,7 +173,42 @@ router.get('/milestone-burn', async (req, res) => {
 
     res.json({ success: true, data: { milestones: burnData } });
   } catch (err) {
-    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+    console.error('[milestone-burn]', err);
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
+  }
+});
+
+/**
+ * GET /v1/dashboard/v2/expense-heads
+ * Aggregated expense head totals across all milestones for the org
+ */
+router.get('/expense-heads', async (req, res) => {
+  try {
+    const prisma = require('../config/prisma');
+
+    const milestones = await prisma.milestone.findMany({
+      where: { orgId: req.user.orgId },
+      select: { expenseHeads: true },
+    });
+
+    const totals = {};
+    for (const milestone of milestones) {
+      const heads = milestone.expenseHeads;
+      if (Array.isArray(heads)) {
+        for (const eh of heads) {
+          const key = eh.head || 'other';
+          if (!totals[key]) {
+            totals[key] = { head: key, label: eh.label || key, amount: 0 };
+          }
+          totals[key].amount += Number(eh.amount || 0);
+        }
+      }
+    }
+
+    const result = Object.values(totals).sort((a, b) => b.amount - a.amount);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   }
 });
 

@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const nodeEnv = process.env.NODE_ENV || 'development';
+const nodeEnv = process.env.NODE_ENV || 'production';
 const isProd = nodeEnv === 'production';
 
 // Require strong secrets in production — fail fast rather than run insecurely
@@ -9,6 +9,9 @@ if (isProd && !process.env.JWT_SECRET) {
 }
 if (isProd && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
   throw new Error('JWT_SECRET must be at least 32 characters in production');
+}
+if (process.env.JWT_SECRET === 'dev-secret-change-in-production-min-32-chars') {
+  console.warn('[SECURITY WARNING] JWT_SECRET is set to the known default insecure value. Change it before deploying to production.');
 }
 
 module.exports = {

@@ -7,12 +7,13 @@
 
 const ROLE_HIERARCHY = {
   org_admin: 100,
+  executive: 90,
   division_admin: 80,
+  hod: 85,
   vertical_head: 70,
   project_manager: 60,
   team_lead: 50,
   member: 30,
-  executive: 90,
   viewer: 10,
 };
 
@@ -26,29 +27,29 @@ const PERMISSION_MATRIX = {
   'division:create':        ['org_admin'],
   'division:edit':          ['org_admin', 'division_admin'],
   'division:delete':        ['org_admin'],
-  'division:view':          ['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
+  'division:view':          ['org_admin', 'hod', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
 
   // Verticals
   'vertical:create':        ['org_admin', 'division_admin'],
   'vertical:edit':          ['org_admin', 'division_admin', 'vertical_head'],
   'vertical:delete':        ['org_admin', 'division_admin'],
-  'vertical:view':          ['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
+  'vertical:view':          ['org_admin', 'hod', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
 
   // Projects
   'project:create':         ['org_admin', 'division_admin', 'vertical_head'],
   'project:edit':           ['org_admin', 'division_admin', 'vertical_head', 'project_manager'],
   'project:delete':         ['org_admin', 'division_admin'],
-  'project:view':           ['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'team_lead', 'member', 'executive', 'viewer'],
+  'project:view':           ['org_admin', 'hod', 'division_admin', 'vertical_head', 'project_manager', 'team_lead', 'member', 'executive', 'viewer'],
   'project:manage_members': ['org_admin', 'division_admin', 'vertical_head', 'project_manager'],
 
   // Milestones
   'milestone:create':       ['org_admin', 'division_admin', 'vertical_head', 'project_manager'],
   'milestone:edit':         ['org_admin', 'division_admin', 'vertical_head', 'project_manager'],
   'milestone:delete':       ['org_admin', 'division_admin', 'vertical_head'],
-  'milestone:view':         ['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'team_lead', 'member', 'executive', 'viewer'],
+  'milestone:view':         ['org_admin', 'hod', 'division_admin', 'vertical_head', 'project_manager', 'team_lead', 'member', 'executive', 'viewer'],
   'milestone:close':        ['org_admin', 'division_admin', 'vertical_head', 'project_manager'],
-  'milestone:approve':      ['org_admin', 'division_admin', 'vertical_head'],
-  'milestone:budget:view':  ['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
+  'milestone:approve':      ['org_admin', 'hod', 'division_admin', 'vertical_head'],
+  'milestone:budget:view':  ['org_admin', 'hod', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
   'milestone:budget:edit':  ['org_admin', 'division_admin', 'vertical_head'],
 
   // Tasks
@@ -67,21 +68,21 @@ const PERMISSION_MATRIX = {
 
   // Approvals
   'approval:create':        ['org_admin', 'division_admin', 'vertical_head', 'project_manager'],
-  'approval:view':          ['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
-  'approval:action':        ['org_admin', 'division_admin', 'vertical_head'],
+  'approval:view':          ['org_admin', 'hod', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
+  'approval:action':        ['org_admin', 'hod', 'division_admin', 'vertical_head'],
 
   // Reports
-  'report:view:org':        ['org_admin', 'executive'],
-  'report:view:division':   ['org_admin', 'division_admin', 'executive'],
-  'report:view:vertical':   ['org_admin', 'division_admin', 'vertical_head', 'executive'],
-  'report:view:project':    ['org_admin', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
-  'report:export':          ['org_admin', 'division_admin', 'vertical_head', 'project_manager'],
+  'report:view:org':        ['org_admin', 'hod', 'executive'],
+  'report:view:division':   ['org_admin', 'hod', 'division_admin', 'executive'],
+  'report:view:vertical':   ['org_admin', 'hod', 'division_admin', 'vertical_head', 'executive'],
+  'report:view:project':    ['org_admin', 'hod', 'division_admin', 'vertical_head', 'project_manager', 'executive'],
+  'report:export':          ['org_admin', 'hod', 'division_admin', 'vertical_head', 'project_manager'],
 
   // Admin
   'admin:users':            ['org_admin'],
   'admin:roles':            ['org_admin'],
   'admin:org_settings':     ['org_admin'],
-  'admin:audit_log':        ['org_admin', 'executive'],
+  'admin:audit_log':        ['org_admin', 'hod', 'executive'],
 };
 
 /**

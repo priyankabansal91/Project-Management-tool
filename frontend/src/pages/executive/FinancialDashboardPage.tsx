@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, PieChart, Building2, X } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, PieChart, Building2, X, Receipt } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/authStore';
-import { useMyDivisions } from '@/api/hooks';
+import { useMyDivisions, useExpenseHeadSummary } from '@/api/hooks';
 
 interface Budget {
   id: string;
@@ -23,6 +23,7 @@ export function FinancialDashboardPage() {
   const { currentDivisionId } = useAuthStore();
   const { data: myDivisions = [] } = useMyDivisions();
   const activeDivision = (myDivisions as any[]).find((d: any) => d.divisionId === currentDivisionId);
+  const { data: expenseHeads = [] } = useExpenseHeadSummary();
 
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -64,6 +65,29 @@ export function FinancialDashboardPage() {
     saasTools: 500000,
     other: 250000,
   };
+
+  const STATIC_EXPENSE_HEADS = [
+    { head: 'assessment',      label: 'Assessment Cost',    amount: 1200000, color: '#3b82f6' },
+    { head: 'technology',      label: 'Technology Cost',    amount: 2500000, color: '#8b5cf6' },
+    { head: 'professional',    label: 'Professional Cost',  amount: 1800000, color: '#10b981' },
+    { head: 'travel',          label: 'Travel & Logistics', amount: 350000,  color: '#f59e0b' },
+    { head: 'infrastructure',  label: 'Infrastructure',     amount: 900000,  color: '#ef4444' },
+    { head: 'training',        label: 'Training',           amount: 450000,  color: '#06b6d4' },
+    { head: 'overheads',       label: 'Overheads',          amount: 600000,  color: '#ec4899' },
+    { head: 'other',           label: 'Other',              amount: 250000,  color: '#94a3b8' },
+  ];
+
+  const HEAD_COLORS: Record<string, string> = {
+    assessment: '#3b82f6', technology: '#8b5cf6', professional: '#10b981',
+    travel: '#f59e0b', infrastructure: '#ef4444', training: '#06b6d4',
+    overheads: '#ec4899', other: '#94a3b8',
+  };
+
+  const displayExpenseHeads = expenseHeads.length > 0
+    ? expenseHeads.map((eh) => ({ ...eh, color: HEAD_COLORS[eh.head] ?? '#94a3b8' }))
+    : STATIC_EXPENSE_HEADS;
+
+  const totalExpenses = displayExpenseHeads.reduce((s, e) => s + e.amount, 0);
 
   const handleAddBudget = () => {
     if (!form.entityName.trim()) { setFormError('Entity name is required.'); return; }
@@ -304,6 +328,76 @@ export function FinancialDashboardPage() {
               </div>
             );
           })}
+        </div>
+      </Card>
+
+      {/* Expense Head Report */}
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Receipt className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Expense Head Report</h2>
+          {expenseHeads.length === 0 && (
+            <span className="ml-2 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">sample data</span>
+          )}
+        </div>
+        <div className="space-y-4">
+          {/* Summary row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+            {displayExpenseHeads.slice(0, 4).map((eh) => (
+              <div key={eh.head} className="rounded-lg p-3 border" style={{ borderLeftColor: eh.color, borderLeftWidth: 3 }}>
+                <p className="text-xs text-muted-foreground">{eh.label}</p>
+                <p className="text-base font-bold mt-0.5">{formatCurrency(eh.amount)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {totalExpenses > 0 ? ((eh.amount / totalExpenses) * 100).toFixed(1) : '0.0'}%
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Full breakdown table */}
+          <div className="overflow-hidden rounded-lg border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Expense Head</th>
+                  <th className="text-right px-4 py-2.5 font-semibold text-muted-foreground">Amount (₹)</th>
+                  <th className="text-right px-4 py-2.5 font-semibold text-muted-foreground">% of Total</th>
+                  <th className="px-4 py-2.5 w-36">Distribution</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayExpenseHeads.map((eh, i) => {
+                  const pct = totalExpenses > 0 ? (eh.amount / totalExpenses) * 100 : 0;
+                  return (
+                    <tr key={eh.head} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: eh.color }} />
+                          {eh.label}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-semibold">{formatCurrency(eh.amount)}</td>
+                      <td className="px-4 py-2.5 text-right text-muted-foreground">{pct.toFixed(1)}%</td>
+                      <td className="px-4 py-2.5">
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, backgroundColor: eh.color }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-muted/50 font-semibold border-t">
+                  <td className="px-4 py-2.5">Total</td>
+                  <td className="px-4 py-2.5 text-right">{formatCurrency(totalExpenses)}</td>
+                  <td className="px-4 py-2.5 text-right">100%</td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </Card>
 

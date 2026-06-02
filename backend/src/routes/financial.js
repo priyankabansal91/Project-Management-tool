@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const FinancialService = require('../services/financialService');
 
 router.use(authenticate);
@@ -23,14 +23,14 @@ router.get('/budgets', (req, res) => {
     const budgets = FinancialService.listBudgets(filters);
     res.json({ success: true, data: budgets });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/financial/budgets - Create budget
  */
-router.post('/budgets', (req, res) => {
+router.post('/budgets', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const budget = FinancialService.createBudget(req.body);
     res.status(201).json({ success: true, data: budget });
@@ -50,14 +50,14 @@ router.get('/budgets/:id', (req, res) => {
     }
     res.json({ success: true, data: budget });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/financial/budgets/:id/costs - Record cost
  */
-router.post('/budgets/:id/costs', (req, res) => {
+router.post('/budgets/:id/costs', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const budget = FinancialService.recordCost(req.params.id, req.body);
     if (!budget) {
@@ -72,7 +72,7 @@ router.post('/budgets/:id/costs', (req, res) => {
 /**
  * POST /v1/financial/budgets/:id/revenue - Record revenue
  */
-router.post('/budgets/:id/revenue', (req, res) => {
+router.post('/budgets/:id/revenue', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const budget = FinancialService.recordRevenue(req.params.id, req.body);
     if (!budget) {
@@ -97,7 +97,7 @@ router.get('/budget-vs-actual', (req, res) => {
     const report = FinancialService.getBudgetVsActual(filters);
     res.json({ success: true, data: report });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -114,7 +114,7 @@ router.get('/cost-breakdown', (req, res) => {
     const breakdown = FinancialService.getCostBreakdown(filters);
     res.json({ success: true, data: breakdown });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -130,7 +130,7 @@ router.get('/revenue-attribution', (req, res) => {
     const attribution = FinancialService.getRevenueAttribution(filters);
     res.json({ success: true, data: attribution });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -145,7 +145,7 @@ router.get('/roi/:budgetId', (req, res) => {
     }
     res.json({ success: true, data: roi });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -160,14 +160,14 @@ router.get('/forecast/:budgetId', (req, res) => {
     }
     res.json({ success: true, data: forecast });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 /**
  * POST /v1/financial/chargebacks - Allocate shared costs
  */
-router.post('/chargebacks', (req, res) => {
+router.post('/chargebacks', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const allocation = FinancialService.allocateSharedCosts(req.body);
     if (!allocation) {
@@ -182,7 +182,7 @@ router.post('/chargebacks', (req, res) => {
 /**
  * POST /v1/financial/invoices - Create invoice
  */
-router.post('/invoices', (req, res) => {
+router.post('/invoices', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
   try {
     const invoice = FinancialService.createInvoice(req.body);
     res.status(201).json({ success: true, data: invoice });
@@ -203,7 +203,7 @@ router.get('/invoices', (req, res) => {
     const invoices = FinancialService.getInvoices(filters);
     res.json({ success: true, data: invoices });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
@@ -215,7 +215,7 @@ router.get('/dashboard', (req, res) => {
     const summary = FinancialService.getDashboardSummary();
     res.json({ success: true, data: summary });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

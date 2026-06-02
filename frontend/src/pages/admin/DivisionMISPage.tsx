@@ -214,9 +214,9 @@ export function DivisionMISPage() {
   const qc = useQueryClient();
 
   const isOrgAdmin = currentRole === 'org_admin';
-  const isDivAdmin = currentRole === 'division_admin';
+  const isDivAdmin = currentRole === 'division_admin' || currentRole === 'hod';
 
-  // For division_admin: auto-detect their division
+  // For division_admin / hod: auto-detect their division
   const { data: myDivisions } = useMyDivisions();
   const defaultDivisionId = isDivAdmin && myDivisions && myDivisions.length > 0
     ? myDivisions[0].divisionId

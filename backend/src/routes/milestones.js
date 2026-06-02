@@ -11,6 +11,61 @@ const {
 
 router.use(authenticate);
 
+/**
+ * Validate that the new expense heads for a milestone don't cause any head
+ * to exceed the corresponding project-level expense head budget.
+ * Returns an array of violation objects (empty = OK), or null if no project heads defined.
+ */
+async function validateExpenseHeads(prisma, projectId, orgId, newExpenseHeads, excludeMilestoneId = null) {
+  if (!Array.isArray(newExpenseHeads) || newExpenseHeads.length === 0) return null;
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, orgId },
+    select: { expenseHeads: true },
+  }).catch(() => null);
+
+  if (!project?.expenseHeads || !Array.isArray(project.expenseHeads) || project.expenseHeads.length === 0) {
+    return null; // project has no expense head budgets — skip validation
+  }
+
+  // Build project limit map keyed by head id
+  const projectLimits = {};
+  for (const eh of project.expenseHeads) {
+    const key = eh.head || eh.label || 'other';
+    projectLimits[key] = { label: eh.label || key, limit: Number(eh.amount || 0) };
+  }
+
+  // Sum expense heads of all OTHER milestones in this project
+  const where = { projectId };
+  if (excludeMilestoneId) where.id = { not: excludeMilestoneId };
+  const others = await prisma.milestone.findMany({ where, select: { expenseHeads: true } }).catch(() => []);
+
+  const used = {};
+  for (const m of others) {
+    if (!Array.isArray(m.expenseHeads)) continue;
+    for (const eh of m.expenseHeads) {
+      const key = eh.head || eh.label || 'other';
+      used[key] = (used[key] || 0) + Number(eh.amount || 0);
+    }
+  }
+
+  // Check each new head against project limit
+  const violations = [];
+  for (const eh of newExpenseHeads) {
+    const key = eh.head || eh.label || 'other';
+    if (!projectLimits[key]) continue; // no project-level limit for this head
+    const existing = used[key] || 0;
+    const adding = Number(eh.amount || 0);
+    const total = existing + adding;
+    const limit = projectLimits[key].limit;
+    if (total > limit) {
+      violations.push({ head: key, label: projectLimits[key].label, limit, existing, adding, total });
+    }
+  }
+
+  return violations;
+}
+
 // GET /v1/projects/:projectId/milestones
 router.get('/', async (req, res) => {
   try {
@@ -69,6 +124,9 @@ router.post(
     if (!title) {
       return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'title is required' } });
     }
+    if (!budget || isNaN(parseFloat(budget)) || parseFloat(budget) <= 0) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'budget is required and must be greater than 0' } });
+    }
 
     try {
       const prisma = require('../config/prisma');
@@ -101,6 +159,20 @@ router.post(
         }
       }
 
+      // Validate expense heads don't exceed project-level head budgets
+      if (expenseHeads && Array.isArray(expenseHeads) && expenseHeads.length > 0) {
+        const ehViolations = await validateExpenseHeads(prisma, req.params.projectId, req.user.orgId, expenseHeads);
+        if (ehViolations && ehViolations.length > 0) {
+          const details = ehViolations.map(v =>
+            `"${v.label}": limit ₹${v.limit.toLocaleString('en-IN')}, already allocated ₹${v.existing.toLocaleString('en-IN')}, adding ₹${v.adding.toLocaleString('en-IN')} (exceeds by ₹${(v.total - v.limit).toLocaleString('en-IN')})`
+          ).join('; ');
+          return res.status(400).json({
+            success: false,
+            error: { code: 'EXPENSE_HEAD_EXCEEDED', message: `Milestone expense heads exceed project budget: ${details}` },
+          });
+        }
+      }
+
       // Auto-assign sequenceOrder and predecessorId
       const lastMilestone = await prisma.milestone.findFirst({
         where: { projectId: req.params.projectId },
@@ -125,7 +197,7 @@ router.post(
           createdBy: req.user.id,
           budget: budget ? parseFloat(budget) : null,
           actualBudget: actualBudget ? parseFloat(actualBudget) : null,
-          budgetLocked: Boolean(budgetLocked),
+          budgetLocked: true, // always lock planned budget on creation
           expenseHeads: expenseHeads || null,
           effortEstimate: effortEstimate ? parseFloat(effortEstimate) : null,
           milestoneType,
@@ -138,7 +210,7 @@ router.post(
       });
       res.status(201).json({ success: true, data: milestone });
     } catch (err) {
-      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
     }
   }
 );
@@ -171,7 +243,7 @@ router.get('/summary', async (req, res) => {
 
     res.json({ success: true, data: summary });
   } catch (err) {
-    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   }
 });
 
@@ -215,7 +287,7 @@ router.get('/:id', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   }
 });
 
@@ -279,6 +351,20 @@ router.patch(
         }
       }
 
+      // Validate expense heads don't exceed project-level head budgets
+      if (expenseHeads !== undefined && Array.isArray(expenseHeads) && expenseHeads.length > 0) {
+        const ehViolations = await validateExpenseHeads(prisma, req.params.projectId, req.user.orgId, expenseHeads, req.params.id);
+        if (ehViolations && ehViolations.length > 0) {
+          const details = ehViolations.map(v =>
+            `"${v.label}": limit ₹${v.limit.toLocaleString('en-IN')}, already allocated ₹${v.existing.toLocaleString('en-IN')}, adding ₹${v.adding.toLocaleString('en-IN')} (exceeds by ₹${(v.total - v.limit).toLocaleString('en-IN')})`
+          ).join('; ');
+          return res.status(400).json({
+            success: false,
+            error: { code: 'EXPENSE_HEAD_EXCEEDED', message: `Milestone expense heads exceed project budget: ${details}` },
+          });
+        }
+      }
+
       // If planned budget is locked, prevent changes to it
       if (budget !== undefined) {
         const existing = await prisma.milestone.findFirst({ where: { id: req.params.id }, select: { budgetLocked: true } }).catch(() => null);
@@ -299,7 +385,7 @@ router.patch(
 
       res.json({ success: true, data: milestone });
     } catch (err) {
-      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
     }
   }
 );
@@ -308,7 +394,12 @@ router.patch(
 router.delete('/:id', requirePermission('milestone:delete'), async (req, res) => {
   try {
     const prisma = require('../config/prisma');
-    await prisma.milestone.delete({ where: { id: req.params.id } });
+    const { count } = await prisma.milestone.deleteMany({
+      where: { id: req.params.id, orgId: req.user.orgId },
+    });
+    if (count === 0) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Milestone not found or no permission' } });
+    }
   } catch { /* not yet in DB */ }
   res.json({ success: true, data: { deleted: true } });
 });
@@ -369,7 +460,7 @@ router.post('/:id/close', requirePermission('milestone:close'), requireAllTasksD
 
     res.json({ success: true, data: { status: 'completed' } });
   } catch (err) {
-    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: err.message } });
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   }
 });
 

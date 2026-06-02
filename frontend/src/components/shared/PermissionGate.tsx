@@ -39,6 +39,12 @@ const ROLE_PERMISSIONS: Record<OrgRole, string[]> = {
     'project:read','task:create','task:read','task:update','task:comment',
     'workflow:read','approval:create','division:read',
   ],
+  hod: [
+    'project:read','task:read',
+    'workflow:read',
+    'approval:approve','approval:reject',
+    'division:read','admin:view_audit',
+  ],
   executive: ['project:read','task:read','workflow:read','division:read','admin:view_audit'],
   viewer: ['project:read','task:read','workflow:read','division:read'],
 };

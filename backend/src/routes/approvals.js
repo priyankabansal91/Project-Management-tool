@@ -10,7 +10,7 @@ router.use(authenticate);
  * Create an approval request
  * POST /v1/approvals
  */
-router.post('/', authorize('org_admin', 'project_manager', 'director'), async (req, res, next) => {
+router.post('/', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), async (req, res, next) => {
   try {
     const { workflow_id, title, description, content, related_task_id, related_project_id } = req.body;
 
@@ -87,7 +87,7 @@ router.get('/:approvalId', async (req, res, next) => {
  * Approve an approval step
  * POST /v1/approvals/:approvalId/approve
  */
-router.post('/:approvalId/approve', async (req, res, next) => {
+router.post('/:approvalId/approve', authorize('org_admin', 'division_admin', 'hod', 'vertical_head', 'project_manager'), async (req, res, next) => {
   try {
     const { reason } = req.body;
     const approval = await approvalService.approveStep(req.user.orgId, req.user.id, req.params.approvalId, {
@@ -104,7 +104,7 @@ router.post('/:approvalId/approve', async (req, res, next) => {
  * Reject an approval step
  * POST /v1/approvals/:approvalId/reject
  */
-router.post('/:approvalId/reject', async (req, res, next) => {
+router.post('/:approvalId/reject', authorize('org_admin', 'division_admin', 'hod', 'vertical_head', 'project_manager'), async (req, res, next) => {
   try {
     const { reason } = req.body;
     const approval = await approvalService.rejectStep(req.user.orgId, req.user.id, req.params.approvalId, {
