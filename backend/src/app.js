@@ -75,13 +75,16 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS — explicit origin allowlist (no wildcard Vercel domains)
+// CORS — explicit origin allowlist
 const STATIC_ORIGINS = new Set([
   'http://localhost:5173',
   'http://localhost:3000',
+  // Production frontend
+  'https://frontend-priyankabansal91s-projects.vercel.app',
+  'https://frontend-priyankabansal91-priyankabansal91s-projects.vercel.app',
   'https://frontend-liart-one-33.vercel.app',
-  'https://qflow-backend-umber.vercel.app',
   config.frontendUrl,
+  process.env.FRONTEND_URL,
   process.env.FRONTEND_URL_ALT,
 ].filter(Boolean));
 
@@ -89,6 +92,9 @@ const STATIC_ORIGINS = new Set([
 const ENV_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean)
 );
+
+// Allow any preview deploy for this project (frontend-*-priyankabansal91s-projects.vercel.app)
+const VERCEL_PREVIEW_RE = /^https:\/\/frontend-[a-z0-9]+-priyankabansal91s-projects\.vercel\.app$/;
 
 app.use(cors({
   origin: (origin, cb) => {
@@ -98,6 +104,8 @@ app.use(cors({
     if (STATIC_ORIGINS.has(origin)) return cb(null, true);
     // Check env-var allowlist
     if (ENV_ORIGINS.size > 0 && ENV_ORIGINS.has(origin)) return cb(null, true);
+    // Allow any Vercel preview URL for this project
+    if (VERCEL_PREVIEW_RE.test(origin)) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
   credentials: true,
