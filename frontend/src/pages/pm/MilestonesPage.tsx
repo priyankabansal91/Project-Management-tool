@@ -74,16 +74,6 @@ interface MilestoneFormData {
   currency: string;
 }
 
-// ─── Seed Data ────────────────────────────────────────────
-
-const SEED_MILESTONES: Milestone[] = [
-  { id: 'ms1', title: 'Requirement Gathering', description: 'Collect and document all requirements from stakeholders.', status: 'completed', progress: 100, start_date: '2026-01-05', due_date: '2026-01-20', taskCount: 8, milestoneType: 'planning', budget: null, effortEstimate: 40 },
-  { id: 'ms2', title: 'UI/UX Design', description: 'Create wireframes, prototypes and final design mockups.', status: 'completed', progress: 100, start_date: '2026-01-21', due_date: '2026-02-10', taskCount: 12, milestoneType: 'design', budget: 50000, effortEstimate: 80 },
-  { id: 'ms3', title: 'Development Phase 1', description: 'Build core modules: authentication, dashboard, primary data flows.', status: 'in_progress', progress: 62, start_date: '2026-02-11', due_date: '2026-03-15', taskCount: 21, milestoneType: 'development', budget: 120000, effortEstimate: 200, actualEffort: 124, burnRate: 62 },
-  { id: 'ms4', title: 'UAT & Testing', description: 'User acceptance testing, regression and bug fixes.', status: 'pending', progress: 0, start_date: '2026-03-16', due_date: '2026-04-05', taskCount: 9, milestoneType: 'testing', approvalRequired: true, budget: 30000, effortEstimate: 60 },
-  { id: 'ms5', title: 'Production Deployment', description: 'Deploy to production, configure monitoring, hand over to operations.', status: 'pending', progress: 0, start_date: '2026-04-06', due_date: '2026-04-15', taskCount: 5, milestoneType: 'deployment', approvalRequired: true },
-];
-
 const EMPTY_FORM: MilestoneFormData = {
   title: '', description: '', status: 'pending',
   start_date: '', due_date: '', progress: 0,
@@ -816,9 +806,6 @@ export function MilestonesPage() {
   const updateMutation = useUpdateMilestone(projectId);
   const deleteMutation = useDeleteMilestone(projectId);
 
-  const [localMilestones, setLocalMilestones] = useState<Milestone[]>(
-    SEED_MILESTONES.map((m) => ({ ...m, project_id: projectId })),
-  );
   const [showPanel, setShowPanel] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [closingMilestone, setClosingMilestone] = useState<Milestone | null>(null);
@@ -826,24 +813,12 @@ export function MilestonesPage() {
   const [startingSaving, setStartingSaving] = useState(false);
 
   const apiMilestones: Milestone[] = (milestonesQuery.data ?? []) as Milestone[];
-  const milestones = apiMilestones.length > 0 ? apiMilestones : localMilestones;
+  const milestones = apiMilestones;
   const project = projectQuery.data as any;
 
   // Auto-start milestones whose start_date has passed and are still NOT_STARTED (not BLOCKED)
   useEffect(() => {
-    if (apiMilestones.length === 0) {
-      const today = new Date().toISOString().slice(0, 10);
-      setLocalMilestones((prev) =>
-        prev.map((m) => {
-          const sd = m.start_date || m.startDate || '';
-          if ((m.waterfallStatus === 'NOT_STARTED' || !m.waterfallStatus) && sd && sd <= today && m.status === 'pending') {
-            return { ...m, waterfallStatus: 'IN_PROGRESS' as WaterfallStatus, status: 'in_progress' as MilestoneStatus };
-          }
-          return m;
-        })
-      );
-      return;
-    }
+    if (apiMilestones.length === 0) return;
     const today = new Date().toISOString().slice(0, 10);
     const toAutoStart = apiMilestones.filter((m) => {
       const sd = m.start_date || m.startDate || '';
@@ -874,11 +849,7 @@ export function MilestonesPage() {
 
   const handleDelete = (id: string) => {
     if (!confirm('Delete this milestone? This action cannot be undone.')) return;
-    if (apiMilestones.length > 0) {
-      deleteMutation.mutate(id);
-    } else {
-      setLocalMilestones((prev) => prev.filter((m) => m.id !== id));
-    }
+    deleteMutation.mutate(id);
   };
 
   const handleSave = (data: MilestoneFormData) => {
@@ -893,42 +864,11 @@ export function MilestonesPage() {
       milestoneType: data.milestoneType, approvalRequired: data.approvalRequired, currency: data.currency,
     };
     if (editingMilestone) {
-      if (apiMilestones.length > 0) {
-        updateMutation.mutate({ id: editingMilestone.id, ...payload }, {
-          onSuccess: () => { setShowPanel(false); setEditingMilestone(null); },
-        });
-      } else {
-        const patch: Partial<Milestone> = {
-          title: data.title, description: data.description, status: data.status,
-          start_date: data.start_date, due_date: data.due_date, progress: data.progress,
-          budget: data.budget ? parseFloat(data.budget) : null,
-          actualBudget: data.actualBudget ? parseFloat(data.actualBudget) : null,
-          budgetLocked: data.budgetLocked,
-          expenseHeads: data.expenseHeads,
-          effortEstimate: data.effortEstimate ? parseFloat(data.effortEstimate) : null,
-          milestoneType: data.milestoneType, approvalRequired: data.approvalRequired, currency: data.currency,
-        };
-        setLocalMilestones((prev) => prev.map((m) => m.id === editingMilestone.id ? { ...m, ...patch } : m));
-        setShowPanel(false); setEditingMilestone(null);
-      }
+      updateMutation.mutate({ id: editingMilestone.id, ...payload }, {
+        onSuccess: () => { setShowPanel(false); setEditingMilestone(null); },
+      });
     } else {
-      if (apiMilestones.length > 0) {
-        createMutation.mutate(payload, { onSuccess: () => setShowPanel(false) });
-      } else {
-        const newMs: Milestone = {
-          id: 'ms_' + Date.now(), project_id: projectId, taskCount: 0,
-          title: data.title, description: data.description, status: data.status,
-          start_date: data.start_date, due_date: data.due_date, progress: data.progress,
-          budget: data.budget ? parseFloat(data.budget) : null,
-          actualBudget: data.actualBudget ? parseFloat(data.actualBudget) : null,
-          budgetLocked: data.budgetLocked,
-          expenseHeads: data.expenseHeads,
-          effortEstimate: data.effortEstimate ? parseFloat(data.effortEstimate) : null,
-          milestoneType: data.milestoneType, approvalRequired: data.approvalRequired, currency: data.currency,
-        };
-        setLocalMilestones((prev) => [...prev, newMs]);
-        setShowPanel(false);
-      }
+      createMutation.mutate(payload, { onSuccess: () => setShowPanel(false) });
     }
   };
 
@@ -936,16 +876,8 @@ export function MilestonesPage() {
     if (!closingMilestone) return;
     setClosingSaving(true);
     try {
-      if (apiMilestones.length > 0) {
-        await api.post(`/projects/${projectId}/milestones/${closingMilestone.id}/close`, { completionNotes: notes });
-        milestonesQuery.refetch?.();
-      } else {
-        setLocalMilestones((prev) => prev.map((m) =>
-          m.id === closingMilestone.id
-            ? { ...m, status: closingMilestone.approvalRequired ? 'review' : 'completed', progress: closingMilestone.approvalRequired ? m.progress : 100 }
-            : m
-        ));
-      }
+      await api.post(`/projects/${projectId}/milestones/${closingMilestone.id}/close`, { completionNotes: notes });
+      milestonesQuery.refetch?.();
     } finally {
       setClosingSaving(false);
       setClosingMilestone(null);
@@ -956,23 +888,14 @@ export function MilestonesPage() {
     setStartingSaving(true);
     const today = new Date().toISOString().slice(0, 10);
     const originalStart = m.start_date || m.startDate || '';
-    // Shift start date to today if today is after original start date
     const newStartDate = originalStart && today > originalStart ? today : originalStart;
     try {
-      if (apiMilestones.length > 0) {
-        await api.patch(`/projects/${projectId}/milestones/${m.id}`, {
-          waterfallStatus: 'IN_PROGRESS',
-          status: 'in_progress',
-          ...(newStartDate && newStartDate !== originalStart && { startDate: newStartDate }),
-        });
-        milestonesQuery.refetch?.();
-      } else {
-        setLocalMilestones((prev) => prev.map((ms) =>
-          ms.id === m.id
-            ? { ...ms, waterfallStatus: 'IN_PROGRESS' as WaterfallStatus, status: 'in_progress', start_date: newStartDate || ms.start_date }
-            : ms
-        ));
-      }
+      await api.patch(`/projects/${projectId}/milestones/${m.id}`, {
+        waterfallStatus: 'IN_PROGRESS',
+        status: 'in_progress',
+        ...(newStartDate && newStartDate !== originalStart && { startDate: newStartDate }),
+      });
+      milestonesQuery.refetch?.();
     } finally {
       setStartingSaving(false);
     }
