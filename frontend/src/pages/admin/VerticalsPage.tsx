@@ -61,14 +61,6 @@ function getHeadName(v: Vertical): string {
   return 'Unassigned';
 }
 
-const SEED_VERTICALS: Vertical[] = [
-  { id: 'v1', name: 'Development Team', description: 'Core software development vertical', division: 'IT Division', division_id: 'div_it', head_name: 'Rahul Mehta', color: '#3B82F6', member_count: 8, project_count: 3, status: 'active' },
-  { id: 'v2', name: 'QA & Testing', description: 'Quality assurance and testing vertical', division: 'IT Division', division_id: 'div_it', head_name: 'Sunita Rao', color: '#10B981', member_count: 4, project_count: 2, status: 'active' },
-  { id: 'v3', name: 'UI/UX Design', description: 'User experience and interface design', division: 'IT Division', division_id: 'div_it', head_name: 'Priya Sharma', color: '#8B5CF6', member_count: 3, project_count: 2, status: 'active' },
-  { id: 'v4', name: 'Finance Operations', description: 'Financial processing and reporting', division: 'Finance Division', division_id: 'div_finance', head_name: 'Vikram Singh', color: '#F59E0B', member_count: 5, project_count: 1, status: 'active' },
-  { id: 'v5', name: 'Accreditation Team', description: 'Standards and accreditation vertical', division: 'Accreditation Division', division_id: 'div_accred', head_name: 'Anjali Gupta', color: '#EF4444', member_count: 6, project_count: 2, status: 'inactive' },
-  { id: 'v6', name: 'Infrastructure', description: 'IT infrastructure and DevOps', division: 'IT Division', division_id: 'div_it', head_name: 'David Park', color: '#06B6D4', member_count: 4, project_count: 1, status: 'active' },
-];
 
 const COLORS = ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
 
@@ -587,9 +579,7 @@ export function VerticalsPage() {
   const { data: divisionsData } = useDivisions();
   const allDivisionsList = ((divisionsData as any)?.items ?? (Array.isArray(divisionsData) ? divisionsData : [])) as Array<{ id: string; name: string; code?: string }>;
 
-  // Fall back to seed data if API returns nothing
-  const [localVerticals, setLocalVerticals] = useState<Vertical[]>(SEED_VERTICALS);
-  const verticals: Vertical[] = apiVerticals.length > 0 ? apiVerticals : localVerticals;
+  const verticals: Vertical[] = apiVerticals;
 
   const [showModal, setShowModal] = useState(false);
   const [editingVertical, setEditingVertical] = useState<Vertical | null>(null);
@@ -629,19 +619,11 @@ export function VerticalsPage() {
 
   const handleDelete = (id: string) => {
     if (!confirm('Delete this vertical? This action cannot be undone.')) return;
-    if (apiVerticals.length > 0) {
-      deleteMutation.mutate(id);
-    } else {
-      setLocalVerticals((prev) => prev.filter((v) => v.id !== id));
-    }
+    deleteMutation.mutate(id);
   };
 
   const handleLifecycleChange = (id: string, newStatus: VerticalLifecycle) => {
-    if (apiVerticals.length > 0) {
-      updateMutation.mutate({ id, lifecycleStatus: newStatus } as any);
-    } else {
-      setLocalVerticals((prev) => prev.map((v) => v.id === id ? { ...v, lifecycleStatus: newStatus } : v));
-    }
+    updateMutation.mutate({ id, lifecycleStatus: newStatus } as any);
   };
 
   const handleSave = async (id: string | null, data: VerticalFormData): Promise<void> => {
@@ -656,25 +638,9 @@ export function VerticalsPage() {
     };
 
     if (id) {
-      if (apiVerticals.length > 0) {
-        await updateMutation.mutateAsync({ id, ...payload });
-      } else {
-        setLocalVerticals((prev) => prev.map((v) => v.id === id ? { ...v, ...payload } : v));
-      }
+      await updateMutation.mutateAsync({ id, ...payload });
     } else {
-      if (apiVerticals.length > 0) {
-        await createMutation.mutateAsync(payload);
-      } else {
-        const newVertical: Vertical = {
-          ...payload,
-          division: null,
-          id: 'v_' + Date.now(),
-          member_count: 0,
-          project_count: 0,
-          status: payload.status,
-        };
-        setLocalVerticals((prev) => [newVertical, ...prev]);
-      }
+      await createMutation.mutateAsync(payload);
     }
     setShowModal(false);
     setEditingVertical(null);

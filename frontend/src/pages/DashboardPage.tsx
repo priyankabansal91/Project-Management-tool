@@ -375,14 +375,8 @@ function EnhancedApprovalsWidget({ navigate }: { navigate: ReturnType<typeof use
   const items: any[] = q.data?.items ?? [];
   const total: number = q.data?.total ?? items.length;
 
-  const mockItems = [
-    { id: 'm1', title: 'Phase 2 Milestone Closure',  approvalType: 'Milestone', createdAt: new Date(Date.now() - 8 * 86400000).toISOString(), priority: 'high',   requestedBy: 'Rahul Sharma' },
-    { id: 'm2', title: 'Budget Increase — CPR',      approvalType: 'Budget',    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), priority: 'medium', requestedBy: 'Carol Johnson' },
-    { id: 'm3', title: 'New Member Access Request',  approvalType: 'Access',    createdAt: new Date(Date.now() - 86400000).toISOString(),      priority: 'low',    requestedBy: 'Admin' },
-  ];
-
-  const displayItems = items.length > 0 ? items : mockItems;
-  const displayTotal = total > 0 ? total : mockItems.length;
+  const displayItems = items;
+  const displayTotal = total;
 
   const typeColors: Record<string, string> = {
     Milestone: 'bg-purple-100 text-purple-700',
@@ -489,29 +483,12 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
   const approvalsQ = usePendingApprovals({ page_size: 1 });
   void useDashboardV2();
 
-  const mockVerticals = [
-    { id: 'v1', name: 'Quality Management',  health_score: 78, project_count: 5, member_count: 12, task_completion_rate: 78 },
-    { id: 'v2', name: 'Accreditation',        health_score: 54, project_count: 3, member_count: 8,  task_completion_rate: 54 },
-    { id: 'v3', name: 'Standards & Testing',  health_score: 35, project_count: 4, member_count: 10, task_completion_rate: 35 },
-    { id: 'v4', name: 'Training & Capacity',  health_score: 72, project_count: 2, member_count: 6,  task_completion_rate: 72 },
-  ];
+  const verticals = divisionItems;
 
-  const verticals = divisionItems.length > 0 ? divisionItems : mockVerticals;
-
-  const mockMilestones = [
-    { id: 'ms1', title: 'Design Approval Gate',  projectName: 'CPR',  dueDate: new Date(Date.now() + 2 * 86400000).toISOString(),  progress: 85, isOverdue: false, pmName: 'Rahul S.' },
-    { id: 'ms2', title: 'API Integration Phase', projectName: 'AGM',  dueDate: new Date(Date.now() - 86400000).toISOString(),      progress: 60, isOverdue: true,  pmName: 'Carol J.' },
-    { id: 'ms3', title: 'UAT Sign-off',          projectName: 'CPR',  dueDate: new Date(Date.now() + 8 * 86400000).toISOString(),  progress: 30, isOverdue: false, pmName: 'Rahul S.' },
-    { id: 'ms4', title: 'Mobile Build v2.1',     projectName: 'MAV2', dueDate: new Date(Date.now() + 12 * 86400000).toISOString(), progress: 45, isOverdue: false, pmName: 'David P.' },
-    { id: 'ms5', title: 'Compliance Review',     projectName: 'QMS',  dueDate: new Date(Date.now() + 5 * 86400000).toISOString(),  progress: 70, isOverdue: false, pmName: 'Priya S.' },
-  ];
-
-  const milestones = burnItems.length > 0
-    ? burnItems.filter((m: any) => {
-        const d = m.dueDate || m.due_date;
-        return d && Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) <= 30;
-      }).slice(0, 8)
-    : mockMilestones;
+  const milestones = burnItems.filter((m: any) => {
+    const d = m.dueDate || m.due_date;
+    return d && Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) <= 30;
+  }).slice(0, 8);
 
   const budgetSeed = [6500000, 4800000, 8200000, 3600000, 5100000, 7400000];
   const actualSeed = [4420000, 3120000, 5330000, 2180000, 3570000, 5180000];
@@ -673,36 +650,6 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
 type MsStatus = 'completed' | 'in_progress' | 'pending' | 'overdue';
 type VHMilestone = { title: string; status: MsStatus; burnRate?: number; hasDeps?: boolean };
 
-const VH_MOCK_MILESTONES: Record<string, VHMilestone[]> = {
-  p1: [
-    { title: 'Requirements', status: 'completed',   burnRate: 95,  hasDeps: false },
-    { title: 'Design',       status: 'completed',   burnRate: 87,  hasDeps: false },
-    { title: 'Development',  status: 'in_progress', burnRate: 68,  hasDeps: true  },
-    { title: 'Testing',      status: 'pending',     burnRate: 0,   hasDeps: true  },
-    { title: 'Go Live',      status: 'pending',     burnRate: 0,   hasDeps: false },
-  ],
-  p2: [
-    { title: 'Discovery',    status: 'completed',   burnRate: 100, hasDeps: false },
-    { title: 'Architecture', status: 'overdue',     burnRate: 82,  hasDeps: true  },
-    { title: 'Migration',    status: 'pending',     burnRate: 0,   hasDeps: true  },
-    { title: 'Validation',   status: 'pending',     burnRate: 0,   hasDeps: false },
-  ],
-  p3: [
-    { title: 'Wireframes',   status: 'completed',   burnRate: 100, hasDeps: false },
-    { title: 'UI Design',    status: 'completed',   burnRate: 93,  hasDeps: false },
-    { title: 'Build v2',     status: 'in_progress', burnRate: 52,  hasDeps: false },
-    { title: 'QA',           status: 'pending',     burnRate: 0,   hasDeps: true  },
-    { title: 'Release',      status: 'pending',     burnRate: 0,   hasDeps: false },
-    { title: 'Monitoring',   status: 'pending',     burnRate: 0,   hasDeps: false },
-  ],
-};
-
-const VH_MOCK_RISKS = [
-  { id: 'r1', title: 'API Gateway delayed — blocks 3 downstream tasks', severity: 'high',   project: 'AGM',  daysOpen: 3 },
-  { id: 'r2', title: 'Design resource overloaded (105% utilization)',    severity: 'medium', project: 'CPR',  daysOpen: 1 },
-  { id: 'r3', title: 'UAT environment not provisioned on time',          severity: 'high',   project: 'CPR',  daysOpen: 7 },
-  { id: 'r4', title: 'Vendor SDK update has breaking changes',           severity: 'medium', project: 'MAV2', daysOpen: 2 },
-];
 
 function MilestoneTrack({ milestones }: { milestones: VHMilestone[] }) {
   const labelCls: Record<MsStatus, string> = {
@@ -765,7 +712,7 @@ function VerticalProjectCard({ p, idx, navigate }: { p: any; idx: number; naviga
   const budgetPlanned  = p.budget_planned  ?? bSeed[idx % bSeed.length];
   const budgetConsumed = p.budget_consumed ?? Math.round(budgetPlanned * (0.3 + pct / 160));
   const budgetPct = Math.round((budgetConsumed / budgetPlanned) * 100);
-  const pMilestones: VHMilestone[] = p.milestones ?? VH_MOCK_MILESTONES[p.id] ?? VH_MOCK_MILESTONES.p1;
+  const pMilestones: VHMilestone[] = p.milestones ?? [];
   const delayed  = pMilestones.filter(m => m.status === 'overdue').length;
   const done     = pMilestones.filter(m => m.status === 'completed').length;
   const hasDeps  = pMilestones.some(m => m.hasDeps && (m.status === 'in_progress' || m.status === 'overdue'));
@@ -945,14 +892,8 @@ function VerticalApprovalsWidget({ navigate }: { navigate: ReturnType<typeof use
   const items: any[] = q.data?.items ?? [];
   const total: number = q.data?.total ?? items.length;
 
-  const mockItems = [
-    { id: 'a1', title: 'Requirements Phase Complete', approvalType: 'Milestone', createdAt: new Date(Date.now() - 2 * 86400000).toISOString(), priority: 'high',   requestedBy: 'Rahul S.',  project: 'CPR' },
-    { id: 'a2', title: 'Sprint 12 Scope Change',      approvalType: 'Workflow',  createdAt: new Date(Date.now() - 4 * 86400000).toISOString(), priority: 'medium', requestedBy: 'Carol J.', project: 'AGM' },
-    { id: 'a3', title: 'Budget Reallocation +₹2L',    approvalType: 'Budget',    createdAt: new Date(Date.now() - 86400000).toISOString(),      priority: 'high',   requestedBy: 'David P.', project: 'MAV2' },
-  ];
-
-  const displayItems = items.length > 0 ? items : mockItems;
-  const displayTotal  = total > 0 ? total : mockItems.length;
+  const displayItems = items;
+  const displayTotal  = total;
 
   function slaStatus(createdAt: string, priority: string) {
     const slaHours: Record<string, number> = { high: 48, medium: 120, low: 168 };
@@ -1067,19 +1008,12 @@ function VHActiveRisksPanel({ navigate }: { navigate: ReturnType<typeof useNavig
     high:   'text-red-600 bg-red-50 border-red-200',
     medium: 'text-amber-600 bg-amber-50 border-amber-200',
   };
-  const highCount = VH_MOCK_RISKS.filter(r => r.severity === 'high').length;
-
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Shield className="h-4 w-4 text-red-500" /> Active Risks
-            {highCount > 0 && (
-              <span className="rounded-full bg-red-100 text-red-700 text-[10px] px-2 py-0.5 font-bold border border-red-200">
-                {highCount} high
-              </span>
-            )}
           </CardTitle>
           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/executive/risk-register')}>
             Register <ArrowRight className="h-3 w-3 ml-1" />
@@ -1087,23 +1021,12 @@ function VHActiveRisksPanel({ navigate }: { navigate: ReturnType<typeof useNavig
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {VH_MOCK_RISKS.map(r => (
-          <div key={r.id} className={cn('rounded-lg border px-3 py-2 flex items-start gap-2', sevCls[r.severity])}>
-            <div className={cn('h-2 w-2 rounded-full shrink-0 mt-1.5', sevDot[r.severity])} />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium leading-snug">{r.title}</p>
-              <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
-                <Badge variant="outline" className="text-[9px] h-3.5 px-1">{r.project}</Badge>
-                <span>{r.daysOpen}d open</span>
-              </div>
-            </div>
-            <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded border capitalize shrink-0 mt-0.5', sevBadge[r.severity])}>
-              {r.severity}
-            </span>
-          </div>
-        ))}
-        <Button variant="outline" size="sm" className="w-full h-8 text-xs mt-1" onClick={() => navigate('/projects')}>
-          <Activity className="h-3.5 w-3.5 mr-1" /> View All Project Risks
+        <div className="text-center py-6">
+          <Shield className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-30" />
+          <p className="text-sm text-muted-foreground">No active risks logged</p>
+        </div>
+        <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => navigate('/executive/risk-register')}>
+          <Activity className="h-3.5 w-3.5 mr-1" /> View Risk Register
         </Button>
       </CardContent>
     </Card>
@@ -1118,37 +1041,26 @@ function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavi
   const dv2Q = useDashboardV2();
   const burnQ = useMilestoneBurnDashboard();
 
-  const mockProjects = [
-    { id: 'p1', name: 'Customer Portal Redesign', key: 'CPR',  completion_pct: 62, color: '#3B82F6' },
-    { id: 'p2', name: 'API Gateway Migration',    key: 'AGM',  completion_pct: 28, color: '#8B5CF6' },
-    { id: 'p3', name: 'Mobile App v2',            key: 'MAV2', completion_pct: 45, color: '#F59E0B' },
-  ];
+  const displayProjects = projects;
 
-  const displayProjects = projects.length > 0 ? projects : mockProjects;
-
-  const totalMembers   = dv2Q.data?.totalMembers ?? 24;
-  const openApprovals  = dv2Q.data?.pendingApprovals ?? 3;
+  const totalMembers   = dv2Q.data?.totalMembers ?? 0;
+  const openApprovals  = dv2Q.data?.pendingApprovals ?? 0;
   const avgCompletion  = Math.round(displayProjects.reduce((s: number, p: any) => s + (p.completion_pct ?? 0), 0) / Math.max(1, displayProjects.length));
-  const utilization    = 78;
   const deliveryEff    = Math.min(100, Math.round(avgCompletion * 1.05));
   const sprintHealth   = avgCompletion >= 70 ? 'Good' : avgCompletion >= 40 ? 'Fair' : 'Poor';
   const sprintColor    = avgCompletion >= 70 ? 'text-green-600' : avgCompletion >= 40 ? 'text-amber-600' : 'text-red-600';
-  const activeRisks    = VH_MOCK_RISKS.length;
-  const highRisks      = VH_MOCK_RISKS.filter(r => r.severity === 'high').length;
+  const activeRisks    = 0;
+  const highRisks      = 0;
 
-  // Count delayed milestones across all mock projects
-  const delayedMs = Object.values(VH_MOCK_MILESTONES).flat().filter(m => m.status === 'overdue').length;
   const burnQ_items: any[] = burnQ.data?.items ?? burnQ.data ?? [];
-  const delayedCount = burnQ_items.length > 0
-    ? burnQ_items.filter((m: any) => m.isOverdue || m.is_overdue).length
-    : delayedMs;
+  const delayedCount = burnQ_items.filter((m: any) => m.isOverdue || m.is_overdue).length;
 
   return (
     <div className="space-y-5">
       {/* KPI strip — 5 operational metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <MiniStatChip label="Team Utilization"  value={`${utilization}%`}
-          color={utilization > 90 ? 'text-red-600' : utilization > 75 ? 'text-amber-600' : 'text-green-600'} />
+        <MiniStatChip label="Team Utilization"  value={dv2Q.data?.teamUtilization != null ? `${dv2Q.data.teamUtilization}%` : '—'}
+          color="text-blue-600" />
         <MiniStatChip label="Delivery Eff."     value={`${deliveryEff}%`}
           color={deliveryEff >= 80 ? 'text-green-600' : 'text-amber-600'} />
         <div className="flex flex-col items-center rounded-lg border p-3 gap-0.5 cursor-pointer hover:bg-muted/30 transition-colors"
@@ -1200,67 +1112,6 @@ function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavi
 
 // ─── Project Manager sub-components ──────────────────────────────────────────
 
-const PM_MILESTONES = [
-  {
-    id: 'pm1', title: 'Requirements Gathering', projectName: 'CPR', projectId: 'p1',
-    status: 'completed', progress: 100, burnRate: 95, isOverdue: false, driftDays: 0,
-    plannedHours: 40,  actualHours: 38,  plannedBudget: 800000,  actualBudget: 760000,
-    completedTasks: 8, totalTasks: 8,
-    tasks: [
-      { id: 't1', title: 'Stakeholder interviews',  status: 'done',        priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
-      { id: 't2', title: 'BRD documentation',       status: 'done',        priority: 'medium', assignee: 'Carol J.',  blockers: [] },
-      { id: 't3', title: 'Approval sign-off',        status: 'done',        priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
-    ],
-  },
-  {
-    id: 'pm2', title: 'UI/UX Design Phase', projectName: 'CPR', projectId: 'p1',
-    status: 'completed', progress: 100, burnRate: 87, isOverdue: false, driftDays: 3,
-    plannedHours: 80,  actualHours: 90,  plannedBudget: 1200000, actualBudget: 1380000,
-    completedTasks: 12, totalTasks: 12,
-    tasks: [
-      { id: 't4', title: 'Wireframes — all screens', status: 'done', priority: 'high',   assignee: 'Carol J.',  blockers: [] },
-      { id: 't5', title: 'Design system tokens',     status: 'done', priority: 'medium', assignee: 'Priya S.',  blockers: [] },
-    ],
-  },
-  {
-    id: 'pm3', title: 'Development Phase 1', projectName: 'CPR', projectId: 'p1',
-    status: 'in_progress', progress: 62, burnRate: 62, isOverdue: false, driftDays: 0,
-    plannedHours: 200, actualHours: 145, plannedBudget: 3500000, actualBudget: 3200000,
-    completedTasks: 13, totalTasks: 21,
-    tasks: [
-      { id: 't6',  title: 'Auth module',           status: 'done',        priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
-      { id: 't7',  title: 'Dashboard layout',      status: 'done',        priority: 'high',   assignee: 'Carol J.',  blockers: [] },
-      { id: 't8',  title: 'API integration layer', status: 'in_progress', priority: 'high',   assignee: 'David P.',  blockers: ['t11'] },
-      { id: 't9',  title: 'Notification service',  status: 'in_progress', priority: 'medium', assignee: 'Priya S.',  blockers: [] },
-      { id: 't10', title: 'Search & filter',       status: 'todo',        priority: 'medium', assignee: 'David P.',  blockers: ['t8'] },
-      { id: 't11', title: 'Backend data models',   status: 'in_progress', priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
-      { id: 't12', title: 'Unit tests',            status: 'todo',        priority: 'low',    assignee: 'Carol J.',  blockers: ['t8', 't9'] },
-    ],
-  },
-  {
-    id: 'pm4', title: 'API Integration', projectName: 'AGM', projectId: 'p2',
-    status: 'in_progress', progress: 28, burnRate: 28, isOverdue: true, driftDays: 5,
-    plannedHours: 120, actualHours: 48,  plannedBudget: 2200000, actualBudget: 890000,
-    completedTasks: 3, totalTasks: 11,
-    tasks: [
-      { id: 't13', title: 'Gateway config',       status: 'done',        priority: 'high',   assignee: 'Rahul S.',  blockers: [] },
-      { id: 't14', title: 'Auth middleware',       status: 'in_progress', priority: 'high',   assignee: 'David P.',  blockers: [] },
-      { id: 't15', title: 'Rate limiting setup',  status: 'todo',        priority: 'medium', assignee: 'Priya S.',  blockers: ['t14'] },
-      { id: 't16', title: 'Load testing',         status: 'todo',        priority: 'high',   assignee: 'Carol J.',  blockers: ['t15'] },
-    ],
-  },
-  {
-    id: 'pm5', title: 'UAT & Testing', projectName: 'CPR', projectId: 'p1',
-    status: 'pending', progress: 0, burnRate: 0, isOverdue: false, driftDays: 0,
-    plannedHours: 60,  actualHours: 0,   plannedBudget: 800000,  actualBudget: 0,
-    completedTasks: 0, totalTasks: 9,
-    tasks: [
-      { id: 't17', title: 'Test plan creation', status: 'todo', priority: 'high',   assignee: 'Carol J.',  blockers: [] },
-      { id: 't18', title: 'Regression testing', status: 'todo', priority: 'high',   assignee: 'Priya S.',  blockers: ['pm3'] },
-      { id: 't19', title: 'User acceptance',    status: 'todo', priority: 'medium', assignee: 'Rahul S.',  blockers: ['t18'] },
-    ],
-  },
-];
 
 function MilestoneNavCard({ m, isSelected, onClick }: { m: any; isSelected: boolean; onClick: () => void }) {
   const statusIcons: Record<string, React.ReactNode> = {
@@ -1696,17 +1547,17 @@ function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNa
   const dv2Q  = useDashboardV2();
   const burnItems: any[] = burnQ.data?.items ?? burnQ.data ?? [];
 
-  const milestones: any[] = burnItems.length > 0 ? burnItems : PM_MILESTONES;
+  const milestones: any[] = burnItems;
   const [selectedId, setSelectedId] = useState<string>(milestones[0]?.id ?? '');
   const [msView, setMsView] = useState<'timeline' | 'kanban'>('timeline');
   const selectedMs = milestones.find((m: any) => m.id === selectedId) ?? milestones[0];
 
   const activeMilestones  = milestones.filter((m: any) => m.status === 'in_progress').length;
   const overdueMilestones = milestones.filter((m: any) => m.isOverdue).length;
-  const blockedTasks      = PM_MILESTONES.flatMap(m => m.tasks).filter(t => (t.blockers?.length ?? 0) > 0 && t.status !== 'done').length;
-  const pendingApprovals  = dv2Q.data?.pendingApprovals ?? 2;
-  const totalBudgetUsed   = PM_MILESTONES.reduce((s, m) => s + (m.actualBudget ?? 0), 0);
-  const totalBudgetPlan   = PM_MILESTONES.reduce((s, m) => s + (m.plannedBudget ?? 0), 0);
+  const blockedTasks      = milestones.flatMap((m: any) => m.tasks ?? []).filter((t: any) => (t.blockers?.length ?? 0) > 0 && t.status !== 'done').length;
+  const pendingApprovals  = dv2Q.data?.pendingApprovals ?? 0;
+  const totalBudgetUsed   = milestones.reduce((s: number, m: any) => s + (m.actualBudget ?? 0), 0);
+  const totalBudgetPlan   = milestones.reduce((s: number, m: any) => s + (m.plannedBudget ?? 0), 0);
   const budgetPct         = totalBudgetPlan > 0 ? Math.round((totalBudgetUsed / totalBudgetPlan) * 100) : 0;
 
   return (
@@ -1976,47 +1827,7 @@ function TeamLeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate
 
 // ─── Member Section ───────────────────────────────────────────────────────────
 
-// Enriched mock tasks for member view
-const MEMBER_MOCK_TASKS = [
-  { id: 'mt1', title: 'Review API documentation changes',  priority: 'high',   project: 'AGM',  due_date: '2026-05-19', status: 'in_progress', estimatedHours: 3, blockers: ['x1'], depsCount: 1 },
-  { id: 'mt2', title: 'Finalize checkout flow mockups',    priority: 'high',   project: 'CPR',  due_date: '2026-05-20', status: 'todo',        estimatedHours: 4, blockers: [],     depsCount: 0 },
-  { id: 'mt3', title: 'Update sprint board task statuses', priority: 'medium', project: 'CPR',  due_date: '2026-05-20', status: 'todo',        estimatedHours: 1, blockers: [],     depsCount: 0 },
-  { id: 'mt4', title: 'Write unit tests for auth module',  priority: 'medium', project: 'AGM',  due_date: '2026-05-22', status: 'todo',        estimatedHours: 5, blockers: [],     depsCount: 0 },
-  { id: 'mt5', title: 'Code review — frontend PR #42',     priority: 'low',    project: 'CPR',  due_date: '2026-05-23', status: 'in_progress', estimatedHours: 2, blockers: [],     depsCount: 0 },
-  { id: 'mt6', title: 'Prepare demo slides for Thursday',  priority: 'low',    project: 'MAV2', due_date: '2026-05-29', status: 'todo',        estimatedHours: 3, blockers: [],     depsCount: 0 },
-];
-
-// Notification mock data
 type MemberNotifType = 'mention' | 'assignment' | 'approval' | 'deadline' | 'blocker';
-const MEMBER_MOCK_NOTIFS = [
-  { id: 'mn1', type: 'mention'    as MemberNotifType, title: 'Rahul mentioned you',          body: 'in "API Integration Layer" — can you take a look?',       time: '10m ago', read: false, urgent: true  },
-  { id: 'mn2', type: 'assignment' as MemberNotifType, title: 'Task assigned to you',         body: '"Finalize checkout flow mockups" added to CPR',            time: '1h ago',  read: false, urgent: false },
-  { id: 'mn3', type: 'deadline'   as MemberNotifType, title: 'Deadline in 2 hours',          body: '"Review API documentation" is due today at 5 PM',          time: '2h ago',  read: false, urgent: true  },
-  { id: 'mn4', type: 'blocker'    as MemberNotifType, title: 'Your task is now unblocked',   body: '"Review API documentation" blocker resolved by Rahul S.',  time: '3h ago',  read: true,  urgent: false },
-  { id: 'mn5', type: 'approval'   as MemberNotifType, title: 'Approval request resolved',    body: 'CPR Sprint 12 scope approved by Division Head',            time: '5h ago',  read: true,  urgent: false },
-  { id: 'mn6', type: 'mention'    as MemberNotifType, title: 'Carol mentioned you',           body: 'in "Design System Tokens" — please review comments',       time: '1d ago',  read: true,  urgent: false },
-];
-
-// Project context mock data
-const MEMBER_MOCK_PROJECTS = [
-  {
-    id: 'mp1', name: 'Customer Portal Redesign', key: 'CPR', color: '#3B82F6',
-    milestoneDone: 2, milestoneTotal: 5, completion: 62, myTasks: 3,
-    recentActivity: [
-      { who: 'Carol J.',  action: 'completed "Design Tokens"',    time: '2h ago' },
-      { who: 'Rahul S.',  action: 'pushed PR #45 for review',     time: '4h ago' },
-    ],
-    blockingMyTask: null,
-  },
-  {
-    id: 'mp2', name: 'API Gateway Migration', key: 'AGM', color: '#8B5CF6',
-    milestoneDone: 1, milestoneTotal: 4, completion: 28, myTasks: 2,
-    recentActivity: [
-      { who: 'David P.',  action: 'commented on "Auth module setup"', time: '30m ago' },
-    ],
-    blockingMyTask: 'Waiting on external vendor API keys',
-  },
-];
 
 // Inline task row with status cycling
 function EnhancedTaskRow({ t, onStatusChange }: { t: any; onStatusChange: (id: string, s: string) => void }) {
@@ -2218,13 +2029,11 @@ function TimeThisWeekPanel({ navigate }: { navigate: ReturnType<typeof useNaviga
 function MyProjectsPanel({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const projectsQ = useProjects({ status: 'active' });
   const apiProjects: any[] = projectsQ.data?.items ?? [];
-  const displayProjects = apiProjects.length > 0
-    ? apiProjects.slice(0, 2).map((p: any) => ({
-        ...p, milestoneDone: 0, milestoneTotal: 0,
-        completion: p.completion_pct ?? 0, myTasks: 0,
-        recentActivity: [], blockingMyTask: null,
-      }))
-    : MEMBER_MOCK_PROJECTS;
+  const displayProjects = apiProjects.slice(0, 2).map((p: any) => ({
+    ...p, milestoneDone: 0, milestoneTotal: 0,
+    completion: p.completion_pct ?? 0, myTasks: 0,
+    recentActivity: [], blockingMyTask: null,
+  }));
 
   return (
     <Card>
@@ -2307,8 +2116,8 @@ function NotificationsPanelMember({ navigate }: { navigate: ReturnType<typeof us
   const [activeTab, setActiveTab] = useState<'all' | 'mentions' | 'assigned'>('all');
 
   const rawItems: any[] = notifQ.data?.items ?? [];
-  const unreadCount = rawItems.length > 0 ? (notifQ.data?.unreadCount ?? 0) : MEMBER_MOCK_NOTIFS.filter(n => !n.read).length;
-  const items = rawItems.length > 0 ? rawItems : MEMBER_MOCK_NOTIFS;
+  const unreadCount = notifQ.data?.unreadCount ?? rawItems.filter((n: any) => !n.is_read).length;
+  const items = rawItems;
   const visible = items.filter((n: any) => !snoozed.has(n.id));
 
   const tabVisible = visible.filter((n: any) => {
@@ -2468,16 +2277,7 @@ function MemberSection({ navigate }: { navigate: ReturnType<typeof useNavigate> 
     return new Date(due) > weekEnd;
   });
 
-  const mockGroups = {
-    overdue:     [MEMBER_MOCK_TASKS[0]],
-    dueToday:    [MEMBER_MOCK_TASKS[1], MEMBER_MOCK_TASKS[2]],
-    dueThisWeek: [MEMBER_MOCK_TASKS[3], MEMBER_MOCK_TASKS[4]],
-    later:       [MEMBER_MOCK_TASKS[5]],
-  };
-
-  const groups = tasks.length > 0
-    ? { overdue, dueToday, dueThisWeek, later }
-    : mockGroups;
+  const groups = { overdue, dueToday, dueThisWeek, later };
 
   const totalVisible = groups.overdue.length + groups.dueToday.length + groups.dueThisWeek.length + groups.later.length;
   const weeklyHours = weekQ.data?.totalHours ?? 0;
@@ -2573,14 +2373,7 @@ function ExecutiveSection({ navigate }: { navigate: ReturnType<typeof useNavigat
   const scorecards: any[] = execQ.data?.scorecards ?? [];
   const alerts: any[] = execQ.data?.alerts ?? [];
 
-  const mockDivisions = [
-    { id: 'd1', divisionName: 'IT Division',          completionRate: 78, activeProjects: 12, color: '#3B82F6' },
-    { id: 'd2', divisionName: 'Finance Division',     completionRate: 65, activeProjects: 8,  color: '#8B5CF6' },
-    { id: 'd3', divisionName: 'Operations Division',  completionRate: 82, activeProjects: 10, color: '#10B981' },
-    { id: 'd4', divisionName: 'Quality Assurance',    completionRate: 43, activeProjects: 6,  color: '#F59E0B' },
-  ];
-
-  const display = scorecards.length > 0 ? scorecards : mockDivisions;
+  const display = scorecards;
 
   return (
     <div className="space-y-4">

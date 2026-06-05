@@ -26,64 +26,6 @@ interface Notification {
   created_at: string;
 }
 
-// Seed notifications shown when the API returns nothing
-const SEED_NOTIFICATIONS: Notification[] = [
-  {
-    id: 'sn1',
-    type: 'task_assigned',
-    title: 'New task assigned to you',
-    body: 'You have been assigned "Complete API documentation" in Project Alpha. Please review the requirements and update the status.',
-    actor: 'Priya Sharma',
-    entity_type: 'task',
-    entity_id: 'task_1',
-    is_read: false,
-    created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'sn2',
-    type: 'mention',
-    title: 'You were mentioned in a comment',
-    body: '@you Please review the wireframes for the new dashboard feature and share your feedback before EOD.',
-    actor: 'Rahul Mehta',
-    entity_type: 'task',
-    entity_id: 'task_2',
-    is_read: false,
-    created_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'sn3',
-    type: 'due_date_reminder',
-    title: 'Task due tomorrow',
-    body: '"Finalise sprint backlog" is due tomorrow. Ensure all items are reviewed and acceptance criteria are met.',
-    actor: 'System',
-    entity_type: 'task',
-    entity_id: 'task_3',
-    is_read: false,
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'sn4',
-    type: 'task_assigned',
-    title: 'Task assigned: Review test cases',
-    body: 'You have been assigned "Review automated test cases for payment module" in API Gateway Migration project.',
-    actor: 'Sunita Rao',
-    entity_type: 'task',
-    entity_id: 'task_4',
-    is_read: true,
-    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'sn5',
-    type: 'mention',
-    title: 'Mentioned in Project Alpha discussion',
-    body: 'Hi @you, can you update the task status for the mobile integration module? The client is asking for a progress update.',
-    actor: 'Vikram Singh',
-    entity_type: 'project',
-    entity_id: 'proj_1',
-    is_read: true,
-    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
 
 const typeIcons: Record<string, typeof Bell> = {
   task_assigned:    UserPlus,
@@ -272,44 +214,18 @@ function NotificationPanel({
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const [localNotifs, setLocalNotifs] = useState<Notification[]>(SEED_NOTIFICATIONS);
 
   const { data, isLoading } = useNotifications();
   const markReadMutation = useMarkNotificationRead();
   const markAllReadMutation = useMarkAllNotificationsRead();
   const deleteMutation = useDeleteNotification();
 
-  const apiNotifs: Notification[] = (data?.items ?? []) as Notification[];
-  const useApi = apiNotifs.length > 0;
+  const notifications: Notification[] = (data?.items ?? []) as Notification[];
+  const unreadCount = data?.unreadCount ?? notifications.filter((n) => !n.is_read).length;
 
-  const notifications = useApi ? apiNotifs : localNotifs;
-  const unreadCount = useApi
-    ? (data?.unreadCount ?? notifications.filter((n) => !n.is_read).length)
-    : localNotifs.filter((n) => !n.is_read).length;
-
-  const handleMarkRead = (id: string) => {
-    if (useApi) {
-      markReadMutation.mutate(id);
-    } else {
-      setLocalNotifs((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
-    }
-  };
-
-  const handleMarkAllRead = () => {
-    if (useApi) {
-      markAllReadMutation.mutate();
-    } else {
-      setLocalNotifs((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    }
-  };
-
-  const handleDelete = (id: string) => {
-    if (useApi) {
-      deleteMutation.mutate(id);
-    } else {
-      setLocalNotifs((prev) => prev.filter((n) => n.id !== id));
-    }
-  };
+  const handleMarkRead = (id: string) => markReadMutation.mutate(id);
+  const handleMarkAllRead = () => markAllReadMutation.mutate();
+  const handleDelete = (id: string) => deleteMutation.mutate(id);
 
   return (
     <div className="relative">
@@ -327,7 +243,7 @@ export function NotificationBell() {
         onClose={() => setOpen(false)}
         notifications={notifications}
         unreadCount={unreadCount}
-        isLoading={isLoading && !useApi}
+        isLoading={isLoading}
         onMarkRead={handleMarkRead}
         onMarkAllRead={handleMarkAllRead}
         onDelete={handleDelete}

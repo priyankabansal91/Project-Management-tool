@@ -14,19 +14,6 @@ interface SearchResult {
   meta?: { priority?: string; status?: string; color?: string };
 }
 
-const mockResults: SearchResult[] = [
-  { id: 't1', type: 'task', title: 'Design new navigation component', subtitle: 'CPR-1 • In Progress', url: '/tasks/t1', meta: { priority: 'high', status: 'In Progress' } },
-  { id: 't2', type: 'task', title: 'Implement authentication flow', subtitle: 'CPR-2 • To Do', url: '/tasks/t2', meta: { priority: 'critical', status: 'To Do' } },
-  { id: 't3', type: 'task', title: 'Customer dashboard wireframes', subtitle: 'CPR-3 • Done', url: '/tasks/t3', meta: { priority: 'medium', status: 'Done' } },
-  { id: 't4', type: 'task', title: 'Set up CI/CD pipeline', subtitle: 'CPR-4 • In Review', url: '/tasks/t4', meta: { priority: 'high', status: 'In Review' } },
-  { id: 't5', type: 'task', title: 'Add Google OAuth provider', subtitle: 'CPR-5 • In Progress', url: '/tasks/t5', meta: { priority: 'high', status: 'In Progress' } },
-  { id: 'p1', type: 'project', title: 'Customer Portal Redesign', subtitle: 'CPR • 5 tasks', url: '/projects/1/board', meta: { color: '#3B82F6' } },
-  { id: 'p2', type: 'project', title: 'API Gateway Migration', subtitle: 'AGM • 3 tasks', url: '/projects/2/board', meta: { color: '#8B5CF6' } },
-  { id: 'p3', type: 'project', title: 'Mobile App v2', subtitle: 'MAV2 • 8 tasks', url: '/projects/3/board', meta: { color: '#F59E0B' } },
-  { id: 'm1', type: 'member', title: 'Carol Johnson', subtitle: 'carol.dev@acme.com • Member', url: '/admin/users' },
-  { id: 'm2', type: 'member', title: 'David Park', subtitle: 'david.dev@acme.com • Member', url: '/admin/users' },
-  { id: 'm3', type: 'member', title: 'Bob Martinez', subtitle: 'bob.pm@acme.com • Project Manager', url: '/admin/users' },
-];
 
 const typeIcons = { task: CheckSquare, project: FolderKanban, member: Users };
 const typeLabels = { task: 'Tasks', project: 'Projects', member: 'People' };
@@ -80,20 +67,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   // Determine results to show
   let results: SearchResult[] = [];
   if (debouncedQuery.length >= 2) {
-    const apiResults = (searchData?.results ?? []) as SearchResult[];
-    // Fall back to filtered mock results if API returns empty (dev mode)
-    if (apiResults.length > 0) {
-      results = apiResults;
-    } else if (!isSearchLoading) {
-      results = mockResults.filter(
-        (r) =>
-          r.title.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-          r.subtitle.toLowerCase().includes(debouncedQuery.toLowerCase())
-      );
-    }
-  } else {
-    // Show recent items when query is short
-    results = mockResults.slice(0, 6);
+    results = (searchData?.results ?? []) as SearchResult[];
   }
 
   // Group results by type
@@ -161,13 +135,20 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
         {/* Results */}
         <div className="max-h-[400px] overflow-y-auto p-2">
+          {query.length === 0 && (
+            <div className="py-8 text-center text-muted-foreground">
+              <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Type to search tasks, projects and people</p>
+            </div>
+          )}
+
           {query.length > 0 && query.length < 2 && (
             <div className="py-6 text-center text-muted-foreground">
               <p className="text-sm">Type at least 2 characters to search...</p>
             </div>
           )}
 
-          {(query.length === 0 || debouncedQuery.length >= 2) && Object.entries(grouped).map(([type, groupResults]) => {
+          {debouncedQuery.length >= 2 && Object.entries(grouped).map(([type, groupResults]) => {
             const Icon = typeIcons[type as keyof typeof typeIcons];
             return (
               <div key={type} className="mb-2">

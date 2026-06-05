@@ -32,80 +32,6 @@ interface PortfolioSummaryData {
   avgHealthScore: number;
 }
 
-// ── Mock fallback data ────────────────────────────────────
-
-const MOCK_DATA: PortfolioSummaryData = {
-  projects: [
-    {
-      id: '1',
-      name: 'Digital Transformation Initiative',
-      division: 'Engineering',
-      status: 'on_track',
-      healthScore: 82,
-      tasksTotal: 120,
-      tasksDone: 88,
-      budgetSpent: 145000,
-      budgetTotal: 200000,
-      teamSize: 12,
-      priority: 'critical',
-      phase: 'Execution',
-      lastActivity: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '2',
-      name: 'Customer Portal Redesign',
-      division: 'Product',
-      status: 'at_risk',
-      healthScore: 55,
-      tasksTotal: 64,
-      tasksDone: 30,
-      budgetSpent: 78000,
-      budgetTotal: 85000,
-      teamSize: 7,
-      priority: 'high',
-      phase: 'Design',
-      lastActivity: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '3',
-      name: 'Legacy System Migration',
-      division: 'Infrastructure',
-      status: 'off_track',
-      healthScore: 28,
-      tasksTotal: 95,
-      tasksDone: 22,
-      budgetSpent: 210000,
-      budgetTotal: 220000,
-      teamSize: 9,
-      priority: 'high',
-      phase: 'Planning',
-      lastActivity: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '4',
-      name: 'Mobile App v2.0',
-      division: 'Engineering',
-      status: 'completed',
-      healthScore: 96,
-      tasksTotal: 80,
-      tasksDone: 80,
-      budgetSpent: 130000,
-      budgetTotal: 150000,
-      teamSize: 8,
-      priority: 'medium',
-      phase: 'Completed',
-      lastActivity: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-  ],
-  totalTasks: 359,
-  tasksDone: 220,
-  tasksBlocked: 18,
-  totalMembers: 36,
-  totalBudgetSpent: 563000,
-  totalBudgetAllocated: 655000,
-  avgHealthScore: 65,
-};
-
 // ── Helpers ───────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
@@ -203,10 +129,8 @@ function StatCard({ title, value, icon: Icon, iconClassName = 'text-muted-foregr
 export function PortfolioDashboardPage() {
   const { data: rawData, isLoading, isError } = usePortfolioSummary();
 
-  // Use API data if available, fall back to mock
-  const data: PortfolioSummaryData = (rawData as PortfolioSummaryData)?.projects ? (rawData as PortfolioSummaryData) : MOCK_DATA;
-
-  const projects = data.projects ?? MOCK_DATA.projects;
+  const data = rawData as PortfolioSummaryData | undefined;
+  const projects = data?.projects ?? [];
 
   const onTrackCount  = projects.filter(p => p.status === 'on_track').length;
   const atRiskCount   = projects.filter(p => p.status === 'at_risk').length;
@@ -229,7 +153,7 @@ export function PortfolioDashboardPage() {
       {isError && (
         <div className="flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          API unavailable — showing demo data. Live data will appear once the portfolio endpoint is active.
+          Portfolio data unavailable. Live data will appear once the portfolio endpoint is active.
         </div>
       )}
 
@@ -261,16 +185,16 @@ export function PortfolioDashboardPage() {
         />
         <StatCard
           title="Avg Health"
-          value={`${data.avgHealthScore ?? MOCK_DATA.avgHealthScore}%`}
+          value={data?.avgHealthScore != null ? `${data.avgHealthScore}%` : '—'}
           icon={Activity}
-          iconClassName={getHealthColor(data.avgHealthScore ?? MOCK_DATA.avgHealthScore)}
+          iconClassName={getHealthColor(data?.avgHealthScore ?? 0)}
         />
         <StatCard
           title="Budget"
-          value={formatCurrency(data.totalBudgetSpent ?? MOCK_DATA.totalBudgetSpent)}
+          value={data?.totalBudgetSpent != null ? formatCurrency(data.totalBudgetSpent) : '—'}
           icon={DollarSign}
           iconClassName="text-muted-foreground"
-          subtitle={`of ${formatCurrency(data.totalBudgetAllocated ?? MOCK_DATA.totalBudgetAllocated)}`}
+          subtitle={data?.totalBudgetAllocated != null ? `of ${formatCurrency(data.totalBudgetAllocated)}` : undefined}
         />
       </div>
 
@@ -302,6 +226,12 @@ export function PortfolioDashboardPage() {
                     <SkeletonRow />
                     <SkeletonRow />
                   </>
+                ) : projects.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                      No projects found
+                    </td>
+                  </tr>
                 ) : (
                   projects.map((project) => {
                     const statusCfg   = getStatusConfig(project.status);
@@ -417,28 +347,28 @@ export function PortfolioDashboardPage() {
               <CheckSquare className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Tasks</p>
-                <p className="text-xl font-bold">{data.totalTasks ?? MOCK_DATA.totalTasks}</p>
+                <p className="text-xl font-bold">{data?.totalTasks ?? 0}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <TrendingUp className="h-5 w-5 text-green-500" />
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Done</p>
-                <p className="text-xl font-bold text-green-600">{data.tasksDone ?? MOCK_DATA.tasksDone}</p>
+                <p className="text-xl font-bold text-green-600">{data?.tasksDone ?? 0}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-red-500" />
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Blocked</p>
-                <p className="text-xl font-bold text-red-600">{data.tasksBlocked ?? MOCK_DATA.tasksBlocked}</p>
+                <p className="text-xl font-bold text-red-600">{data?.tasksBlocked ?? 0}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Users className="h-5 w-5 text-blue-500" />
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Team Members</p>
-                <p className="text-xl font-bold">{data.totalMembers ?? MOCK_DATA.totalMembers}</p>
+                <p className="text-xl font-bold">{data?.totalMembers ?? 0}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -446,9 +376,9 @@ export function PortfolioDashboardPage() {
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Budget Utilization</p>
                 <p className="text-xl font-bold">
-                  {data.totalBudgetAllocated
-                    ? `${Math.round((data.totalBudgetSpent / data.totalBudgetAllocated) * 100)}%`
-                    : `${Math.round((MOCK_DATA.totalBudgetSpent / MOCK_DATA.totalBudgetAllocated) * 100)}%`}
+                  {data?.totalBudgetAllocated
+                    ? `${Math.round(((data.totalBudgetSpent ?? 0) / data.totalBudgetAllocated) * 100)}%`
+                    : '—'}
                 </p>
               </div>
             </div>

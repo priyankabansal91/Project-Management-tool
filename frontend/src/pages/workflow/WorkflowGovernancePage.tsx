@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
-  Shield, AlertTriangle, Clock, Check, X, ChevronDown, ChevronUp,
-  Users, Settings, GitBranch, Bell, Save, Plus, Trash2,
+  Shield, Clock, Check, X,
+  Users, GitBranch, Bell, Save, Plus,
   Lock, Unlock, History, FileWarning,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,53 +10,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 
-// ── mock data ─────────────────────────────────────────────────────────────────
-
-const OVERRIDE_HISTORY = [
-  {
-    id: 'ov-001', projectKey: 'RD-009', projectName: 'Road Repair NH-47 Bypass',
-    overriddenBy: 'Alice Admin', overrideRole: 'Org Admin',
-    fromStatus: 'ON_HOLD', toStatus: 'ACTIVE',
-    justification: 'Flood emergency — road required for relief vehicles. Government directive received. Restarting immediately.',
-    at: new Date(Date.now() - 3 * 86400000).toISOString(), emergency: true,
-  },
-  {
-    id: 'ov-002', projectKey: 'SCH-002', projectName: 'School Boundary Wall Construction',
-    overriddenBy: 'Alice Admin', overrideRole: 'Org Admin',
-    fromStatus: 'ACTIVE', toStatus: 'DRAFT',
-    justification: 'Submitted in error — wrong project scope attached. Returned to draft for correction before re-submission.',
-    at: new Date(Date.now() - 12 * 86400000).toISOString(), emergency: false,
-  },
-];
-
-const ESCALATION_CHAIN = [
-  { step: 'Timesheet Approval', primary: 'Project Manager', escalateTo: 'Division Admin', afterHours: 48 },
-  { step: 'Project Milestone Approval', primary: 'Division Admin', escalateTo: 'Org Admin', afterHours: 72 },
-];
-
-const ACTIVE_DELEGATES = [
-  {
-    id: 'del-001', from: 'Ravi Sharma', fromRole: 'Division Admin',
-    to: 'Sunita Rao', toRole: 'Division Admin',
-    reason: 'On annual leave 5–12 May 2026',
-    expires: new Date(Date.now() + 7 * 86400000).toISOString(),
-    active: true,
-  },
-];
-
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-function relDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function fmtExpiry(iso: string) {
-  const days = Math.round((new Date(iso).getTime() - Date.now()) / 86400000);
-  if (days < 0) return 'Expired';
-  if (days === 0) return 'Expires today';
-  return `Expires in ${days}d`;
-}
 
 // ── Override Modal ────────────────────────────────────────────────────────────
 
@@ -333,7 +287,7 @@ export function WorkflowGovernancePage() {
                 { label: 'Overrides this month', value: '2', ok: true },
                 { label: 'Emergency overrides', value: '1 ⚠', ok: false },
                 { label: 'Pending compliance reviews', value: '1', ok: false },
-                { label: 'Active delegations', value: String(ACTIVE_DELEGATES.filter(d => d.active).length), ok: true },
+                { label: 'Active delegations', value: '—', ok: true },
               ].map(({ label, value, ok }) => (
                 <div key={label} className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{label}</span>
@@ -404,34 +358,10 @@ export function WorkflowGovernancePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {ESCALATION_CHAIN.map((ec, i) => (
-              <div key={ec.step} className="rounded-xl border p-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-950/30 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-400">
-                      {i + 1}
-                    </div>
-                    {i < ESCALATION_CHAIN.length - 1 && <div className="w-px h-6 bg-border" />}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm mb-2">{ec.step}</p>
-                    <div className="flex items-center gap-3 text-xs flex-wrap">
-                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900">
-                        <Users className="h-3 w-3 text-blue-600" />
-                        <span className="font-medium text-blue-700 dark:text-blue-300">Primary: {ec.primary}</span>
-                      </div>
-                      <ArrowRight />
-                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900">
-                        <Bell className="h-3 w-3 text-amber-600" />
-                        <span className="font-medium text-amber-700 dark:text-amber-300">After {ec.afterHours}h → {ec.escalateTo}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div className="rounded-xl border-2 border-dashed border-border p-4 text-center">
-              <p className="text-xs text-muted-foreground">Final escalation: Org Admin forced-assign within 24h of escalation</p>
+            <div className="rounded-xl border-2 border-dashed border-border p-8 text-center">
+              <GitBranch className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No escalation chain configured</p>
+              <p className="text-xs text-muted-foreground mt-1">Configure SLA policies to set up automatic escalation rules</p>
             </div>
           </CardContent>
         </Card>
@@ -453,37 +383,7 @@ export function WorkflowGovernancePage() {
             </div>
           </CardHeader>
           <CardContent>
-            {ACTIVE_DELEGATES.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No active delegations</p>
-            ) : (
-              <div className="space-y-3">
-                {ACTIVE_DELEGATES.map((d) => (
-                  <div key={d.id} className="flex items-start gap-4 p-4 rounded-xl border bg-muted/30">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-sm font-medium">{d.from}</span>
-                        <Badge variant="outline" className="text-[10px]">{d.fromRole.replace('_', ' ')}</Badge>
-                        <span className="text-muted-foreground text-xs">→ delegated to</span>
-                        <span className="text-sm font-medium">{d.to}</span>
-                        <Badge variant="outline" className="text-[10px]">{d.toRole.replace('_', ' ')}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground italic">"{d.reason}"</p>
-                      <p className="text-xs mt-1">
-                        <span className={cn('font-medium', new Date(d.expires) > new Date() ? 'text-emerald-600' : 'text-red-600')}>
-                          {fmtExpiry(d.expires)}
-                        </span>
-                        {' — '}{new Date(d.expires).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                      </p>
-                    </div>
-                    {isAdmin && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200">
-                        <Trash2 className="h-3 w-3 mr-1" /> Revoke
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-sm text-muted-foreground text-center py-6">No active delegations</p>
           </CardContent>
         </Card>
       )}
@@ -494,40 +394,13 @@ export function WorkflowGovernancePage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <History className="h-4 w-4 text-primary" /> Override History
-              <Badge variant="outline" className="text-[10px]">{OVERRIDE_HISTORY.length} records</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {OVERRIDE_HISTORY.map((ov) => (
-                <div key={ov.id} className={cn(
-                  'rounded-xl border p-4 space-y-2',
-                  ov.emergency && 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20'
-                )}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">{ov.projectName}</span>
-                        <Badge variant="outline" className="text-[10px] font-mono">{ov.projectKey}</Badge>
-                        {ov.emergency && (
-                          <Badge className="text-[10px] bg-red-500 text-white">EMERGENCY</Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        By {ov.overriddenBy} ({ov.overrideRole}) · {relDate(ov.at)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs flex-shrink-0">
-                      <Badge variant="outline" className="text-[10px]">{ov.fromStatus.replace(/_/g, ' ')}</Badge>
-                      <span className="text-muted-foreground">→</span>
-                      <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">{ov.toStatus.replace(/_/g, ' ')}</Badge>
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground italic">
-                    "{ov.justification}"
-                  </div>
-                </div>
-              ))}
+            <div className="py-8 text-center text-muted-foreground">
+              <History className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No override records</p>
+              <p className="text-xs mt-1">Admin overrides will appear here once applied</p>
             </div>
           </CardContent>
         </Card>
