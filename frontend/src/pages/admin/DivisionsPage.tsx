@@ -213,14 +213,13 @@ function DivisionNode({
                 <Input placeholder="Head Count" type="number" value={formData.head_count} onChange={(e) => setFormData({ ...formData, head_count: e.target.value })} />
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1">Division Head / HOD *</label>
+                <label className="text-xs font-medium block mb-1">Division Head / HOD</label>
                 <select
                   value={formData.manager_id}
                   onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
                   className="w-full text-sm border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  required
                 >
-                  <option value="">Select Division Head</option>
+                  <option value="">Select Division Head (optional)</option>
                   {membersList.map((u) => (
                     <option key={u.id} value={u.id}>{u.label}</option>
                   ))}
@@ -267,7 +266,7 @@ export function DivisionsPage() {
   const updateDivision = useUpdateDivision();
   const deleteDivision = useDeleteDivision();
 
-  const { data: membersData } = useMembers({ role: 'division_admin', page_size: 200 });
+  const { data: membersData } = useMembers({ page_size: 200 });
   const membersList: MemberOption[] = (membersData?.items ?? []).map((m: any) => ({
     id: m.id,
     label: `${m.first_name || ''} ${m.last_name || ''}`.trim() + (m.email ? ` — ${m.email}` : ''),
@@ -296,10 +295,6 @@ export function DivisionsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.manager_id) {
-      alert('Please select a Division Head (HOD/CEO). This is required.');
-      return;
-    }
     try {
       await createDivision.mutateAsync(formData);
       setFormData({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
@@ -406,20 +401,19 @@ export function DivisionsPage() {
               <Input placeholder="Head Count" type="number" value={formData.head_count} onChange={(e) => setFormData({ ...formData, head_count: e.target.value })} />
             </div>
             <div>
-              <label className="text-sm font-medium block mb-1">Division Head / HOD *</label>
+              <label className="text-sm font-medium block mb-1">Division Head / HOD</label>
               <select
                 value={formData.manager_id}
                 onChange={(e) => setFormData({ ...formData, manager_id: e.target.value })}
                 className="w-full text-sm border rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                required
               >
-                <option value="">Select Division Head</option>
+                <option value="">Select Division Head (optional)</option>
                 {membersList.map((u) => (
                   <option key={u.id} value={u.id}>{u.label}</option>
                 ))}
               </select>
               <p className="text-xs text-muted-foreground mt-1">
-                Required. The Division Head (HOD/CEO) is responsible for approving project closures and major decisions.
+                The Division Head (HOD/CEO) is responsible for approving project closures and major decisions.
               </p>
             </div>
             <div className="flex gap-2">

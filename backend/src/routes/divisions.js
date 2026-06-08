@@ -18,9 +18,6 @@ router.post('/', authorize('org_admin'), async (req, res, next) => {
     if (!name || !code) {
       return res.status(400).json({ success: false, error: 'name and code are required' });
     }
-    if (!manager_id) {
-      return res.status(400).json({ success: false, error: 'manager_id (Division Head) is required' });
-    }
 
     const division = await divisionService.create(req.user.orgId, req.user.id, {
       name,
