@@ -46,6 +46,7 @@ import { OnboardingWizardPage } from '@/pages/admin/OnboardingWizardPage';
 import { DivisionMISPage } from '@/pages/admin/DivisionMISPage';
 import { VerticalsPage } from '@/pages/admin/VerticalsPage';
 import { PermissionMatrixPage } from '@/pages/admin/PermissionMatrixPage';
+import { StageTemplatesPage } from '@/pages/admin/StageTemplatesPage';
 import { SidebarConfigPage } from '@/pages/admin/SidebarConfigPage';
 import { NotificationsPage } from '@/pages/user/NotificationsPage';
 import { WorkflowMonitoringPage } from '@/pages/workflow/WorkflowMonitoringPage';
@@ -174,6 +175,7 @@ export default function App() {
           <Route path="/admin/division-mis" element={<DivisionMISPage />} />
           <Route path="/admin/verticals" element={<VerticalsPage />} />
           <Route path="/admin/permissions" element={<PermissionMatrixPage />} />
+          <Route path="/admin/stage-templates" element={<StageTemplatesPage />} />
           <Route path="/admin/sidebar-config" element={<SidebarConfigPage />} />
 
           {/* Workflow operational layer */}

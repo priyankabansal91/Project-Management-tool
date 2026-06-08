@@ -1633,3 +1633,102 @@ export function useMilestoneSummary(projectId: string) {
     staleTime: 60_000,
   });
 }
+
+// ─── Stage Templates ─────────────────────────────────────
+
+export function useStageTemplates(params?: { division_id?: string }) {
+  return useQuery({
+    queryKey: ['stageTemplates', params],
+    queryFn: async () => {
+      const { data } = await api.get('/stage-templates', { params });
+      return data.data as import('@/types').StageTemplate[];
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useStageTemplate(id: string) {
+  return useQuery({
+    queryKey: ['stageTemplate', id],
+    queryFn: async () => {
+      const { data } = await api.get(`/stage-templates/${id}`);
+      return data.data as import('@/types').StageTemplate;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useCreateStageTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await api.post('/stage-templates', body);
+      return data.data as import('@/types').StageTemplate;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stageTemplates'] }),
+  });
+}
+
+export function useUpdateStageTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { id: string } & Record<string, unknown>) => {
+      const { data } = await api.put(`/stage-templates/${id}`, body);
+      return data.data as import('@/types').StageTemplate;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stageTemplates'] }),
+  });
+}
+
+export function useDeleteStageTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/stage-templates/${id}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stageTemplates'] }),
+  });
+}
+
+export function useCreateSubstage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ stageId, ...body }: { stageId: string } & Record<string, unknown>) => {
+      const { data } = await api.post(`/stage-templates/${stageId}/substages`, body);
+      return data.data as import('@/types').SubstageTemplate;
+    },
+    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['stageTemplates'] }),
+  });
+}
+
+export function useUpdateSubstage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ stageId, substageId, ...body }: { stageId: string; substageId: string } & Record<string, unknown>) => {
+      const { data } = await api.put(`/stage-templates/${stageId}/substages/${substageId}`, body);
+      return data.data as import('@/types').SubstageTemplate;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stageTemplates'] }),
+  });
+}
+
+export function useDeleteSubstage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ stageId, substageId }: { stageId: string; substageId: string }) => {
+      await api.delete(`/stage-templates/${stageId}/substages/${substageId}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stageTemplates'] }),
+  });
+}
+
+export function useBulkReplaceSubstages() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ stageId, names }: { stageId: string; names: string[] }) => {
+      const { data } = await api.put(`/stage-templates/${stageId}/substages`, { names });
+      return data.data as import('@/types').StageTemplate;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['stageTemplates'] }),
+  });
+}

@@ -128,6 +128,7 @@ class ProjectService {
         dueDate: data.due_date ? new Date(data.due_date) : null,
         budget: data.budget ? Number(data.budget) : null,
         expenseHeads: data.expense_heads || null,
+        stageTemplateId: data.stage_template_id || null,
         createdBy: userId,
         members: { create: membersToCreate },
       },

@@ -142,6 +142,7 @@ model Organization {
   externalUsers   ExternalUser[]
   exports         Export[]
   Approval        Approval[]
+  stageTemplates  StageTemplate[]
 
   @@map("organizations")
 }
@@ -171,13 +172,14 @@ model Division {
   setupChecklist     Json              @default("{}") @map("setup_checklist")
   setupCompletedAt   DateTime?         @map("setup_completed_at")
 
-  organization Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  parent       Division?        @relation("DivisionHierarchy", fields: [parentId], references: [id])
-  children     Division[]       @relation("DivisionHierarchy")
-  manager      User?            @relation(fields: [managerId], references: [id])
-  members      DivisionMember[]
-  projects     Project[]
-  verticals    Vertical[]
+  organization    Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  parent          Division?        @relation("DivisionHierarchy", fields: [parentId], references: [id])
+  children        Division[]       @relation("DivisionHierarchy")
+  manager         User?            @relation(fields: [managerId], references: [id])
+  members         DivisionMember[]
+  projects        Project[]
+  verticals       Vertical[]
+  stageTemplates  StageTemplate[]
 
   @@unique([orgId, code])
   @@map("divisions")
@@ -450,10 +452,13 @@ model Project {
   budget           Decimal?          @map("budget")
   expenseHeads     Json?             @map("expense_heads")
 
+  stageTemplateId String?           @map("stage_template_id")
+
   organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
   division       Division?       @relation(fields: [divisionId], references: [id])
   vertical       Vertical?       @relation(fields: [verticalId], references: [id])
   workflowConfig WorkflowConfig? @relation(fields: [workflowConfigId], references: [id])
+  stageTemplate  StageTemplate?  @relation(fields: [stageTemplateId], references: [id])
   members        ProjectMember[]
   tasks          Task[]
   sprints        Sprint[]
@@ -864,6 +869,41 @@ model UserIntegration {
 
   @@unique([userId, provider])
   @@map("user_integrations")
+}
+
+// ─── STAGE TEMPLATES ────────────────────────────────────
+
+model StageTemplate {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  divisionId  String?  @map("division_id")
+  name        String
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  division     Division?          @relation(fields: [divisionId], references: [id])
+  substages    SubstageTemplate[]
+  projects     Project[]
+
+  @@map("stage_templates")
+}
+
+model SubstageTemplate {
+  id        String   @id @default(uuid())
+  stageId   String   @map("stage_id")
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stage StageTemplate @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@map("substage_templates")
 }
 
 // ─── EMAIL OTP ────────────────────────────────────────────

@@ -79,6 +79,38 @@ router.post('/', authorize('org_admin', 'division_admin', 'project_manager', 've
           milestoneIds.push(created.id);
         } catch { /* continue if milestone creation fails */ }
       }
+    } else if (data.stage_template_id && (!Array.isArray(data.milestones) || data.milestones.length === 0)) {
+      // Auto-create milestones from stage template substages
+      try {
+        const stageTemplate = await prisma.stageTemplate.findFirst({
+          where: { id: data.stage_template_id, orgId: req.user.orgId },
+          include: { substages: { orderBy: { order: 'asc' } } },
+        });
+        if (stageTemplate && stageTemplate.substages.length > 0) {
+          for (let i = 0; i < stageTemplate.substages.length; i++) {
+            const sub = stageTemplate.substages[i];
+            try {
+              const created = await prisma.milestone.create({
+                data: {
+                  title: sub.name,
+                  description: null,
+                  budget: null,
+                  startDate: null,
+                  dueDate: null,
+                  projectId: project.id,
+                  orgId: req.user.orgId,
+                  createdBy: req.user.id,
+                  status: 'pending',
+                  sequenceOrder: i + 1,
+                  predecessorId: i === 0 ? null : milestoneIds[i - 1] || null,
+                  waterfallStatus: i === 0 ? 'NOT_STARTED' : 'BLOCKED',
+                },
+              });
+              milestoneIds.push(created.id);
+            } catch { /* continue if milestone creation fails */ }
+          }
+        }
+      } catch { /* stage template auto-milestone creation is optional */ }
     }
 
     // Create approval request if requested

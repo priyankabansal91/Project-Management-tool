@@ -18,7 +18,7 @@ const EXPENSE_HEAD_OPTIONS = [
 interface ExpenseHead { head: string; label: string; amount: string; description: string; }
 import { WorkflowPicker } from './WorkflowPicker';
 import type { WorkflowConfig } from '@/types';
-import { useMembers } from '@/api/hooks';
+import { useMembers, useStageTemplates } from '@/api/hooks';
 
 interface VerticalOption { id: string; name: string; }
 
@@ -48,6 +48,7 @@ export interface ProjectFormData {
   project_manager_id?: string;
   milestones?: Array<{ title: string; budget: string; due_date: string }>;
   submit_for_approval?: boolean;
+  stage_template_id?: string;
 }
 
 interface ProjectData {
@@ -93,8 +94,13 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     project_manager_id: '',
   });
 
+  const [selectedStageId, setSelectedStageId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string>('');
+
+  // Load stage templates
+  const stagesQ = useStageTemplates();
+  const stageTemplates = stagesQ.data ?? [];
 
   useEffect(() => {
     if (project) {
@@ -131,6 +137,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     setMilestoneRows([]);
     setExpenseHeads([]);
     setSubmitForApproval(true);
+    setSelectedStageId('');
   }, [project, open, workflows]);
 
   const membersQ = useMembers({ role: 'project_manager', page_size: 200 });
@@ -166,6 +173,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
         expense_heads: expenseHeads.length > 0 ? expenseHeads : undefined,
         milestones: milestoneRows.filter((r) => r.title.trim()),
         submit_for_approval: submitForApproval,
+        stage_template_id: selectedStageId || undefined,
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to save project');
@@ -468,6 +476,52 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
           {/* ── STEP 2 ── */}
           {step === 2 && !isEdit && (
             <>
+              {/* Stage selector */}
+              {stageTemplates.length > 0 && (
+                <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
+                  <div>
+                    <label className="text-sm font-medium">Stage</label>
+                    <p className="text-xs text-muted-foreground">Select a stage to auto-populate milestones from its substages</p>
+                  </div>
+                  <select
+                    value={selectedStageId}
+                    onChange={(e) => {
+                      const stageId = e.target.value;
+                      setSelectedStageId(stageId);
+                      if (stageId) {
+                        const stage = stageTemplates.find((s) => s.id === stageId);
+                        if (stage && stage.substages.length > 0) {
+                          setMilestoneRows(
+                            stage.substages
+                              .sort((a, b) => a.order - b.order)
+                              .map((sub) => ({ title: sub.name, budget: '', due_date: '' }))
+                          );
+                        }
+                      } else {
+                        setMilestoneRows([]);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                  >
+                    <option value="">— Select a Stage (optional) —</option>
+                    {stageTemplates.filter((s) => s.is_active).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}{s.division ? ` · ${s.division.name}` : ''}
+                        {' '}({s.substages.length} substages)
+                      </option>
+                    ))}
+                  </select>
+                  {selectedStageId && (() => {
+                    const stage = stageTemplates.find((s) => s.id === selectedStageId);
+                    return stage ? (
+                      <p className="text-xs text-emerald-600">
+                        ✓ {stage.substages.length} substage{stage.substages.length !== 1 ? 's' : ''} loaded as milestones
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-medium text-foreground">Initial Milestones</h3>
                 <button
@@ -482,7 +536,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
 
               {milestoneRows.length === 0 && (
                 <p className="text-sm text-muted-foreground py-2">
-                  No milestones added yet. You can add them now or later from the project page.
+                  No milestones added yet. Select a stage above or add milestones manually.
                 </p>
               )}
 

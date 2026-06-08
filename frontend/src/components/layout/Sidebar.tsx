@@ -77,6 +77,7 @@ const navItems: NavItem[] = [
   { label: 'Custom Fields',       path: '/admin/custom-fields',   icon: FormInput,        roles: ['org_admin'], section: 'admin' },
   { label: 'External Users',      path: '/admin/external-users',  icon: UserPlus,         roles: ['org_admin'], section: 'admin' },
   { label: 'Handoff Panel',       path: '/admin/handoff',         icon: ClipboardCheck,   roles: ['org_admin'], section: 'admin' },
+  { label: 'Stage Templates',     path: '/admin/stage-templates', icon: Layers,           roles: ['org_admin','division_admin'], section: 'admin' },
   { label: 'Audit Log',           path: '/admin/audit-log',       icon: Activity,         roles: ['org_admin','division_admin','vertical_head'], section: 'admin' },
   { label: 'Exports',             path: '/admin/exports',         icon: Download,         roles: ['org_admin','division_admin','vertical_head','project_manager'], section: 'admin' },
   { label: 'Versioning',          path: '/admin/versioning',      icon: History,          roles: ['org_admin'], section: 'admin' },

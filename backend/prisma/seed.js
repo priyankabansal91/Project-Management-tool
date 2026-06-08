@@ -196,6 +196,7 @@ async function main() {
     { id: 'div_frontend',    name: 'Frontend Team',      code: 'FE',    parentId: 'div_engineering', color: '#8B5CF6', description: 'UI/UX and frontend development',    managerId: 'dev-member-id',          budget: 1500000, headCount: 7,  displayOrder: 1 },
     { id: 'div_backend',     name: 'Backend & DevOps',   code: 'BE',    parentId: 'div_engineering', color: '#06B6D4', description: 'API, infrastructure and DevOps',    managerId: null,                     budget: 2000000, headCount: 8,  displayOrder: 2 },
     { id: 'div_ppid',        name: 'PPID',               code: 'PPID',  parentId: null,              color: '#EC4899', description: 'PPID Division',                     managerId: 'dev-ppid-divadmin-id',   budget: 3000000, headCount: 10, displayOrder: 4 },
+    { id: 'div_it',          name: 'Information Technology', code: 'IT', parentId: null,             color: '#6366F1', description: 'IT Division',                         managerId: null,                     budget: 4000000, headCount: 15, displayOrder: 5 },
   ];
 
   for (const d of divisions) {
@@ -549,13 +550,188 @@ async function main() {
     });
   }
 
+  // ── IT Division Stage Templates ───────────────────────────
+  const itStageTemplates = [
+    {
+      id: 'st_it_cr',
+      name: 'CHANGE REQUEST',
+      order: 1,
+      substages: [
+        'RECEIVED REQUIREMENTS FROM PROJECT TEAM',
+        'DISCUSSION ON REQUIREMENTS',
+        'DOCUMENTATION OF REQUIREMENT',
+        'APPROVAL OF REQUIREMENTS FROM PROJECT TEAM',
+        'REQUIREMENT SENT TO VENDOR',
+        'ANALYSIS OF THE COST',
+        'REVIEW SENT TO VENDOR',
+        'RESUBMISSION OF THE COST BY VENDOR',
+        'FINALISATION OF THE COST',
+        'DISCUSS THE FINAL COST WITH PROJECT TEAM',
+        'APPROVAL OF COST BY IT TEAM',
+        'APPROVAL OF COST BY PROJECT TEAM',
+        'SENT REQUIREMENT AND COST TO PROCUREMENT',
+        'PUBLISHED WORK ORDER',
+      ],
+    },
+    {
+      id: 'st_it_amc',
+      name: 'AMC AND RETAINERSHIP',
+      order: 2,
+      substages: [
+        'REMINDER FOR AMC TO PROJECT TEAM',
+        'ACCEPTANCE OF AMC REQUIREMENT FROM PROJECT TEAM',
+        'DISCUSSION ON THE REQUIREMENTS WITH PROJECT TEAM',
+        'FINALISATION OF REQUIREMENTS',
+        'ESTIMATION OF HOURS',
+        'DOCUMENTATION OF REQUIREMENTS',
+        'APPROVAL OF REQUIREMENTS FROM PROJECT TEAM',
+        'APPROVAL OF REQUIREMENTS FROM IT TEAM',
+        'REQUIREMENT SENT TO PROCUREMENT',
+        'RFP SENT BY PROCUREMENT',
+        'ONBOARDING PROCESS',
+        'REQUIREMENT SENT TO VENDOR',
+        'COST SUBMISSION BY VENDOR',
+        'ANALYSIS OF THE COST',
+        'FINALISATION OF THE COST',
+        'APPROVAL OF COST BY IT TEAM',
+        'APPROVAL OF COST BY PROJECT TEAM',
+        'SENT REQUIREMENT AND COST TO PROCUREMENT',
+        'PUBLISHED WORK ORDER',
+      ],
+    },
+    {
+      id: 'st_it_inv',
+      name: 'INVOICE SUBMISSION',
+      order: 3,
+      substages: [
+        'INVOICE SUBMITTED BY VENDOR',
+        'CLARIFICATION ON COMPLETION OF REQUIREMENTS',
+        'COMMUNICATION OF INCOMPLETE REQUIREMENT TO VENDOR',
+        'DOCUMENTATION',
+        'COMPLETION OF REQUIREMENTS',
+        'APPROVAL FROM THE PROJECT TEAM',
+        'APPROVAL FROM THE IT TEAM',
+        'SUBMISSION TO THE FINANCE',
+        'PAYMENT TO THE VENDOR',
+      ],
+    },
+    {
+      id: 'st_it_dcr',
+      name: 'DEVELOPMENT CONTRACT RELEASE',
+      order: 4,
+      substages: [
+        'REQUIREMENT FROM PROJECT TEAM',
+        'FORMAL REQUEST FROM PROJECT TEAM',
+        'FORMAL REQUEST FROM THE VERTICAL HEAD',
+        'DEVELOPMENT OF THE SCOPE',
+        'SCOPE SENT TO PROJECT TEAM',
+        'APPROVE THE SCOPE FROM PROJECT TEAM',
+        'APPROVAL FROM THE IT TEAM',
+        'SCOPE SENT TO PROCUREMENT',
+        'RFP RELEASE',
+        'TECHNICAL PRESENTATION',
+        'COST SUBMITTED WITH VENDOR',
+        'COST DISCUSSION WITH IT TEAM',
+        'COST DISCUSSION WITH PROJECT TEAM',
+        'FINALISATION OF VENDOR',
+        'RELEASE OF WORK ORDER',
+      ],
+    },
+    {
+      id: 'st_it_idev',
+      name: 'INITIAL DEVELOPMENT',
+      order: 5,
+      substages: [
+        'PLANNING',
+        'PROTOTYPE DEVELOPMENT',
+        'DEVELOPMENT STAGE',
+        'COMPLETED IN DEVELOPER SERVER',
+        'CI/CD SETUP',
+        'STAGING SERVER',
+        'UAT',
+        'SECURITY TESTING',
+        'PRODUCTION SERVER',
+        'DOMAIN WITH SSP',
+        'LIVE',
+      ],
+    },
+    {
+      id: 'st_it_ce',
+      name: 'CONTRACT EXTENSION',
+      order: 6,
+      substages: [
+        'REQUEST FROM PROJECT TEAM',
+        'DISCUSSION WITH PROJECT TEAM',
+        'DISCUSSION WITH VENDOR',
+        'QUOTATION FROM VENDOR',
+        'SENT FOR APPROVAL OF IT TEAM',
+        'APPROVAL FROM THE IT TEAM',
+        'SENT FOR APPROVAL OF PROJECT TEAM',
+        'APPROVAL FROM THE PROJECT TEAM',
+        'SENT TO PROCUREMENT',
+        'RELEASE OF WORK ORDER',
+      ],
+    },
+    {
+      id: 'st_it_ir',
+      name: 'ISSUE RESOLUTION',
+      order: 7,
+      substages: [
+        'RECEIVAL OF ISSUE',
+        'RESEARCH ON THE ISSUE',
+        'COMMUNICATION WITH THE VENDOR',
+        'SOLUTION COMMUNICATED WITH STAKEHOLDERS',
+        'IMPLEMENTATION STAGE',
+        'COMPLETED',
+      ],
+    },
+    {
+      id: 'st_it_rnd',
+      name: 'R&D',
+      order: 8,
+      substages: [
+        'TASK IDENTIFICATION',
+        'PLANNING OF COMPLETION',
+        'DOCUMENTATION',
+        'DRAFT COMPLETION',
+        'REVIEW',
+        'ACTION TAKEN',
+        'COMPLETED',
+      ],
+    },
+  ];
+
+  for (const st of itStageTemplates) {
+    await prisma.stageTemplate.upsert({
+      where: { id: st.id },
+      update: { name: st.name, order: st.order, isActive: true },
+      create: {
+        id: st.id,
+        orgId: 'dev-org-id',
+        divisionId: 'div_it',
+        name: st.name,
+        order: st.order,
+        isActive: true,
+        createdBy: 'dev-org_admin-id',
+      },
+    });
+    // Idempotent substage seeding: delete all and recreate
+    await prisma.substageTemplate.deleteMany({ where: { stageId: st.id } });
+    if (st.substages.length > 0) {
+      await prisma.substageTemplate.createMany({
+        data: st.substages.map((name, i) => ({ stageId: st.id, name, order: i })),
+      });
+    }
+  }
+
   console.log('✅  Database seeded with comprehensive demo data');
   console.log('   • 14 users (8 base + 5 PPID + 1 HoD)');
   console.log('   • PPID division: div_ppid (divAdmin, VH, TM, PL, HoD)');
   console.log('   • 3 verticals (vert_tech headed by dev-vertical_head-id)');
   console.log('   • 4 workflow configs (Kanban, Agile, Simple, Approval-Gated)');
   console.log('   • 4 custom roles, 4 custom field definitions');
-  console.log('   • 5 divisions (2 sub-divisions of Engineering)');
+  console.log('   • 6 divisions (2 sub-divisions of Engineering, IT division)');
+  console.log('   • 8 IT stage templates with 91 total substages');
   console.log('   • 5 projects across all divisions');
   console.log('   • 10 sprints across projects');
   console.log('   • 20 tasks with full detail (status, priority, estimates, tags)');

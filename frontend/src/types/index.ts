@@ -209,3 +209,25 @@ export interface Vertical {
   status: 'active' | 'inactive';
   created_at: string;
 }
+
+export interface SubstageTemplate {
+  id: string;
+  stage_id: string;
+  name: string;
+  order: number;
+}
+
+export interface StageTemplate {
+  id: string;
+  org_id: string;
+  division_id: string | null;
+  name: string;
+  description: string | null;
+  order: number;
+  is_active: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  substages: SubstageTemplate[];
+  division: { id: string; name: string } | null;
+}

@@ -41,6 +41,7 @@ const auditLogRoutes = require('./routes/auditLog');
 const misRoutes = require('./routes/mis');
 const verticalsRoutes = require('./routes/verticals');
 const milestonesRoutes = require('./routes/milestones');
+const stageTemplatesRoutes = require('./routes/stageTemplates');
 const dashboardV2Routes = require('./routes/dashboardV2');
 
 
@@ -148,6 +149,7 @@ app.get('/health', (req, res) => {
 app.use('/v1/auth', authLimiter, authRoutes);
 app.use('/v1/projects', projectRoutes);
 app.use('/v1/projects/:projectId/milestones', milestonesRoutes);
+app.use('/v1/stage-templates', stageTemplatesRoutes);
 app.use('/v1/tasks', taskRoutes);
 app.use('/v1/comments', commentRoutes);
 app.use('/v1/dashboard', dashboardRoutes);
