@@ -465,6 +465,11 @@ model Project {
   milestones     Milestone[]
 
   @@unique([orgId, key])
+  @@index([orgId])
+  @@index([divisionId])
+  @@index([verticalId])
+  @@index([status])
+  @@index([phase])
   @@map("projects")
 }
 
@@ -505,6 +510,8 @@ model Milestone {
   successors   Milestone[]  @relation("MilestoneDependency")
   tasks        Task[]
 
+  @@index([projectId])
+  @@index([status])
   @@map("milestones")
 }
 
@@ -577,6 +584,10 @@ model Task {
   timeLogs     TimeLog[]
 
   @@unique([projectId, seqNumber])
+  @@index([projectId])
+  @@index([milestoneId])
+  @@index([assigneeId])
+  @@index([sprintId])
   @@map("tasks")
 }
 
@@ -603,6 +614,8 @@ model Comment {
   replies      Comment[]    @relation("CommentThread")
   author       User         @relation(fields: [authorId], references: [id])
 
+  @@index([taskId])
+  @@index([authorId])
   @@map("comments")
 }
 
@@ -625,6 +638,9 @@ model ActivityLog {
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   actor        User?        @relation(fields: [actorId], references: [id])
 
+  @@index([orgId])
+  @@index([actorId])
+  @@index([entityId])
   @@map("activity_logs")
 }
 
@@ -647,6 +663,8 @@ model Notification {
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([orgId])
   @@map("notifications")
 }
 
@@ -669,6 +687,7 @@ model Sprint {
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks        Task[]
 
+  @@index([projectId])
   @@map("sprints")
 }
 
@@ -688,6 +707,8 @@ model TimeLog {
   task         Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([taskId])
+  @@index([userId])
   @@map("time_logs")
 }
 
@@ -744,6 +765,7 @@ model EntityVersion {
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@unique([entityId, entityType, version])
+  @@index([entityId, entityType])
   @@map("entity_versions")
 }
 
@@ -814,6 +836,9 @@ model Approval {
   steps           ApprovalStep[]
   approvals       ApprovalRecord[]
 
+  @@index([orgId])
+  @@index([status])
+  @@index([relatedProjectId])
   @@map("approvals")
 }
 
@@ -831,6 +856,7 @@ model ApprovalStep {
 
   approval Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
 
+  @@index([approvalId])
   @@map("approval_steps")
 }
 

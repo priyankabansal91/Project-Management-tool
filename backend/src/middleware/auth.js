@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger');
 const config = require('../config');
 const prisma = require('../config/prisma');
 
@@ -40,7 +41,7 @@ function authenticate(req, res, next) {
           req.user = { id: decoded.sub, orgId: decoded.org_id, role: decoded.role, email: decoded.email };
           return next();
         }
-      } catch { /* invalid JWT — fall through to dev bypass */ }
+      } catch (err) { logger.debug('JWT verification failed, using dev bypass', err); }
     }
     // No Authorization header (or invalid JWT) — use dev bypass
     const devUserId = req.headers['x-dev-user-id'];

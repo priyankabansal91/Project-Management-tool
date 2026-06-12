@@ -3,6 +3,7 @@ const { authenticate } = require('../middleware/auth');
 const prisma = require('../config/prisma');
 const timeLogService = require('../services/timeLogService');
 const divisionConfigService = require('../services/divisionConfigService');
+const logger = require('../utils/logger');
 
 const router = Router();
 router.use(authenticate);
@@ -81,7 +82,7 @@ router.get('/division/:divisionId', async (req, res) => {
         where: { id: divisionId, orgId, deletedAt: null },
         select: { id: true, name: true, code: true },
       });
-    } catch (_) { /* DB might not be seeded */ }
+    } catch (_) { logger.debug('MIS: DB query failed, using fallback', _); }
 
     if (!divisionMeta) {
       const cfg = divisionConfigService.getDivisionConfig(divisionId);
@@ -116,6 +117,7 @@ router.get('/division/:divisionId', async (req, res) => {
         else if (s === 'suspended') memberStats.suspended += 1;
       }
     } catch (_) {
+      logger.debug('MIS: DB query failed, using fallback', _);
       const inMembers = divisionConfigService.getDivisionMembers(divisionId);
       memberUserIds = inMembers.map((m) => m.userId);
       memberStats.total = inMembers.length;
@@ -142,7 +144,7 @@ router.get('/division/:divisionId', async (req, res) => {
           projectStats.overdue += 1;
         }
       }
-    } catch (_) { /* no DB */ }
+    } catch (_) { logger.debug('MIS: DB query failed, using fallback', _); }
 
     // ── 4. Tasks ──────────────────────────────────────────
     let taskStats = {
@@ -186,7 +188,7 @@ router.get('/division/:divisionId', async (req, res) => {
           else taskStats.by_priority.medium += 1;
         }
       }
-    } catch (_) { /* no DB tasks */ }
+    } catch (_) { logger.debug('MIS: DB query failed, using fallback', _); }
 
     // ── 5. Time Tracking (in-memory service) ──────────────
     const weekFrom  = startOfWeek();
@@ -216,7 +218,7 @@ router.get('/division/:divisionId', async (req, res) => {
       const monthlyLogs = (monthlySummary.byMember || []).filter((m) => memberSet.has(m.userId));
       hoursThisMonth = monthlyLogs.reduce((s, m) => s + m.hours, 0);
       hoursThisMonth = Math.round(hoursThisMonth * 10) / 10;
-    } catch (_) { /* service unavailable */ }
+    } catch (_) { logger.debug('MIS: DB query failed, using fallback', _); }
 
     // ── 6. Approvals (in-memory, static approximation) ────
     const approvalStats = {
@@ -257,7 +259,7 @@ router.get('/division/:divisionId', async (req, res) => {
           contributorMap.get(m.userId).hoursLogged = Math.round((m.hours || 0) * 10) / 10;
         }
       }
-    } catch (_) { /* noop */ }
+    } catch (_) { logger.debug('MIS: DB query failed, using fallback', _); }
 
     const topContributors = Array.from(contributorMap.entries())
       .map(([uid, cs]) => ({
@@ -289,7 +291,7 @@ router.get('/division/:divisionId', async (req, res) => {
           timestamp: l.createdAt,
         }));
       }
-    } catch (_) { /* no activity in dev DB */ }
+    } catch (_) { logger.debug('MIS: DB query failed, using fallback', _); }
 
     // Fallback static activity for development
     if (recentActivity.length === 0) {
@@ -368,7 +370,7 @@ router.get('/division-overview', async (req, res) => {
             return sn.includes('done') || sn.includes('complete');
           }).length;
         }
-      } catch (_) { /* no DB */ }
+      } catch (_) { logger.debug('MIS: DB query failed, using fallback', _); }
 
       const completionRate = taskTotal > 0 ? Math.round((taskCompleted / taskTotal) * 100) : 0;
       const healthScore = Math.max(0, Math.min(100, completionRate + 20));

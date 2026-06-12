@@ -1,4 +1,5 @@
 const projectService = require('./projectService');
+const logger = require('../utils/logger');
 
 // Static dev task data for search (mirrors KanbanBoardPage fallback data)
 const DEV_TASKS = [
@@ -39,7 +40,7 @@ function search(orgId, { q = '', types = 'tasks,projects', page = 1, pageSize = 
           });
         }
       }
-    } catch (_) { /* projectService may not be available */ }
+    } catch (err) { logger.debug('Project search contrib failed', err); }
   }
 
   // Search tasks (dev static + any created at runtime)

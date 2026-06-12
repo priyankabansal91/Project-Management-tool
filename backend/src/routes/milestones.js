@@ -10,6 +10,7 @@ const {
 } = require('../middleware/waterfallGuard');
 
 router.use(authenticate);
+const logger = require('../utils/logger');
 
 /**
  * Validate that the new expense heads for a milestone don't cause any head
@@ -22,7 +23,7 @@ async function validateExpenseHeads(prisma, projectId, orgId, newExpenseHeads, e
   const project = await prisma.project.findFirst({
     where: { id: projectId, orgId },
     select: { expenseHeads: true },
-  }).catch(() => null);
+  }).catch((err) => { logger.debug('Optional milestone query failed', err); return null; });
 
   if (!project?.expenseHeads || !Array.isArray(project.expenseHeads) || project.expenseHeads.length === 0) {
     return null; // project has no expense head budgets — skip validation
@@ -38,7 +39,7 @@ async function validateExpenseHeads(prisma, projectId, orgId, newExpenseHeads, e
   // Sum expense heads of all OTHER milestones in this project
   const where = { projectId };
   if (excludeMilestoneId) where.id = { not: excludeMilestoneId };
-  const others = await prisma.milestone.findMany({ where, select: { expenseHeads: true } }).catch(() => []);
+  const others = await prisma.milestone.findMany({ where, select: { expenseHeads: true } }).catch((err) => { logger.debug('Optional milestone query failed', err); return []; });
 
   const used = {};
   for (const m of others) {
@@ -136,13 +137,13 @@ router.post(
         const project = await prisma.project.findFirst({
           where: { id: req.params.projectId, orgId: req.user.orgId },
           select: { budget: true },
-        }).catch(() => null);
+        }).catch((err) => { logger.warn('Milestone approval create failed', err); return null; });
 
         if (project?.budget) {
           const existingMilestones = await prisma.milestone.findMany({
             where: { projectId: req.params.projectId },
             select: { budget: true, id: true },
-          }).catch(() => []);
+          }).catch((err) => { logger.debug('Optional milestone query failed', err); return []; });
           // Exclude current milestone if editing (POST is always new)
           const usedBudget = existingMilestones.reduce((s, m) => s + Number(m.budget || 0), 0);
           const projectBudget = Number(project.budget);
@@ -331,12 +332,12 @@ router.patch(
         const project = await prisma.project.findFirst({
           where: { id: req.params.projectId, orgId: req.user.orgId },
           select: { budget: true },
-        }).catch(() => null);
+        }).catch((err) => { logger.debug('Optional milestone query failed', err); return null; });
         if (project?.budget) {
           const existingMilestones = await prisma.milestone.findMany({
             where: { projectId: req.params.projectId, id: { not: req.params.id } },
             select: { budget: true },
-          }).catch(() => []);
+          }).catch((err) => { logger.debug('Optional milestone query failed', err); return []; });
           const otherBudget = existingMilestones.reduce((s, m) => s + Number(m.budget || 0), 0);
           if (otherBudget + parseFloat(budget) > Number(project.budget)) {
             const remaining = Number(project.budget) - otherBudget;
@@ -367,7 +368,7 @@ router.patch(
 
       // If planned budget is locked, prevent changes to it
       if (budget !== undefined) {
-        const existing = await prisma.milestone.findFirst({ where: { id: req.params.id }, select: { budgetLocked: true } }).catch(() => null);
+        const existing = await prisma.milestone.findFirst({ where: { id: req.params.id }, select: { budgetLocked: true } }).catch((err) => { logger.debug('Optional milestone query failed', err); return null; });
         if (existing?.budgetLocked) {
           delete data.budget;
         }
@@ -400,7 +401,7 @@ router.delete('/:id', requirePermission('milestone:delete'), async (req, res) =>
     if (count === 0) {
       return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Milestone not found or no permission' } });
     }
-  } catch { /* not yet in DB */ }
+  } catch (err) { logger.warn('Milestone delete skipped', err); }
   res.json({ success: true, data: { deleted: true } });
 });
 
@@ -435,13 +436,13 @@ router.post('/:id/close', requirePermission('milestone:close'), requireAllTasksD
           status: 'pending',
           workflowType: 'milestone_closure',
         },
-      }).catch(() => null);
+      }).catch((err) => { logger.debug('Optional milestone query failed', err); return null; });
 
       if (approval) {
         await prisma.milestone.update({
           where: { id: milestone.id },
           data: { status: 'review', approvalId: approval.id, waterfallStatus: 'PENDING_APPROVAL' },
-        }).catch(() => {});
+        }).catch((err) => logger.warn('Milestone status update after approval failed', err));
         return res.json({ success: true, data: { status: 'pending_approval', approvalId: approval?.id } });
       }
     }

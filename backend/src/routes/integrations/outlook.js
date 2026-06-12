@@ -46,7 +46,7 @@ router.get('/callback', async (req, res, next) => {
     if (state) {
       try {
         stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
-      } catch {}
+      } catch (err) { logger.debug('Failed to parse OAuth state param', err); }
     }
 
     if (stateData.mode === 'connect') {

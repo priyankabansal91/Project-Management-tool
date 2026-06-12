@@ -42,7 +42,8 @@ class MicrosoftSSOService {
     if (stateParam) {
       try {
         state = JSON.parse(Buffer.from(stateParam, 'base64url').toString());
-      } catch {
+      } catch (err) {
+        logger.debug('OAuth state parse failed', err);
         state = {};
       }
     }

@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const { authenticate } = require('../middleware/auth');
 const { can } = require('../utils/permissions');
+const logger = require('../utils/logger');
 
 const router = Router();
 router.use(authenticate);
@@ -73,7 +74,7 @@ router.get('/overview', async (req, res) => {
     if (can(req.user, 'approval:action')) {
       try {
         pendingApprovals = await prisma.approval.count({ where: { orgId, status: 'pending' } });
-      } catch { pendingApprovals = 0; }
+      } catch (err) { logger.warn('Failed to count pending approvals', err); pendingApprovals = 0; }
     }
 
     const overview = {
@@ -118,7 +119,7 @@ router.get('/overview', async (req, res) => {
           id: d.id, name: d.name, code: d.code,
           projectCount: d._count.projects,
         }));
-      } catch { /* skip */ }
+      } catch (err) { logger.debug('Dashboard division query failed', err); }
     }
 
     res.json({ success: true, data: overview });

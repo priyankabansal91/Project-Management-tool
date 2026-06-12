@@ -1,6 +1,7 @@
 const ApiError = require('../utils/ApiError');
 const APPROVAL_WORKFLOWS = require('../utils/approvalWorkflows');
 const prisma = require('../config/prisma');
+const logger = require('../utils/logger');
 
 // In-memory storage for development (until database is set up)
 const approvalsStore = new Map();
@@ -118,7 +119,7 @@ class ApprovalService {
         take: 100,
       });
       dbApprovals = rows.map((r) => this._formatDbApproval(r));
-    } catch (_) { /* DB not available */ }
+    } catch (err) { logger.debug('Approval DB operation failed', err); }
 
     const all = [...memApprovals.map((a) => this._formatApproval(a)), ...dbApprovals]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -141,7 +142,7 @@ class ApprovalService {
     let dbApproval = null;
     try {
       dbApproval = await prisma.approval.findFirst({ where: { id: approvalId, orgId } });
-    } catch (_) {}
+    } catch (err) { logger.debug('Approval DB operation failed', err); }
 
     if (dbApproval) {
       if (dbApproval.status !== 'pending') throw ApiError.badRequest('Approval is not pending');
@@ -150,21 +151,21 @@ class ApprovalService {
         where: { id: approvalId },
         data: { status: 'approved', updatedAt: new Date() },
         include: { requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } } },
-      }).catch(() => null);
+      }).catch((err) => { logger.debug('Approval query failed', err); return null; });
 
       // Auto-advance milestone waterfallStatus when a milestone_closure approval is approved
       if (dbApproval.workflowType === 'milestone_closure' && dbApproval.relatedMilestoneId) {
-        const milestone = await prisma.milestone.findUnique({ where: { id: dbApproval.relatedMilestoneId } }).catch(() => null);
+        const milestone = await prisma.milestone.findUnique({ where: { id: dbApproval.relatedMilestoneId } }).catch((err) => { logger.debug('Approval query failed', err); return null; });
         if (milestone) {
           await prisma.milestone.update({
             where: { id: milestone.id },
             data: { waterfallStatus: 'COMPLETED', status: 'completed', progress: 100, completedAt: new Date() },
-          }).catch(() => {});
+          }).catch((err) => logger.debug('Approval side-effect failed', err));
           // Unblock next milestone
           await prisma.milestone.updateMany({
             where: { predecessorId: milestone.id, waterfallStatus: 'BLOCKED' },
             data: { waterfallStatus: 'NOT_STARTED', blockedReason: null },
-          }).catch(() => {});
+          }).catch((err) => logger.debug('Approval side-effect failed', err));
         }
       }
 
@@ -206,7 +207,7 @@ class ApprovalService {
     let dbApproval = null;
     try {
       dbApproval = await prisma.approval.findFirst({ where: { id: approvalId, orgId } });
-    } catch (_) {}
+    } catch (err) { logger.debug('Approval DB operation failed', err); }
 
     if (dbApproval) {
       if (dbApproval.status !== 'pending') throw ApiError.badRequest('Approval is not pending');
@@ -214,14 +215,14 @@ class ApprovalService {
         where: { id: approvalId },
         data: { status: 'rejected', updatedAt: new Date() },
         include: { requestedByUser: { select: { id: true, firstName: true, lastName: true, email: true } } },
-      }).catch(() => null);
+      }).catch((err) => { logger.debug('Approval query failed', err); return null; });
 
       // Revert milestone back to IN_PROGRESS if rejected
       if (dbApproval.workflowType === 'milestone_closure' && dbApproval.relatedMilestoneId) {
         await prisma.milestone.update({
           where: { id: dbApproval.relatedMilestoneId },
           data: { waterfallStatus: 'IN_PROGRESS', status: 'in_progress', approvalId: null },
-        }).catch(() => {});
+        }).catch((err) => logger.debug('Approval side-effect failed', err));
       }
 
       return this._formatDbApproval(updated || dbApproval);

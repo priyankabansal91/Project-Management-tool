@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
+const logger = require('../utils/logger');
 
 // Available permissions that can be assigned
 const AVAILABLE_PERMISSIONS = {
@@ -344,7 +345,8 @@ class CustomRoleService {
         status: m.user.status,
         joinedAt: m.createdAt,
       }));
-    } catch {
+    } catch (err) {
+      logger.warn('Failed to list division members', err);
       return [];
     }
   }
@@ -362,7 +364,8 @@ class CustomRoleService {
         include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
       });
       return { userId: member.userId, role: member.role, email: member.user.email };
-    } catch {
+    } catch (err) {
+      logger.warn('Failed to update member role in DB', err);
       return { userId, role };
     }
   }

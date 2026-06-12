@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { authenticate } = require('../middleware/auth');
 const timeLogService = require('../services/timeLogService');
 const prisma = require('../config/prisma');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -235,7 +236,7 @@ router.post('/', validate(logBodySchema, 'body'), async (req, res) => {
           where: { id: req.body.taskId, orgId: req.user.orgId, deletedAt: null },
           data: { loggedHours: { increment: req.body.hours } },
         });
-      } catch (_) { /* non-fatal — log entry is still saved */ }
+      } catch (err) { logger.warn('Failed to update task loggedHours after time log', err); }
     }
 
     return res.status(201).json({ success: true, data });

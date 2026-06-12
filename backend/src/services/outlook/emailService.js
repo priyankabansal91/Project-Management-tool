@@ -10,8 +10,8 @@ const logger = require('../../config/logger');
 let Anthropic;
 try {
   Anthropic = require('@anthropic-ai/sdk');
-} catch {
-  // SDK not installed — AI summaries disabled
+} catch (err) {
+  logger.debug('Anthropic SDK not available', err);
 }
 
 class OutlookEmailService {
