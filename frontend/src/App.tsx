@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { useAuthStore } from '@/store/authStore';
 import { AppShell } from '@/components/layout/AppShell';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -94,6 +95,7 @@ function SuspenseOutlet() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
@@ -122,8 +124,8 @@ export default function App() {
           <Route path="/projects/:projectId/milestones" element={<MilestonesPage />} />
           <Route path="/projects/:projectId/milestones/:milestoneId" element={<MilestoneDetailPage />} />
           <Route path="/projects/:projectId/calendar" element={<CalendarViewPage />} />
-          <Route path="/projects/:projectId/gantt" element={<GanttPage />} />
-          <Route path="/gantt" element={<GanttPage />} />
+          <Route path="/projects/:projectId/gantt" element={<ErrorBoundary><GanttPage /></ErrorBoundary>} />
+          <Route path="/gantt" element={<ErrorBoundary><GanttPage /></ErrorBoundary>} />
           <Route path="/my-tasks" element={<MyTasksPage />} />
           <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
@@ -131,19 +133,19 @@ export default function App() {
 
           {/* PM Views */}
           <Route path="/sprints" element={<SprintManagementPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/reports" element={<ErrorBoundary><ReportsPage /></ErrorBoundary>} />
           <Route path="/project-tracking" element={<ProjectTrackingPage />} />
-          <Route path="/executive" element={<ExecutiveDashboardPage />} />
-          <Route path="/roadmap" element={<RoadmapPage />} />
-          <Route path="/status-reports" element={<StatusReportsPage />} />
-          <Route path="/risk-register" element={<RiskRegisterPage />} />
-          <Route path="/executive/resources" element={<ResourceDashboardPage />} />
-          <Route path="/executive/financial" element={<FinancialDashboardPage />} />
+          <Route path="/executive" element={<ErrorBoundary><ExecutiveDashboardPage /></ErrorBoundary>} />
+          <Route path="/roadmap" element={<ErrorBoundary><RoadmapPage /></ErrorBoundary>} />
+          <Route path="/status-reports" element={<ErrorBoundary><StatusReportsPage /></ErrorBoundary>} />
+          <Route path="/risk-register" element={<ErrorBoundary><RiskRegisterPage /></ErrorBoundary>} />
+          <Route path="/executive/resources" element={<ErrorBoundary><ResourceDashboardPage /></ErrorBoundary>} />
+          <Route path="/executive/financial" element={<ErrorBoundary><FinancialDashboardPage /></ErrorBoundary>} />
           <Route path="/time-tracking" element={<TimeLoggingPage />} />
           <Route path="/calendar" element={<CalendarViewPage />} />
           <Route path="/team" element={<UserManagementPage />} />
-          <Route path="/portfolio" element={<PortfolioDashboardPage />} />
-          <Route path="/capacity" element={<CapacityPlanningPage />} />
+          <Route path="/portfolio" element={<ErrorBoundary><PortfolioDashboardPage /></ErrorBoundary>} />
+          <Route path="/capacity" element={<ErrorBoundary><CapacityPlanningPage /></ErrorBoundary>} />
 
           {/* AI */}
           <Route path="/ai" element={<AIFeaturesPage />} />
@@ -168,7 +170,7 @@ export default function App() {
           <Route path="/admin/forms" element={<FormsPage />} />
           <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />
           <Route path="/admin/onboarding" element={<OnboardingWizardPage />} />
-          <Route path="/reports/advanced" element={<ReportsAdvancedPage />} />
+          <Route path="/reports/advanced" element={<ErrorBoundary><ReportsAdvancedPage /></ErrorBoundary>} />
           <Route path="/settings" element={<OrgSettingsPage />} />
           <Route path="/settings/integrations" element={<OutlookIntegrationPage />} />
           <Route path="/admin/integrations" element={<OutlookIntegrationPage />} />
@@ -184,8 +186,8 @@ export default function App() {
           <Route path="/workflow/training" element={<WorkflowTrainingPage />} />
 
           {/* Governance */}
-          <Route path="/governance" element={<GovernanceDashboardPage />} />
-          <Route path="/governance/closure" element={<ProjectClosurePage />} />
+          <Route path="/governance" element={<ErrorBoundary><GovernanceDashboardPage /></ErrorBoundary>} />
+          <Route path="/governance/closure" element={<ErrorBoundary><ProjectClosurePage /></ErrorBoundary>} />
         </Route>
       </Route>
 
@@ -193,5 +195,6 @@ export default function App() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    </ErrorBoundary>
   );
 }

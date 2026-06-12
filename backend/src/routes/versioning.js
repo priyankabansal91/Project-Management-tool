@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const versioningService = require('../services/versioningService');
 const { authenticate, authorize } = require('../middleware/auth');
+const prisma = require('../config/prisma');
 
 const router = Router();
 
@@ -94,21 +95,59 @@ router.get('/:entityType/:entityId/compare/:version1/:version2', async (req, res
  */
 router.post('/snapshots', async (req, res, next) => {
   try {
-    const { name, description, snapshotType, data } = req.body;
+    const { name, description, snapshotType } = req.body;
 
-    if (!name || !snapshotType || !data) {
+    if (!name || !snapshotType) {
       return res.status(400).json({
         success: false,
-        error: 'name, snapshotType, and data are required',
+        error: 'name and snapshotType are required',
       });
     }
+
+    // Gather actual org state for the snapshot
+    const [projects, taskGroups, milestones, memberCount] = await Promise.all([
+      prisma.project.findMany({
+        where: { orgId: req.user.orgId },
+        select: {
+          id: true, name: true, key: true, status: true, phase: true,
+          budget: true, startDate: true, dueDate: true, divisionId: true,
+          verticalId: true, createdAt: true,
+          _count: { select: { tasks: true, milestones: true, projectMembers: true } },
+        },
+      }),
+      prisma.task.groupBy({
+        by: ['status'],
+        where: { project: { orgId: req.user.orgId } },
+        _count: { status: true },
+      }),
+      prisma.milestone.findMany({
+        where: { orgId: req.user.orgId },
+        select: {
+          id: true, title: true, status: true, projectId: true,
+          budget: true, startDate: true, dueDate: true, waterfallStatus: true,
+        },
+      }),
+      prisma.orgMember.count({ where: { orgId: req.user.orgId, status: 'active' } }),
+    ]);
+
+    const snapshotData = {
+      capturedAt: new Date().toISOString(),
+      summary: {
+        totalProjects: projects.length,
+        totalMilestones: milestones.length,
+        totalMembers: memberCount,
+        tasksByStatus: Object.fromEntries(taskGroups.map(t => [t.status, t._count.status])),
+      },
+      projects,
+      milestones,
+    };
 
     const snapshot = await versioningService.createSnapshot(
       req.user.orgId,
       name,
       description,
       snapshotType,
-      data,
+      snapshotData,
       req.user.id
     );
 

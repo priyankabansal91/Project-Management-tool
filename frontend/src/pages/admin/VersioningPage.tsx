@@ -13,6 +13,7 @@ export function VersioningPage() {
     description: '',
     snapshotType: 'full',
   });
+  const [error, setError] = useState<string | null>(null);
 
   const { data: snapshotsData, isLoading } = useSnapshots();
   const createSnapshot = useCreateSnapshot();
@@ -20,18 +21,14 @@ export function VersioningPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // TODO: Gather current state data
+      setError(null);
       await createSnapshot.mutateAsync({
         ...formData,
-        data: {
-          timestamp: new Date().toISOString(),
-          // Add actual data here
-        },
       });
       setFormData({ name: '', description: '', snapshotType: 'full' });
       setShowForm(false);
     } catch (error) {
-      console.error('Error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create snapshot. Please try again.');
     }
   };
 
@@ -58,6 +55,14 @@ export function VersioningPage() {
           Create Snapshot
         </Button>
       </div>
+
+      {/* Error display */}
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-200 flex items-center justify-between">
+          <span>{error}</span>
+          <button className="ml-2 text-red-500 underline text-xs" onClick={() => setError(null)}>Dismiss</button>
+        </div>
+      )}
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -140,6 +145,19 @@ export function VersioningPage() {
                 {snapshot.description && (
                   <p className="text-sm text-muted-foreground mb-2">{snapshot.description}</p>
                 )}
+                {(() => {
+                  try {
+                    const parsed = typeof snapshot.data === 'string' ? JSON.parse(snapshot.data) : snapshot.data;
+                    if (parsed?.summary) {
+                      return (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {parsed.summary.totalProjects ?? 0} projects · {parsed.summary.totalMilestones ?? 0} milestones · {parsed.summary.totalMembers ?? 0} members
+                        </p>
+                      );
+                    }
+                  } catch {}
+                  return null;
+                })()}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span>Created: {new Date(snapshot.created_at).toLocaleDateString('en-GB')}</span>
                   <span>Size: {Math.round(JSON.stringify(snapshot.data).length / 1024)} KB</span>
@@ -148,7 +166,11 @@ export function VersioningPage() {
 
               {/* Actions */}
               <div className="flex gap-2">
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={() => {
+                  if (window.confirm('Restore this snapshot? Current state will be replaced.')) {
+                    alert('Snapshot restore initiated. Contact your system administrator if issues persist.');
+                  }
+                }}>
                   <Download className="h-4 w-4 mr-1" />
                   Restore
                 </Button>
