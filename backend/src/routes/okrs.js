@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const OKRService = require('../services/okrService');
+const { createOkrSchema, updateOkrSchema } = require('../validators/okr');
 
 router.use(authenticate);
 
@@ -33,8 +34,14 @@ router.get('/', (req, res) => {
  * POST /v1/okrs - Create new OKR
  */
 router.post('/', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
+  let data;
   try {
-    const okr = OKRService.createOKR(req.body);
+    data = createOkrSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const okr = OKRService.createOKR(data);
     res.status(201).json({ success: true, data: okr });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -60,8 +67,14 @@ router.get('/:id', (req, res) => {
  * PATCH /v1/okrs/:id - Update OKR
  */
 router.patch('/:id', authorize('org_admin', 'division_admin', 'vertical_head', 'project_manager'), (req, res) => {
+  let data;
   try {
-    const okr = OKRService.updateOKR(req.params.id, req.body);
+    data = updateOkrSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const okr = OKRService.updateOKR(req.params.id, data);
     if (!okr) {
       return res.status(404).json({ success: false, error: 'OKR not found' });
     }

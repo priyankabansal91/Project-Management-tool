@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const formService = require('../services/formService');
 const { authenticate } = require('../middleware/auth');
+const { submitFormSchema } = require('../validators/form');
 
 const router = Router();
 
@@ -37,8 +38,14 @@ router.get('/templates/:formId', async (req, res, next) => {
  * POST /v1/forms/submit/:formId
  */
 router.post('/submit/:formId', async (req, res, next) => {
+  let data;
   try {
-    const result = await formService.submitForm(req.user.orgId, req.user.id, req.params.formId, req.body);
+    data = submitFormSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const result = await formService.submitForm(req.user.orgId, req.user.id, req.params.formId, data);
     res.status(201).json({ success: true, data: result });
   } catch (err) {
     next(err);

@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const exportService = require('../services/exportService');
 const { authenticate } = require('../middleware/auth');
+const { exportTasksSchema, exportProjectsSchema, createExportSchema } = require('../validators/export');
 
 const router = Router();
 
@@ -11,12 +12,14 @@ router.use(authenticate);
  * POST /v1/exports/tasks
  */
 router.post('/tasks', async (req, res, next) => {
+  let data;
   try {
-    const { format, filters, columns } = req.body;
-
-    if (!format) {
-      return res.status(400).json({ success: false, error: 'format is required' });
-    }
+    data = exportTasksSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const { format, filters, columns } = data;
 
     const result = await exportService.exportTasks(req.user.orgId, req.user.id, {
       format,
@@ -35,12 +38,14 @@ router.post('/tasks', async (req, res, next) => {
  * POST /v1/exports/projects
  */
 router.post('/projects', async (req, res, next) => {
+  let data;
   try {
-    const { format, filters, columns } = req.body;
-
-    if (!format) {
-      return res.status(400).json({ success: false, error: 'format is required' });
-    }
+    data = exportProjectsSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const { format, filters, columns } = data;
 
     const result = await exportService.exportProjects(req.user.orgId, req.user.id, {
       format,
@@ -59,15 +64,14 @@ router.post('/projects', async (req, res, next) => {
  * POST /v1/exports
  */
 router.post('/', async (req, res, next) => {
+  let data;
   try {
-    const { name, description, exportType, format, filters, columns } = req.body;
-
-    if (!name || !exportType || !format) {
-      return res.status(400).json({
-        success: false,
-        error: 'name, exportType, and format are required',
-      });
-    }
+    data = createExportSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const { name, description, exportType, format, filters, columns } = data;
 
     const exportRecord = await exportService.createExport(req.user.orgId, req.user.id, {
       name,

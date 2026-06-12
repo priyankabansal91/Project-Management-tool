@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const svc = require('../services/stageTemplateService');
+const { createStageTemplateSchema, updateStageTemplateSchema, bulkSubstagesSchema, addSubstageSchema } = require('../validators/stageTemplate');
 
 router.use(authenticate);
 
@@ -15,8 +16,14 @@ router.get('/', async (req, res, next) => {
 
 // POST /v1/stage-templates
 router.post('/', authorize('org_admin', 'division_admin'), async (req, res, next) => {
+  let data;
   try {
-    const item = await svc.create(req.user.orgId, req.user.id, req.body);
+    data = createStageTemplateSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const item = await svc.create(req.user.orgId, req.user.id, data);
     res.status(201).json({ success: true, data: item });
   } catch (e) { next(e); }
 });
@@ -31,8 +38,14 @@ router.get('/:id', async (req, res, next) => {
 
 // PUT /v1/stage-templates/:id
 router.put('/:id', authorize('org_admin', 'division_admin'), async (req, res, next) => {
+  let data;
   try {
-    const item = await svc.update(req.user.orgId, req.params.id, req.body);
+    data = updateStageTemplateSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const item = await svc.update(req.user.orgId, req.params.id, data);
     res.json({ success: true, data: item });
   } catch (e) { next(e); }
 });
@@ -47,11 +60,14 @@ router.delete('/:id', authorize('org_admin', 'division_admin'), async (req, res,
 
 // PUT /v1/stage-templates/:id/substages — bulk replace all substages (must be before /:id/substages/:substageId)
 router.put('/:id/substages', authorize('org_admin', 'division_admin'), async (req, res, next) => {
+  let data;
   try {
-    const { names } = req.body; // Array of stage names in order
-    if (!Array.isArray(names)) {
-      return res.status(400).json({ success: false, error: { message: 'names must be an array' } });
-    }
+    data = bulkSubstagesSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const { names } = data;
     const item = await svc.bulkReplaceSubstages(req.user.orgId, req.params.id, names);
     res.json({ success: true, data: item });
   } catch (e) { next(e); }
@@ -59,8 +75,14 @@ router.put('/:id/substages', authorize('org_admin', 'division_admin'), async (re
 
 // POST /v1/stage-templates/:id/substages
 router.post('/:id/substages', authorize('org_admin', 'division_admin'), async (req, res, next) => {
+  let data;
   try {
-    const item = await svc.createSubstage(req.user.orgId, req.params.id, req.body);
+    data = addSubstageSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const item = await svc.createSubstage(req.user.orgId, req.params.id, data);
     res.status(201).json({ success: true, data: item });
   } catch (e) { next(e); }
 });

@@ -1,25 +1,14 @@
 const express = require('express');
-const { z } = require('zod');
 const { authenticate, authorize } = require('../middleware/auth');
 const sprintService = require('../services/sprintService');
+const { createSprintSchema, updateSprintSchema, addSprintTaskSchema } = require('../validators/sprint');
 
 const router = express.Router();
 router.use(authenticate);
 
-const createSchema = z.object({
-  name: z.string().min(1).max(100),
-  goal: z.string().max(300).optional().default(''),
-  start_date: z.string().optional().nullable(),
-  end_date: z.string().optional().nullable(),
-});
-
-const updateSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
-  goal: z.string().max(300).optional(),
-  start_date: z.string().optional().nullable(),
-  end_date: z.string().optional().nullable(),
-  status: z.enum(['planned', 'active', 'completed']).optional(),
-});
+// Aliases for backward-compat within this file
+const createSchema = createSprintSchema;
+const updateSchema = updateSprintSchema;
 
 // Get backlog — MUST be before /:sprintId routes so "backlog" isn't treated as an ID
 router.get('/backlog', async (req, res, next) => {
@@ -71,9 +60,14 @@ router.delete('/:sprintId', authorize('org_admin', 'division_admin', 'vertical_h
 
 // Add task to sprint
 router.post('/:sprintId/tasks', async (req, res, next) => {
+  let taskData;
   try {
-    const { task_id } = req.body;
-    if (!task_id) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'task_id is required' } });
+    taskData = addSprintTaskSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
+  try {
+    const { task_id } = taskData;
     const sprint = await sprintService.addTask(req.user.orgId, req.params.sprintId, task_id);
     res.json({ success: true, data: sprint });
   } catch (err) { next(err); }

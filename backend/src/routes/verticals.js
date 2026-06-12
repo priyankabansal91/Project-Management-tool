@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const { requireParentReady } = require('../middleware/waterfallGuard');
+const { createVerticalSchema, updateVerticalSchema } = require('../validators/vertical');
 
 router.use(authenticate);
 
@@ -52,9 +53,15 @@ router.get('/', async (req, res) => {
 
 // POST / — create a vertical (org_admin, division_admin only)
 router.post('/', authorize('org_admin', 'division_admin'), requireParentReady('vertical'), async (req, res) => {
+  let bodyData;
+  try {
+    bodyData = createVerticalSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
   try {
     const prisma = require('../config/prisma');
-    const { name, description, color, status, divisionId, headId, budget } = req.body;
+    const { name, description, color, status, divisionId, headId, budget } = { ...bodyData, divisionId: bodyData.divisionId ?? bodyData.division_id, headId: bodyData.headId ?? bodyData.head_id };
     if (!name) {
       return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'name is required' } });
     }
@@ -138,6 +145,12 @@ router.patch('/:id', async (req, res) => {
   if (!['org_admin', 'division_admin', 'vertical_head'].includes(role)) {
     return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Insufficient permissions' } });
   }
+  let patchData;
+  try {
+    patchData = updateVerticalSchema.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+  }
   try {
     const prisma = require('../config/prisma');
     const scopeFilter = role === 'vertical_head' ? { headId: userId } : {};
@@ -149,12 +162,14 @@ router.patch('/:id', async (req, res) => {
     }
     // vertical_head can only change lifecycleStatus, not structural fields
     if (role === 'vertical_head') {
-      const { lifecycleStatus } = req.body;
+      const { lifecycleStatus } = patchData;
       if (!lifecycleStatus) {
         return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Vertical heads can only update lifecycle status' } });
       }
     }
-    const { name, description, color, status, divisionId, headId, budget, lifecycleStatus } = req.body;
+    const { name, description, color, status, divisionId: _divisionId, division_id, headId: _headId, head_id, budget, lifecycleStatus } = patchData;
+    const divisionId = _divisionId ?? division_id;
+    const headId = _headId ?? head_id;
     const updated = await prisma.vertical.update({
       where: { id: req.params.id },
       data: {
