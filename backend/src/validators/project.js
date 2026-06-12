@@ -10,6 +10,7 @@ const createProjectSchema = z.object({
   start_date: z.string().optional().nullable(),
   due_date: z.string().optional().nullable(),
   budget: z.union([z.number(), z.string()]).optional().nullable(),
+  division_id: z.string().optional().nullable(),
   vertical_id: z.string().optional().nullable(),
   project_manager_id: z.string().optional().nullable(),
   milestones: z.array(z.object({
@@ -19,6 +20,7 @@ const createProjectSchema = z.object({
     start_date: z.string().optional().nullable(),
     due_date: z.string().optional().nullable(),
   })).optional(),
+  stage_template_id: z.string().optional().nullable(),
 });
 
 const updateProjectSchema = createProjectSchema.partial().extend({

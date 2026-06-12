@@ -53,62 +53,57 @@ router.post('/', authorize('org_admin', 'division_admin', 'project_manager', 've
     const project = await projectService.create(req.user.orgId, req.user.id, data, divisionId);
 
     const prisma = require('../config/prisma');
+    const { randomUUID } = require('crypto');
     const milestoneIds = [];
+
+    const buildMilestoneRows = (items, mapFn) => {
+      const ids = items.map(() => randomUUID());
+      return {
+        ids,
+        rows: items.map((item, i) => ({
+          id: ids[i],
+          ...mapFn(item, i),
+          projectId: project.id,
+          orgId: req.user.orgId,
+          createdBy: req.user.id,
+          status: 'pending',
+          sequenceOrder: i + 1,
+          predecessorId: i === 0 ? null : ids[i - 1],
+          waterfallStatus: i === 0 ? 'NOT_STARTED' : 'BLOCKED',
+        })),
+      };
+    };
 
     // Create initial milestones if provided
     if (Array.isArray(data.milestones) && data.milestones.length > 0) {
-      for (let i = 0; i < data.milestones.length; i++) {
-        const ms = data.milestones[i];
-        try {
-          const created = await prisma.milestone.create({
-            data: {
-              title: ms.title,
-              description: ms.description || null,
-              budget: ms.budget ? parseFloat(ms.budget) : null,
-              startDate: ms.start_date ? new Date(ms.start_date) : null,
-              dueDate: ms.due_date ? new Date(ms.due_date) : null,
-              projectId: project.id,
-              orgId: req.user.orgId,
-              createdBy: req.user.id,
-              status: 'pending',
-              sequenceOrder: i + 1,
-              predecessorId: i === 0 ? null : milestoneIds[i - 1] || null,
-              waterfallStatus: i === 0 ? 'NOT_STARTED' : 'BLOCKED',
-            },
-          });
-          milestoneIds.push(created.id);
-        } catch { /* continue if milestone creation fails */ }
-      }
+      try {
+        const { ids, rows } = buildMilestoneRows(data.milestones, (ms) => ({
+          title: ms.title,
+          description: ms.description || null,
+          budget: ms.budget ? parseFloat(ms.budget) : null,
+          startDate: ms.start_date ? new Date(ms.start_date) : null,
+          dueDate: ms.due_date ? new Date(ms.due_date) : null,
+        }));
+        await prisma.milestone.createMany({ data: rows });
+        milestoneIds.push(...ids);
+      } catch { /* continue if milestone creation fails */ }
     } else if (data.stage_template_id && (!Array.isArray(data.milestones) || data.milestones.length === 0)) {
-      // Auto-create milestones from stage template substages
+      // Auto-create milestones from stage template substages using a single bulk insert
       try {
         const stageTemplate = await prisma.stageTemplate.findFirst({
           where: { id: data.stage_template_id, orgId: req.user.orgId },
           include: { substages: { orderBy: { order: 'asc' } } },
         });
         if (stageTemplate && stageTemplate.substages.length > 0) {
-          for (let i = 0; i < stageTemplate.substages.length; i++) {
-            const sub = stageTemplate.substages[i];
-            try {
-              const created = await prisma.milestone.create({
-                data: {
-                  title: sub.name,
-                  description: null,
-                  budget: null,
-                  startDate: null,
-                  dueDate: null,
-                  projectId: project.id,
-                  orgId: req.user.orgId,
-                  createdBy: req.user.id,
-                  status: 'pending',
-                  sequenceOrder: i + 1,
-                  predecessorId: i === 0 ? null : milestoneIds[i - 1] || null,
-                  waterfallStatus: i === 0 ? 'NOT_STARTED' : 'BLOCKED',
-                },
-              });
-              milestoneIds.push(created.id);
-            } catch { /* continue if milestone creation fails */ }
-          }
+          const { ids, rows } = buildMilestoneRows(stageTemplate.substages, (sub) => ({
+            title: sub.name,
+            description: null,
+            budget: null,
+            startDate: null,
+            dueDate: null,
+          }));
+          await prisma.milestone.createMany({ data: rows });
+          milestoneIds.push(...ids);
         }
       } catch { /* stage template auto-milestone creation is optional */ }
     }
