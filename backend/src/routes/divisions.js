@@ -2,6 +2,7 @@ const { Router } = require('express');
 const divisionService = require('../services/divisionService');
 const { authenticate, authorize } = require('../middleware/auth');
 const { getDivisionReadiness, updateChecklistItem, getVerticalReadiness } = require('../services/setupReadinessService');
+const { createDivisionSchema, updateDivisionSchema, addDivisionMemberSchema, updateReadinessSchema } = require('../validators/divisions');
 
 const router = Router();
 
@@ -13,20 +14,21 @@ router.use(authenticate);
  */
 router.post('/', authorize('org_admin'), async (req, res, next) => {
   try {
-    const { name, description, code, parent_id, manager_id, budget, head_count } = req.body;
-
-    if (!name || !code) {
-      return res.status(400).json({ success: false, error: 'name and code are required' });
+    let data;
+    try {
+      data = createDivisionSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
     }
 
     const division = await divisionService.create(req.user.orgId, req.user.id, {
-      name,
-      description,
-      code,
-      parent_id,
-      manager_id,
-      budget,
-      head_count,
+      name: data.name,
+      description: data.description,
+      code: data.code,
+      parent_id: data.parent_id,
+      manager_id: data.manager_id,
+      budget: data.budget,
+      head_count: data.head_count,
     });
 
     res.status(201).json({ success: true, data: division });
@@ -87,7 +89,13 @@ router.get('/:divisionId', async (req, res, next) => {
  */
 router.patch('/:divisionId', authorize('org_admin'), async (req, res, next) => {
   try {
-    const division = await divisionService.update(req.user.orgId, req.params.divisionId, req.body);
+    let data;
+    try {
+      data = updateDivisionSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+    }
+    const division = await divisionService.update(req.user.orgId, req.params.divisionId, data);
     res.json({ success: true, data: division });
   } catch (err) {
     next(err);
@@ -126,13 +134,14 @@ router.get('/:divisionId/members', async (req, res, next) => {
  */
 router.post('/:divisionId/members', authorize('org_admin', 'division_admin'), async (req, res, next) => {
   try {
-    const { user_id, role } = req.body;
-
-    if (!user_id || !role) {
-      return res.status(400).json({ success: false, error: 'user_id and role are required' });
+    let data;
+    try {
+      data = addDivisionMemberSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
     }
 
-    const member = await divisionService.addMember(req.user.orgId, req.params.divisionId, user_id, role);
+    const member = await divisionService.addMember(req.user.orgId, req.params.divisionId, data.user_id, data.role);
     res.status(201).json({ success: true, data: member });
   } catch (err) {
     next(err);
@@ -172,9 +181,15 @@ router.get('/:divisionId/readiness', async (req, res, next) => {
  */
 router.patch('/:divisionId/readiness', authorize('org_admin', 'division_admin'), async (req, res, next) => {
   try {
-    const { key, value } = req.body;
-    if (!key) return res.status(400).json({ success: false, error: 'key is required' });
-    const division = await updateChecklistItem(req.params.divisionId, key, value !== false);
+    let data;
+    try {
+      data = updateReadinessSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+    }
+    // completed maps to the boolean value; fall back to req.body.value for legacy callers
+    const value = data.completed !== undefined ? data.completed : (req.body.value !== false);
+    const division = await updateChecklistItem(req.params.divisionId, data.key, value);
     const readiness = await getDivisionReadiness(req.params.divisionId);
     res.json({ success: true, data: readiness });
   } catch (err) {

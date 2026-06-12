@@ -179,6 +179,14 @@ app.use('/v1/mis', misRoutes);
 app.use('/v1/dashboard/v2', dashboardV2Routes);
 app.use('/v1/verticals', verticalsRoutes);
 
+// Start export queue worker (gracefully handles Redis being unavailable)
+try {
+  require('./workers/exportWorker');
+  console.log('[App] Export worker started');
+} catch (err) {
+  console.warn('[App] Export worker not started (Redis may be unavailable):', err.message);
+}
+
 // ─── 404 ────────────────────────────────────────────────
 
 app.use((req, res) => {

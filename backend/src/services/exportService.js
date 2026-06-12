@@ -1,6 +1,13 @@
 const prisma = require('../config/prisma');
 const ApiError = require('../utils/ApiError');
 
+let exportQueue = null;
+try {
+  exportQueue = require('../queues/exportQueue').exportQueue;
+} catch (err) {
+  console.warn('[exportService] Queue not available, will process synchronously:', err.message);
+}
+
 class ExportService {
   /**
    * Create an export request
@@ -29,12 +36,31 @@ class ExportService {
       },
     });
 
-    // TODO: Queue export job for background processing
-    // For now, mark as processing
+    // Queue export job for background processing
     await prisma.export.update({
       where: { id: exportRecord.id },
       data: { status: 'processing' },
     });
+
+    const parsedFilters = typeof filters === 'string' ? JSON.parse(filters) : (filters || {});
+
+    if (exportQueue) {
+      await exportQueue.add('export', {
+        exportId: exportRecord.id,
+        orgId,
+        exportType,
+        format,
+        filters: parsedFilters,
+        requestedBy: userId,
+      }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: 100,
+        removeOnFail: 50,
+      });
+    }
+    // If exportQueue is null (Redis unavailable), the record stays in 'processing'
+    // and callers can poll for status. Synchronous export is handled by exportTasks/exportProjects.
 
     return this._formatExport(exportRecord);
   }

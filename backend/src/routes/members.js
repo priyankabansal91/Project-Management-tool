@@ -2,6 +2,7 @@ const { Router } = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
 const ApiError = require('../utils/ApiError');
 const memberService = require('../services/memberService');
+const { inviteMemberSchema, createDirectMemberSchema, updateRoleSchema, updateStatusSchema } = require('../validators/members');
 
 const router = Router();
 router.use(authenticate);
@@ -39,11 +40,14 @@ router.delete('/invites/:inviteId', authorize('org_admin'), async (req, res, nex
 // Invite member — sends real email via Gmail SMTP
 router.post('/invite', authorize('org_admin', 'division_admin', 'vertical_head'), async (req, res, next) => {
   try {
-    const { email, role } = req.body;
-    if (!email) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'email is required' } });
-    if (role && !VALID_ROLES.has(role)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid role' } });
+    let data;
+    try {
+      data = inviteMemberSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+    }
 
-    const invite = await memberService.invite(req.user.orgId, req.user.id, { email, role });
+    const invite = await memberService.invite(req.user.orgId, req.user.id, { email: data.email, role: data.role });
     res.status(201).json({ success: true, data: invite });
   } catch (err) { next(err); }
 });
@@ -51,12 +55,25 @@ router.post('/invite', authorize('org_admin', 'division_admin', 'vertical_head')
 // Create member directly (no email required — admin sets password)
 router.post('/create-direct', authorize('org_admin'), async (req, res, next) => {
   try {
-    const { email, first_name, last_name, password, role } = req.body;
-    if (!email) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'email is required' } });
-    if (!first_name || !last_name) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'first_name and last_name are required' } });
-    if (!password || password.length < 8) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'password must be at least 8 characters' } });
-    if (role && !VALID_ROLES.has(role)) return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Invalid role' } });
-    const member = await memberService.createDirect(req.user.orgId, { email, firstName: first_name, lastName: last_name, password, role });
+    // Normalize snake_case fields to camelCase before validation
+    const normalized = {
+      ...req.body,
+      firstName: req.body.firstName || req.body.first_name,
+      lastName: req.body.lastName || req.body.last_name,
+    };
+    let data;
+    try {
+      data = createDirectMemberSchema.parse(normalized);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+    }
+    const member = await memberService.createDirect(req.user.orgId, {
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      password: data.password,
+      role: data.role,
+    });
     res.status(201).json({ success: true, data: member });
   } catch (err) { next(err); }
 });
@@ -64,9 +81,13 @@ router.post('/create-direct', authorize('org_admin'), async (req, res, next) => 
 // Update member role
 router.patch('/:userId/role', authorize('org_admin'), async (req, res, next) => {
   try {
-    const { role } = req.body;
-    if (!role || !VALID_ROLES.has(role)) throw ApiError.badRequest('Invalid role');
-    const member = await memberService.updateRole(req.user.orgId, req.params.userId, role);
+    let data;
+    try {
+      data = updateRoleSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+    }
+    const member = await memberService.updateRole(req.user.orgId, req.params.userId, data.role);
     res.json({ success: true, data: member });
   } catch (err) { next(err); }
 });
@@ -74,9 +95,13 @@ router.patch('/:userId/role', authorize('org_admin'), async (req, res, next) => 
 // Update member status (suspend/reactivate)
 router.patch('/:userId/status', authorize('org_admin'), async (req, res, next) => {
   try {
-    const { status } = req.body;
-    if (!['active', 'suspended', 'inactive'].includes(status)) throw ApiError.badRequest('Invalid status');
-    const member = await memberService.updateStatus(req.user.orgId, req.params.userId, status);
+    let data;
+    try {
+      data = updateStatusSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+    }
+    const member = await memberService.updateStatus(req.user.orgId, req.params.userId, data.status);
     res.json({ success: true, data: member });
   } catch (err) { next(err); }
 });

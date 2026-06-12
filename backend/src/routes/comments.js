@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const commentService = require('../services/commentService');
 const { authenticate } = require('../middleware/auth');
+const { createCommentSchema, updateCommentSchema } = require('../validators/comments');
 
 const router = Router();
 
@@ -17,7 +18,13 @@ router.get('/task/:taskId', async (req, res, next) => {
 
 router.post('/task/:taskId', async (req, res, next) => {
   try {
-    const comment = await commentService.create(req.user.orgId, req.params.taskId, req.user.id, req.body);
+    let data;
+    try {
+      data = createCommentSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+    }
+    const comment = await commentService.create(req.user.orgId, req.params.taskId, req.user.id, data);
     res.status(201).json({ success: true, data: comment });
   } catch (err) {
     next(err);
@@ -26,7 +33,13 @@ router.post('/task/:taskId', async (req, res, next) => {
 
 router.patch('/:commentId', async (req, res, next) => {
   try {
-    const comment = await commentService.update(req.user.orgId, req.params.commentId, req.user.id, req.body);
+    let data;
+    try {
+      data = updateCommentSchema.parse(req.body);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: err.errors ?? err.message } });
+    }
+    const comment = await commentService.update(req.user.orgId, req.params.commentId, req.user.id, data);
     res.json({ success: true, data: comment });
   } catch (err) {
     next(err);
