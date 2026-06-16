@@ -80,7 +80,10 @@ app.use(compression());
 const STATIC_ORIGINS = new Set([
   'http://localhost:5173',
   'http://localhost:3000',
-  // Production frontend
+  // AWS production
+  'https://testmk.qci.org.in',
+  'http://testmk.qci.org.in',
+  // Vercel production
   'https://frontend-priyankabansal91s-projects.vercel.app',
   'https://frontend-priyankabansal91-priyankabansal91s-projects.vercel.app',
   'https://frontend-liart-one-33.vercel.app',
