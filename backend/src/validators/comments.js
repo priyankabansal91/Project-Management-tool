@@ -1,12 +1,12 @@
 const { z } = require('zod');
 
 const createCommentSchema = z.object({
-  content: z.string().min(1).max(10000),
+  body: z.string().min(1).max(10000),
   parent_id: z.string().optional().nullable(),
 });
 
 const updateCommentSchema = z.object({
-  content: z.string().min(1).max(10000),
+  body: z.string().min(1).max(10000),
 });
 
 module.exports = { createCommentSchema, updateCommentSchema };

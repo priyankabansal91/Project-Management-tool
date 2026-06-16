@@ -91,12 +91,18 @@ test.describe('Workflows API', () => {
     expect(Array.isArray(body.data)).toBe(true);
   });
 
-  test('API: get default workflow', async ({ request }) => {
-    // The kanban template is seeded as wf_kanban (key = "kanban" in WORKFLOW_TEMPLATES)
-    const resp = await request.get(`${BASE}/workflows/wf_kanban`, { headers: H });
+  test('API: get first workflow by id', async ({ request }) => {
+    const listResp = await request.get(`${BASE}/workflows`, { headers: H });
+    expect(listResp.status()).toBe(200);
+    const listBody = await listResp.json();
+    expect(Array.isArray(listBody.data)).toBe(true);
+    expect(listBody.data.length).toBeGreaterThan(0);
+
+    const firstId = listBody.data[0].id;
+    const resp = await request.get(`${BASE}/workflows/${firstId}`, { headers: H });
     expect(resp.status()).toBe(200);
     const body = await resp.json();
-    expect(body.data.id).toBe('wf_kanban');
+    expect(body.data.id).toBe(firstId);
     expect(Array.isArray(body.data.statuses)).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ const createTaskSchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().optional(),
   priority: z.enum(['critical', 'high', 'medium', 'low', 'none']).optional().default('medium'),
-  assignee_id: z.string({ required_error: 'assignee_id is required', invalid_type_error: 'assignee_id must be a string' }).min(1, 'assignee_id is required'),
+  assignee_id: z.string().optional().nullable(),
   milestone_id: z.string().optional().nullable(),
   due_date: z.string().optional().nullable(),
   start_date: z.string().optional().nullable(),
