@@ -48,7 +48,8 @@ export interface ProjectFormData {
   expense_heads?: ExpenseHead[];
   project_manager_id?: string;
   estimated_hours?: string;
-  milestones?: Array<{ title: string; budget: string; due_date: string }>;
+  division_id?: string;
+  milestones?: Array<{ title: string; budget: string; due_date: string; stage_name?: string }>;
   submit_for_approval?: boolean;
   stage_template_id?: string;
 }
@@ -575,20 +576,25 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
                         placeholder="Stage name (e.g. Planning)"
                         className="flex-1 h-8 text-sm font-medium bg-background"
                       />
-                      {stageTemplates.length > 0 && (
-                        <select
-                          value={stage.templateId}
-                          onChange={(e) => applyTemplate(stage.id, e.target.value)}
-                          className="h-8 px-2 border border-input bg-background rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring max-w-[160px]"
-                        >
-                          <option value="">From template…</option>
-                          {stageTemplates.filter((t) => t.is_active).map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name} ({t.substages.length})
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      {stageTemplates.length > 0 && (() => {
+                        const relevantTemplates = stageTemplates.filter((t) =>
+                          t.is_active && (!t.division_id || !form.division_id || t.division_id === form.division_id)
+                        );
+                        return relevantTemplates.length > 0 ? (
+                          <select
+                            value={stage.templateId}
+                            onChange={(e) => applyTemplate(stage.id, e.target.value)}
+                            className="h-8 px-2 border border-input bg-background rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring max-w-[160px]"
+                          >
+                            <option value="">From template…</option>
+                            {relevantTemplates.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name} ({t.substages.length}){!t.division_id ? ' · Global' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null;
+                      })()}
                       <button
                         type="button"
                         onClick={() => removeStage(stage.id)}

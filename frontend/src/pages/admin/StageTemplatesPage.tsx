@@ -117,9 +117,15 @@ function AddSubstageRow({ stageId, onAdded }: { stageId: string; onAdded?: () =>
 
 // ── Stage card ────────────────────────────────────────────
 
-function StageCard({ stage, isAdmin }: { stage: StageTemplate; isAdmin: boolean }) {
+function StageCard({ stage, isAdmin, isOrgAdmin, divisions }: {
+  stage: StageTemplate;
+  isAdmin: boolean;
+  isOrgAdmin: boolean;
+  divisions: Array<{ id: string; name: string }>;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
+  const [editingDiv, setEditingDiv] = useState(false);
   const [name, setName] = useState(stage.name);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const updateStage = useUpdateStageTemplate();
@@ -157,10 +163,44 @@ function StageCard({ stage, isAdmin }: { stage: StageTemplate; isAdmin: boolean 
             )}
           </button>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
             <Badge variant="outline" className="text-[10px]">
               {stage.substages.length} substage{stage.substages.length !== 1 ? 's' : ''}
             </Badge>
+            {/* Division badge / reassignment */}
+            {isOrgAdmin && editingDiv ? (
+              <select
+                autoFocus
+                defaultValue={stage.division_id ?? ''}
+                onBlur={() => setEditingDiv(false)}
+                onChange={(e) => {
+                  updateStage.mutate({ id: stage.id, division_id: e.target.value || null });
+                  setEditingDiv(false);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="h-6 px-1.5 border rounded text-[10px] bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">Global (All Divisions)</option>
+                {divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); if (isOrgAdmin) setEditingDiv(true); }}
+                title={isOrgAdmin ? 'Click to reassign division' : undefined}
+                className={cn(
+                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border',
+                  stage.division_id
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-gray-50 text-gray-500 border-gray-200',
+                  isOrgAdmin && 'cursor-pointer hover:opacity-80'
+                )}
+              >
+                <Building2 className="h-2.5 w-2.5" />
+                {stage.division_id
+                  ? (divisions.find((d) => d.id === stage.division_id)?.name ?? 'Division')
+                  : 'Global'}
+              </button>
+            )}
             {!stage.is_active && (
               <Badge variant="secondary" className="text-[10px]">Inactive</Badge>
             )}
@@ -285,10 +325,15 @@ function AddStageForm({ divisionId, divisions, onClose }: {
 // ── Main Page ─────────────────────────────────────────────
 
 export function StageTemplatesPage() {
-  const { currentRole } = useAuthStore();
-  const isAdmin = currentRole === 'org_admin' || currentRole === 'division_admin';
+  const { currentRole, user } = useAuthStore();
+  const isOrgAdmin = currentRole === 'org_admin';
+  const isDivAdmin = currentRole === 'division_admin';
+  const isAdmin = isOrgAdmin || isDivAdmin;
 
-  const [filterDivId, setFilterDivId] = useState('');
+  // Division admins are locked to their own division
+  const myDivisionId = isDivAdmin ? (user as any)?.divisionId ?? (user as any)?.division_id ?? '' : '';
+
+  const [filterDivId, setFilterDivId] = useState(myDivisionId);
   const [showAddStage, setShowAddStage] = useState(false);
 
   const { data: stages = [], isLoading } = useStageTemplates(filterDivId ? { division_id: filterDivId } : undefined);
@@ -326,21 +371,29 @@ export function StageTemplatesPage() {
         )}
       </div>
 
-      {/* Division filter */}
+      {/* Division filter — org_admin can switch; division_admin sees only their division */}
       <div className="flex items-center gap-3">
         <Building2 className="h-4 w-4 text-muted-foreground" />
-        <select
-          value={filterDivId}
-          onChange={(e) => setFilterDivId(e.target.value)}
-          className="px-3 py-1.5 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">All Divisions</option>
-          {allDivisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
-        {filterDivId && (
-          <button onClick={() => setFilterDivId('')} className="text-xs text-muted-foreground hover:text-foreground">
-            Clear filter
-          </button>
+        {isDivAdmin ? (
+          <span className="px-3 py-1.5 border rounded-md text-sm bg-muted text-muted-foreground">
+            {allDivisions.find((d) => d.id === myDivisionId)?.name ?? 'Your Division'}
+          </span>
+        ) : (
+          <>
+            <select
+              value={filterDivId}
+              onChange={(e) => setFilterDivId(e.target.value)}
+              className="px-3 py-1.5 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">All Divisions</option>
+              {allDivisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            {filterDivId && (
+              <button onClick={() => setFilterDivId('')} className="text-xs text-muted-foreground hover:text-foreground">
+                Clear filter
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -383,7 +436,7 @@ export function StageTemplatesPage() {
             <span className="text-xs text-muted-foreground">({divStages.length} stages)</span>
           </div>
           {divStages.map((stage) => (
-            <StageCard key={stage.id} stage={stage} isAdmin={isAdmin} />
+            <StageCard key={stage.id} stage={stage} isAdmin={isAdmin} isOrgAdmin={isOrgAdmin} divisions={allDivisions} />
           ))}
         </div>
       ))}
