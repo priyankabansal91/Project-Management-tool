@@ -79,7 +79,13 @@ const VISIBILITY_OPTIONS = [
 export function ProjectModal({ open, onClose, onSave, project, workflows = [], verticals = [], saving = false, error: externalError }: ProjectModalProps) {
   const isEdit = !!project;
   const [step, setStep] = useState<1 | 2>(1);
-  const [milestoneRows, setMilestoneRows] = useState<Array<{ title: string; budget: string; due_date: string }>>([]);
+  interface StageEntry {
+    id: string;
+    name: string;
+    templateId: string;
+    milestones: Array<{ title: string; budget: string; due_date: string }>;
+  }
+  const [stages, setStages] = useState<StageEntry[]>([]);
   const [expenseHeads, setExpenseHeads] = useState<ExpenseHead[]>([]);
   const [submitForApproval, setSubmitForApproval] = useState(true);
   const [form, setForm] = useState<ProjectFormData>({
@@ -96,7 +102,6 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     project_manager_id: '',
   });
 
-  const [selectedStageId, setSelectedStageId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string>('');
   const [manualHours, setManualHours] = useState(false);
@@ -137,10 +142,9 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     setErrors({});
     setSubmitError('');
     setStep(1);
-    setMilestoneRows([]);
+    setStages([]);
     setExpenseHeads([]);
     setSubmitForApproval(true);
-    setSelectedStageId('');
     setManualHours(false);
   }, [project, open, workflows]);
 
@@ -179,33 +183,53 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     e.preventDefault();
     setSubmitError('');
     try {
+      const flatMilestones = stages.flatMap((s) =>
+        s.milestones.filter((m) => m.title.trim()).map((m) => ({ ...m, stage_name: s.name.trim() || undefined }))
+      );
       await onSave({
         ...form,
         key: form.key.toUpperCase(),
         budget: form.budget || undefined,
         expense_heads: expenseHeads.length > 0 ? expenseHeads : undefined,
-        milestones: milestoneRows.filter((r) => r.title.trim()),
+        milestones: flatMilestones.length > 0 ? flatMilestones : undefined,
         submit_for_approval: submitForApproval,
-        stage_template_id: selectedStageId || undefined,
+        stage_template_id: undefined,
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to save project');
     }
   };
 
-  const addMilestoneRow = () => {
-    setMilestoneRows([...milestoneRows, { title: '', budget: '', due_date: '' }]);
+  const addStage = () => {
+    setStages((prev) => [...prev, { id: crypto.randomUUID(), name: `Stage ${prev.length + 1}`, templateId: '', milestones: [{ title: '', budget: '', due_date: '' }] }]);
   };
 
-  const removeMilestoneRow = (index: number) => {
-    setMilestoneRows(milestoneRows.filter((_, i) => i !== index));
+  const removeStage = (stageId: string) => setStages((prev) => prev.filter((s) => s.id !== stageId));
+
+  const updateStageName = (stageId: string, name: string) =>
+    setStages((prev) => prev.map((s) => s.id === stageId ? { ...s, name } : s));
+
+  const applyTemplate = (stageId: string, templateId: string) => {
+    const tmpl = stageTemplates.find((t) => t.id === templateId);
+    setStages((prev) => prev.map((s) => {
+      if (s.id !== stageId) return s;
+      const milestones = tmpl && tmpl.substages.length > 0
+        ? tmpl.substages.sort((a, b) => a.order - b.order).map((sub) => ({ title: sub.name, budget: '', due_date: '' }))
+        : [{ title: '', budget: '', due_date: '' }];
+      return { ...s, templateId, name: s.name || tmpl?.name || s.name, milestones };
+    }));
   };
 
-  const updateMilestoneRow = (index: number, field: 'title' | 'budget' | 'due_date', value: string) => {
-    setMilestoneRows(milestoneRows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
-  };
+  const addMilestone = (stageId: string) =>
+    setStages((prev) => prev.map((s) => s.id === stageId ? { ...s, milestones: [...s.milestones, { title: '', budget: '', due_date: '' }] } : s));
 
-  const milestoneTotal = milestoneRows.reduce((s, r) => s + (Number(r.budget) || 0), 0);
+  const removeMilestone = (stageId: string, idx: number) =>
+    setStages((prev) => prev.map((s) => s.id === stageId ? { ...s, milestones: s.milestones.filter((_, i) => i !== idx) } : s));
+
+  const updateMilestone = (stageId: string, idx: number, field: 'title' | 'budget' | 'due_date', value: string) =>
+    setStages((prev) => prev.map((s) => s.id === stageId ? { ...s, milestones: s.milestones.map((m, i) => i === idx ? { ...m, [field]: value } : m) } : s));
+
+  const milestoneTotal = stages.flatMap((s) => s.milestones).reduce((sum, m) => sum + (Number(m.budget) || 0), 0);
 
   const addExpenseHead = () => {
     setExpenseHeads([...expenseHeads, { head: 'assessment_cost', label: 'Assessment Cost', amount: '', description: '' }]);
@@ -513,111 +537,116 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
             </>
           )}
 
-          {/* ── STEP 2 ── */}
+          {/* ── STEP 2: Stages & Milestones ── */}
           {step === 2 && !isEdit && (
             <>
-              {/* Stage selector */}
-              {stageTemplates.length > 0 && (
-                <div className="rounded-lg border p-3 space-y-2 bg-muted/20">
-                  <div>
-                    <label className="text-sm font-medium">Stage</label>
-                    <p className="text-xs text-muted-foreground">Select a stage to auto-populate milestones from its substages</p>
-                  </div>
-                  <select
-                    value={selectedStageId}
-                    onChange={(e) => {
-                      const stageId = e.target.value;
-                      setSelectedStageId(stageId);
-                      if (stageId) {
-                        const stage = stageTemplates.find((s) => s.id === stageId);
-                        if (stage && stage.substages.length > 0) {
-                          setMilestoneRows(
-                            stage.substages
-                              .sort((a, b) => a.order - b.order)
-                              .map((sub) => ({ title: sub.name, budget: '', due_date: '' }))
-                          );
-                        }
-                      } else {
-                        setMilestoneRows([]);
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-                  >
-                    <option value="">— Select a Stage (optional) —</option>
-                    {stageTemplates.filter((s) => s.is_active).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}{s.division ? ` · ${s.division.name}` : ''}
-                        {' '}({s.substages.length} substages)
-                      </option>
-                    ))}
-                  </select>
-                  {selectedStageId && (() => {
-                    const stage = stageTemplates.find((s) => s.id === selectedStageId);
-                    return stage ? (
-                      <p className="text-xs text-emerald-600">
-                        ✓ {stage.substages.length} substage{stage.substages.length !== 1 ? 's' : ''} loaded as milestones
-                      </p>
-                    ) : null;
-                  })()}
-                </div>
-              )}
-
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-medium text-foreground">Initial Milestones</h3>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Stages & Milestones</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Add stages, then add milestones under each stage</p>
+                </div>
                 <button
                   type="button"
-                  onClick={addMilestoneRow}
-                  className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 font-medium"
+                  onClick={addStage}
+                  className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium border border-primary/30 rounded-md px-3 py-1.5"
                 >
-                  <Plus className="h-4 w-4" />
-                  Add Milestone
+                  <Plus className="h-4 w-4" /> Add Stage
                 </button>
               </div>
 
-              {milestoneRows.length === 0 && (
-                <p className="text-sm text-muted-foreground py-2">
-                  No milestones added yet. Select a stage above or add milestones manually.
-                </p>
+              {stages.length === 0 && (
+                <div className="rounded-lg border border-dashed p-6 text-center">
+                  <p className="text-sm text-muted-foreground">No stages yet.</p>
+                  <button type="button" onClick={addStage} className="mt-2 text-sm text-primary font-medium hover:underline">
+                    + Add your first stage
+                  </button>
+                </div>
               )}
 
-              {/* Milestone Rows */}
-              <div className="space-y-2">
-                {milestoneRows.map((row, index) => (
-                  <div key={index} className="flex gap-2 items-center">
-                    <Input
-                      type="text"
-                      value={row.title}
-                      onChange={(e) => updateMilestoneRow(index, 'title', e.target.value)}
-                      placeholder="Milestone title"
-                      className="flex-1 min-w-0"
-                    />
-                    <Input
-                      type="number"
-                      min="0"
-                      value={row.budget}
-                      onChange={(e) => updateMilestoneRow(index, 'budget', e.target.value)}
-                      placeholder="Budget ₹"
-                      className="w-28"
-                    />
-                    <Input
-                      type="date"
-                      value={row.due_date}
-                      onChange={(e) => updateMilestoneRow(index, 'due_date', e.target.value)}
-                      className="w-36"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeMilestoneRow(index)}
-                      className="text-muted-foreground hover:text-red-500 flex-shrink-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+              <div className="space-y-4">
+                {stages.map((stage, stageIdx) => (
+                  <div key={stage.id} className="rounded-lg border bg-muted/10 overflow-hidden">
+                    {/* Stage header */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b">
+                      <span className="text-xs font-bold text-muted-foreground w-6 text-center">{stageIdx + 1}</span>
+                      <Input
+                        value={stage.name}
+                        onChange={(e) => updateStageName(stage.id, e.target.value)}
+                        placeholder="Stage name (e.g. Planning)"
+                        className="flex-1 h-8 text-sm font-medium bg-background"
+                      />
+                      {stageTemplates.length > 0 && (
+                        <select
+                          value={stage.templateId}
+                          onChange={(e) => applyTemplate(stage.id, e.target.value)}
+                          className="h-8 px-2 border border-input bg-background rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-ring max-w-[160px]"
+                        >
+                          <option value="">From template…</option>
+                          {stageTemplates.filter((t) => t.is_active).map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name} ({t.substages.length})
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeStage(stage.id)}
+                        className="text-muted-foreground hover:text-destructive p-1 flex-shrink-0"
+                        title="Remove stage"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Milestones under this stage */}
+                    <div className="p-3 space-y-2">
+                      {stage.milestones.map((ms, msIdx) => (
+                        <div key={msIdx} className="flex gap-2 items-center">
+                          <span className="text-xs text-muted-foreground w-5 text-right flex-shrink-0">{msIdx + 1}.</span>
+                          <Input
+                            value={ms.title}
+                            onChange={(e) => updateMilestone(stage.id, msIdx, 'title', e.target.value)}
+                            placeholder="Milestone title"
+                            className="flex-1 min-w-0 h-8 text-sm"
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            value={ms.budget}
+                            onChange={(e) => updateMilestone(stage.id, msIdx, 'budget', e.target.value)}
+                            placeholder="Budget ₹"
+                            className="w-24 h-8 text-sm"
+                          />
+                          <Input
+                            type="date"
+                            value={ms.due_date}
+                            onChange={(e) => updateMilestone(stage.id, msIdx, 'due_date', e.target.value)}
+                            className="w-34 h-8 text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeMilestone(stage.id, msIdx)}
+                            className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addMilestone(stage.id)}
+                        className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium mt-1"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add Milestone
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
 
               {/* Budget indicator */}
-              {form.budget && Number(form.budget) > 0 && (
+              {form.budget && Number(form.budget) > 0 && milestoneTotal > 0 && (
                 <div className={`p-2 rounded text-xs ${milestoneTotal > Number(form.budget) ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
                   Milestone budgets: ₹{milestoneTotal.toLocaleString('en-IN')} of ₹{Number(form.budget).toLocaleString('en-IN')} project budget
                   {milestoneTotal > Number(form.budget) && ' ⚠ Exceeds project budget'}

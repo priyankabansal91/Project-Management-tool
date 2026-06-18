@@ -96,6 +96,7 @@ router.post('/', authorize('org_admin', 'division_admin', 'project_manager', 've
             budget: ms.budget ? parseFloat(ms.budget) : null,
             startDate: ms.start_date ? new Date(ms.start_date) : null,
             dueDate: ms.due_date ? new Date(ms.due_date) : null,
+            stageName: ms.stage_name || null,
           }));
           await tx.milestone.createMany({ data: rows });
           ids.push(...mIds);

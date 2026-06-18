@@ -20,6 +20,7 @@ const createProjectSchema = z.object({
     budget: z.union([z.number(), z.string()]).optional().nullable(),
     start_date: z.string().optional().nullable(),
     due_date: z.string().optional().nullable(),
+    stage_name: z.string().optional().nullable(),
   })).optional(),
   stage_template_id: z.string().optional().nullable(),
 });
