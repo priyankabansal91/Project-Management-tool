@@ -6,6 +6,9 @@ const divisionScope = require('../middleware/divisionScope');
 const { requireParentReady } = require('../middleware/waterfallGuard');
 const logger = require('../utils/logger');
 const prisma = require('../config/prisma');
+const { sendProjectCreatedEmail, sendProjectUpdatedEmail, sendMemberAddedEmail, sendMemberRemovedEmail } = require('../services/emailService');
+
+const FRONT = process.env.FRONTEND_URL || 'https://testmk.qci.org.in';
 
 const router = Router();
 
@@ -155,6 +158,27 @@ router.post('/', authorize('org_admin', 'division_admin', 'project_manager', 've
     });
 
     res.status(201).json({ success: true, data: { ...project, approval_id: approval?.id, milestone_count: milestoneIds.length } });
+
+    // Fire-and-forget: email project members
+    prisma.projectMember.findMany({
+      where: { projectId: project.id },
+      include: { user: { select: { email: true, firstName: true, lastName: true } } },
+    }).then((members) => {
+      const creator = members.find((m) => m.userId === req.user.id);
+      const creatorName = creator ? `${creator.user.firstName} ${creator.user.lastName}` : 'A colleague';
+      members.forEach(({ user }) => {
+        if (!user.email) return;
+        sendProjectCreatedEmail({
+          to: user.email,
+          recipientName: `${user.firstName} ${user.lastName}`,
+          projectName: project.name,
+          projectKey: project.key,
+          createdBy: creatorName,
+          dueDate: project.due_date ? new Date(project.due_date).toLocaleDateString('en-IN') : null,
+          projectUrl: `${FRONT}/projects/${project.id}/board`,
+        }).catch((e) => logger.warn('Project creation email failed', e));
+      });
+    }).catch((e) => logger.warn('Failed to fetch members for project creation email', e));
   } catch (err) {
     next(err);
   }
@@ -185,6 +209,30 @@ router.patch('/:projectId', authorize('org_admin', 'division_admin', 'project_ma
 
     const project = await projectService.update(req.user.orgId, req.params.projectId, data);
     res.json({ success: true, data: project });
+
+    // Fire-and-forget: email project manager on update
+    const changes = Object.keys(data).filter((k) => !['phase', 'status'].includes(k)).map((k) => `${k.replace(/_/g, ' ')} updated`);
+    if (changes.length > 0) {
+      prisma.user.findUnique({ where: { id: req.user.id }, select: { firstName: true, lastName: true } })
+        .then((u) => {
+          const updaterName = u ? `${u.firstName} ${u.lastName}` : 'A team member';
+          if (project.members) {
+            project.members.filter((m) => m.role === 'project_manager').forEach((m) => {
+              prisma.user.findUnique({ where: { id: m.id }, select: { email: true, firstName: true, lastName: true } }).then((mu) => {
+                if (!mu?.email) return;
+                sendProjectUpdatedEmail({
+                  to: mu.email,
+                  recipientName: `${mu.firstName} ${mu.lastName}`,
+                  projectName: project.name,
+                  updatedBy: updaterName,
+                  changes,
+                  projectUrl: `${FRONT}/projects/${project.id}/board`,
+                }).catch((e) => logger.warn('Project update email failed', e));
+              }).catch(() => {});
+            });
+          }
+        }).catch((e) => logger.warn('Project update email user lookup failed', e));
+    }
   } catch (err) {
     next(err);
   }
@@ -342,6 +390,24 @@ router.post('/:projectId/members', authorize('org_admin', 'division_admin', 'ver
         role: member.role,
       },
     });
+
+    // Fire-and-forget: notify added member by email
+    prisma.user.findUnique({ where: { id: req.user.id }, select: { firstName: true, lastName: true } })
+      .then((adder) => {
+        const adderName = adder ? `${adder.firstName} ${adder.lastName}` : 'A team member';
+        prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true, lastName: true } })
+          .then((u) => {
+            if (!u?.email) return;
+            sendMemberAddedEmail({
+              to: u.email,
+              recipientName: `${u.firstName} ${u.lastName}`,
+              projectName: project.name,
+              role,
+              addedBy: adderName,
+              projectUrl: `${FRONT}/projects/${project.id}/board`,
+            }).catch((e) => logger.warn('Member added email failed', e));
+          }).catch(() => {});
+      }).catch(() => {});
   } catch (err) {
     next(err);
   }
@@ -353,11 +419,28 @@ router.delete('/:projectId/members/:userId', authorize('org_admin', 'division_ad
     const project = await prisma.project.findFirst({ where: { id: req.params.projectId, orgId: req.user.orgId } });
     if (!project) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Project not found' } });
 
+    // Fetch user email before deleting
+    const removedUser = await prisma.user.findUnique({ where: { id: req.params.userId }, select: { email: true, firstName: true, lastName: true } });
+
     await prisma.projectMember.deleteMany({
       where: { projectId: req.params.projectId, userId: req.params.userId },
     });
 
     res.status(204).end();
+
+    // Fire-and-forget: notify removed member
+    if (removedUser?.email) {
+      prisma.user.findUnique({ where: { id: req.user.id }, select: { firstName: true, lastName: true } })
+        .then((remover) => {
+          const removerName = remover ? `${remover.firstName} ${remover.lastName}` : 'A team member';
+          sendMemberRemovedEmail({
+            to: removedUser.email,
+            recipientName: `${removedUser.firstName} ${removedUser.lastName}`,
+            projectName: project.name,
+            removedBy: removerName,
+          }).catch((e) => logger.warn('Member removed email failed', e));
+        }).catch(() => {});
+    }
   } catch (err) {
     next(err);
   }

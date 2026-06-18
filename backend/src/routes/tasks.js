@@ -2,6 +2,10 @@ const { Router } = require('express');
 const taskService = require('../services/taskService');
 const { createTaskSchema, updateTaskSchema, moveTaskSchema } = require('../validators/task');
 const { authenticate } = require('../middleware/auth');
+const { sendTaskAssignedEmail } = require('../services/emailService');
+const prisma = require('../config/prisma');
+const logger = require('../utils/logger');
+const FRONT = process.env.FRONTEND_URL || 'https://testmk.qci.org.in';
 
 const router = Router();
 
@@ -43,6 +47,28 @@ router.post('/project/:projectId', async (req, res, next) => {
     const data = createTaskSchema.parse(req.body);
     const task = await taskService.create(req.user.orgId, req.params.projectId, req.user.id, data);
     res.status(201).json({ success: true, data: task });
+
+    // Fire-and-forget: notify assignee if different from creator
+    if (data.assignee_id && data.assignee_id !== req.user.id) {
+      Promise.all([
+        prisma.user.findUnique({ where: { id: data.assignee_id }, select: { email: true, firstName: true, lastName: true } }),
+        prisma.user.findUnique({ where: { id: req.user.id }, select: { firstName: true, lastName: true } }),
+        prisma.project.findUnique({ where: { id: req.params.projectId }, select: { name: true } }),
+      ]).then(([assignee, creator, project]) => {
+        if (!assignee?.email) return;
+        sendTaskAssignedEmail({
+          to: assignee.email,
+          recipientName: `${assignee.firstName} ${assignee.lastName}`,
+          taskTitle: task.title,
+          taskKey: task.task_key,
+          projectName: project?.name || '',
+          assignedBy: creator ? `${creator.firstName} ${creator.lastName}` : 'A colleague',
+          dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString('en-IN') : null,
+          priority: task.priority,
+          taskUrl: `${FRONT}/tasks/${task.id}`,
+        }).catch((e) => logger.warn('Task assigned email failed', e));
+      }).catch((e) => logger.warn('Task assigned email lookup failed', e));
+    }
   } catch (err) {
     next(err);
   }

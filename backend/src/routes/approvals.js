@@ -2,6 +2,10 @@ const { Router } = require('express');
 const approvalService = require('../services/approvalService');
 const { authenticate, authorize } = require('../middleware/auth');
 const { createApprovalSchema, approveStepSchema, rejectStepSchema } = require('../validators/approvals');
+const { sendApprovalRequestEmail, sendApprovalOutcomeEmail } = require('../services/emailService');
+const prisma = require('../config/prisma');
+const logger = require('../utils/logger');
+const FRONT = process.env.FRONTEND_URL || 'https://testmk.qci.org.in';
 
 const router = Router();
 
@@ -30,6 +34,30 @@ router.post('/', authorize('org_admin', 'division_admin', 'vertical_head', 'proj
     });
 
     res.status(201).json({ success: true, data: approval });
+
+    // Fire-and-forget: notify approvers
+    prisma.user.findUnique({ where: { id: req.user.id }, select: { firstName: true, lastName: true } })
+      .then((requester) => {
+        const requesterName = requester ? `${requester.firstName} ${requester.lastName}` : 'Someone';
+        const approverRoles = ['org_admin', 'division_admin', 'vertical_head'];
+        prisma.orgMember.findMany({
+          where: { orgId: req.user.orgId, role: { in: approverRoles }, status: 'active' },
+          include: { user: { select: { email: true, firstName: true, lastName: true } } },
+          take: 10,
+        }).then((members) => {
+          members.forEach(({ user }) => {
+            if (!user.email) return;
+            sendApprovalRequestEmail({
+              to: user.email,
+              recipientName: `${user.firstName} ${user.lastName}`,
+              title: data.title,
+              requestedBy: requesterName,
+              description: data.description,
+              approvalUrl: `${FRONT}/admin/approvals`,
+            }).catch((e) => logger.warn('Approval request email failed', e));
+          });
+        }).catch(() => {});
+      }).catch(() => {});
   } catch (err) {
     next(err);
   }
@@ -103,6 +131,23 @@ router.post('/:approvalId/approve', authorize('org_admin', 'division_admin', 'ho
     });
 
     res.json({ success: true, data: approval });
+
+    // Fire-and-forget: notify requester of approval
+    prisma.approval.findUnique({ where: { id: req.params.approvalId }, include: { requester: { select: { email: true, firstName: true, lastName: true } } } })
+      .then((appr) => {
+        if (!appr?.requester?.email) return;
+        prisma.user.findUnique({ where: { id: req.user.id }, select: { firstName: true, lastName: true } }).then((approver) => {
+          sendApprovalOutcomeEmail({
+            to: appr.requester.email,
+            recipientName: `${appr.requester.firstName} ${appr.requester.lastName}`,
+            title: appr.title,
+            outcome: 'approved',
+            approvedBy: approver ? `${approver.firstName} ${approver.lastName}` : 'A reviewer',
+            comment: data.comment,
+            projectUrl: `${FRONT}/admin/approvals`,
+          }).catch((e) => logger.warn('Approval outcome email failed', e));
+        }).catch(() => {});
+      }).catch(() => {});
   } catch (err) {
     next(err);
   }
@@ -126,6 +171,23 @@ router.post('/:approvalId/reject', authorize('org_admin', 'division_admin', 'hod
     });
 
     res.json({ success: true, data: approval });
+
+    // Fire-and-forget: notify requester of rejection
+    prisma.approval.findUnique({ where: { id: req.params.approvalId }, include: { requester: { select: { email: true, firstName: true, lastName: true } } } })
+      .then((appr) => {
+        if (!appr?.requester?.email) return;
+        prisma.user.findUnique({ where: { id: req.user.id }, select: { firstName: true, lastName: true } }).then((rejecter) => {
+          sendApprovalOutcomeEmail({
+            to: appr.requester.email,
+            recipientName: `${appr.requester.firstName} ${appr.requester.lastName}`,
+            title: appr.title,
+            outcome: 'rejected',
+            approvedBy: rejecter ? `${rejecter.firstName} ${rejecter.lastName}` : 'A reviewer',
+            comment: data.reason,
+            projectUrl: `${FRONT}/admin/approvals`,
+          }).catch((e) => logger.warn('Approval rejection email failed', e));
+        }).catch(() => {});
+      }).catch(() => {});
   } catch (err) {
     next(err);
   }
