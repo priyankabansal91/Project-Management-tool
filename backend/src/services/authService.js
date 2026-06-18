@@ -155,11 +155,20 @@ class AuthService {
     return { access_token: accessToken, expires_in: 900 };
   }
 
-  async logout(userId) {
-    await prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
+  async logout(userId, refreshTokenValue) {
+    if (refreshTokenValue) {
+      const hash = crypto.createHash('sha256').update(refreshTokenValue).digest('hex');
+      await prisma.refreshToken.updateMany({
+        where: { userId, tokenHash: hash, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    } else {
+      // Fallback: revoke all sessions if no token provided
+      await prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
   }
 
   generateAccessToken(user, org, role = 'org_admin') {

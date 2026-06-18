@@ -50,7 +50,8 @@ router.post('/refresh', async (req, res, next) => {
 
 router.post('/logout', authenticate, async (req, res, next) => {
   try {
-    await authService.logout(req.user.id);
+    const refreshToken = req.cookies?.refresh_token;
+    await authService.logout(req.user.id, refreshToken);
     res.clearCookie('refresh_token');
     res.status(204).end();
   } catch (err) {
