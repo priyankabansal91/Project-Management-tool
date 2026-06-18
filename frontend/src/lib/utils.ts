@@ -48,6 +48,21 @@ export function fmtShortDate(date: string | Date, showYear = false) {
   return d.toLocaleDateString('en-GB', opts);
 }
 
+/** Business hours between two date strings (8h/day, Mon–Fri). Returns 0 if invalid or end < start. */
+export function calcBusinessHours(startDate: string, dueDate: string): number {
+  const start = new Date(startDate);
+  const end = new Date(dueDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return 0;
+  let days = 0;
+  const cur = new Date(start);
+  while (cur <= end) {
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6) days++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days * 8;
+}
+
 export function timeAgo(date: string) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   if (seconds < 60) return 'just now';

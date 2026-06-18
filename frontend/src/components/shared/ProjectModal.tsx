@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { X, Plus, Trash2 } from 'lucide-react';
+import { calcBusinessHours } from '@/lib/utils';
 
 const EXPENSE_HEAD_OPTIONS = [
   { value: 'assessment_cost', label: 'Assessment Cost' },
@@ -46,6 +47,7 @@ export interface ProjectFormData {
   budget?: string;
   expense_heads?: ExpenseHead[];
   project_manager_id?: string;
+  estimated_hours?: string;
   milestones?: Array<{ title: string; budget: string; due_date: string }>;
   submit_for_approval?: boolean;
   stage_template_id?: string;
@@ -97,6 +99,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
   const [selectedStageId, setSelectedStageId] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string>('');
+  const [manualHours, setManualHours] = useState(false);
 
   // Load stage templates
   const stagesQ = useStageTemplates();
@@ -138,7 +141,17 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     setExpenseHeads([]);
     setSubmitForApproval(true);
     setSelectedStageId('');
+    setManualHours(false);
   }, [project, open, workflows]);
+
+  // Auto-calculate estimated hours from start/due dates
+  useEffect(() => {
+    if (manualHours) return;
+    if (form.start_date && form.due_date) {
+      const hours = calcBusinessHours(form.start_date, form.due_date);
+      if (hours > 0) setForm((prev) => ({ ...prev, estimated_hours: String(hours) }));
+    }
+  }, [form.start_date, form.due_date, manualHours]);
 
   const membersQ = useMembers({ role: 'project_manager', page_size: 200 });
   const orgMembers = (membersQ.data?.items ?? []) as Array<{ id: string; firstName?: string; lastName?: string; email?: string }>;
@@ -403,6 +416,33 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
                   type="date"
                   value={form.due_date}
                   onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                />
+              </div>
+
+              {/* Estimated Hours */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-foreground">Estimated Hours</label>
+                  {form.estimated_hours && !manualHours && (
+                    <span className="text-xs text-blue-500 font-medium">auto-calculated</span>
+                  )}
+                  {form.estimated_hours && manualHours && (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-blue-500"
+                      onClick={() => setManualHours(false)}
+                    >
+                      reset to auto
+                    </button>
+                  )}
+                </div>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={form.estimated_hours || ''}
+                  onChange={(e) => { setManualHours(true); setForm({ ...form, estimated_hours: e.target.value }); }}
+                  placeholder={form.start_date && form.due_date ? 'Calculating...' : 'e.g. 80'}
                 />
               </div>
 

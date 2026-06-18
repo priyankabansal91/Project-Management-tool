@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
-import { cn, priorityColor } from '@/lib/utils';
+import { cn, priorityColor, calcBusinessHours } from '@/lib/utils';
 import { X, Bold, Italic, List, Link2, Eye, Code, ChevronDown, Paperclip, FileText, FileSpreadsheet, Image, File, Upload, Flag, AlertCircle } from 'lucide-react';
 import type { Task, WorkflowStatus } from '@/types';
 
@@ -90,6 +90,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
   });
   const [milestoneError, setMilestoneError] = useState('');
   const [assigneeError, setAssigneeError] = useState('');
+  const [manualHours, setManualHours] = useState(false);
 
   const [tagInput, setTagInput] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
@@ -98,9 +99,19 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
   const [fileError, setFileError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-calculate estimated hours from start/due dates (skip if user manually set a value)
+  useEffect(() => {
+    if (manualHours) return;
+    if (form.start_date && form.due_date) {
+      const hours = calcBusinessHours(form.start_date, form.due_date);
+      if (hours > 0) setForm((prev) => ({ ...prev, estimated_hours: String(hours) }));
+    }
+  }, [form.start_date, form.due_date, manualHours]);
+
   // Populate form when editing
   useEffect(() => {
     setMilestoneError('');
+    setManualHours(false);
     if (task) {
       setForm({
         title: task.title,
@@ -168,6 +179,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
   };
 
   const updateField = (field: keyof TaskFormData, value: unknown) => {
+    if (field === 'estimated_hours') setManualHours(true);
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -561,8 +573,31 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
 
               {/* Estimated Hours */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Estimated Hours</label>
-                <Input type="number" step="0.5" min="0" value={form.estimated_hours} onChange={(e) => updateField('estimated_hours', e.target.value)} placeholder="0" className="text-sm" />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Estimated Hours</label>
+                  {form.estimated_hours && !manualHours && (
+                    <span className="text-xs text-blue-500 font-medium">auto</span>
+                  )}
+                  {form.estimated_hours && manualHours && (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-blue-500"
+                      onClick={() => { setManualHours(false); }}
+                      title="Reset to auto-calculated value"
+                    >
+                      reset to auto
+                    </button>
+                  )}
+                </div>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={form.estimated_hours}
+                  onChange={(e) => updateField('estimated_hours', e.target.value)}
+                  placeholder={form.start_date && form.due_date ? 'Calculating...' : '0'}
+                  className="text-sm"
+                />
               </div>
             </div>
           </div>
