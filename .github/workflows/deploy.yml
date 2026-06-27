@@ -13,16 +13,12 @@ jobs:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         env:
-          # Database
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
-          # Auth
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          # URLs
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
           FRONTEND_URL_ALT: ${{ secrets.FRONTEND_URL_ALT }}
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
-          # SMTP
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
@@ -37,42 +33,47 @@ jobs:
             set -e
             APP_DIR=~/pmttest/Project-Management-tool
 
-            # ── 1. Pull latest code ────────────────────────────────────────
+            # ── 1. Pull latest code ──────────────────────────────────────────
             cd "$APP_DIR"
             git fetch origin
             git reset --hard origin/claude/saas-project-management-design-BsbSY
 
-            # ── 2. Write backend .env from GitHub Secrets ──────────────────
-            cat > "$APP_DIR/backend/.env" <<ENVEOF
-            NODE_ENV=production
-            PORT=4000
-            DATABASE_URL=${DATABASE_URL}
-            DIRECT_URL=${DIRECT_URL}
-            JWT_SECRET=${JWT_SECRET}
-            JWT_EXPIRES_IN=15m
-            REFRESH_TOKEN_EXPIRES_IN=7d
-            FRONTEND_URL=${FRONTEND_URL}
-            FRONTEND_URL_ALT=${FRONTEND_URL_ALT}
-            BACKEND_URL=${BACKEND_URL}
-            SMTP_HOST=${SMTP_HOST}
-            SMTP_PORT=${SMTP_PORT:-587}
-            SMTP_USER=${SMTP_USER}
-            SMTP_PASS=${SMTP_PASS}
-            EMAIL_FROM=${EMAIL_FROM}
-            ENVEOF
+            # ── 2. Write backend .env from GitHub Secrets ────────────────────
+            # Use printf to avoid heredoc indentation issues (leading spaces
+            # in a heredoc break dotenv/Prisma variable parsing)
+            printf '%s\n' \
+              "NODE_ENV=production" \
+              "PORT=4000" \
+              "DATABASE_URL=${DATABASE_URL}" \
+              "DIRECT_URL=${DIRECT_URL}" \
+              "JWT_SECRET=${JWT_SECRET}" \
+              "JWT_EXPIRES_IN=15m" \
+              "REFRESH_TOKEN_EXPIRES_IN=7d" \
+              "FRONTEND_URL=${FRONTEND_URL}" \
+              "FRONTEND_URL_ALT=${FRONTEND_URL_ALT}" \
+              "BACKEND_URL=${BACKEND_URL}" \
+              "SMTP_HOST=${SMTP_HOST}" \
+              "SMTP_PORT=${SMTP_PORT:-587}" \
+              "SMTP_USER=${SMTP_USER}" \
+              "SMTP_PASS=${SMTP_PASS}" \
+              "EMAIL_FROM=${EMAIL_FROM}" \
+              > "$APP_DIR/backend/.env"
 
-            # ── 3. Install deps & run DB migrations ───────────────────────
+            echo "--- .env written, verifying DATABASE_URL is set ---"
+            grep -c "^DATABASE_URL=.\+" "$APP_DIR/backend/.env" && echo "DATABASE_URL OK" || echo "WARNING: DATABASE_URL is empty"
+
+            # ── 3. Install deps & run DB migrations ──────────────────────────
             cd "$APP_DIR/backend"
             npm install --omit=dev
             npx prisma migrate deploy
 
-            # ── 4. Reload backend (or start if first time) ─────────────────
+            # ── 4. Reload backend (or start if first time) ───────────────────
             pm2 reload qflow-backend --update-env || pm2 start src/app.js --name qflow-backend
 
-            # ── 5. Build & deploy frontend ─────────────────────────────────
+            # ── 5. Build & deploy frontend ───────────────────────────────────
             cd "$APP_DIR/frontend"
             npm install
             npm run build
             sudo cp -r dist/* /var/www/html/
 
-            echo "✅ Deploy complete"
+            echo "Deploy complete"
