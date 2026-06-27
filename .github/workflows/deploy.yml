@@ -62,10 +62,11 @@ jobs:
             echo "--- .env written, verifying DATABASE_URL is set ---"
             grep -c "^DATABASE_URL=.\+" "$APP_DIR/backend/.env" && echo "DATABASE_URL OK" || echo "WARNING: DATABASE_URL is empty"
 
-            # ── 3. Install deps & run DB migrations ──────────────────────────
+            # ── 3. Install deps & run DB migrations + seed ───────────────────
             cd "$APP_DIR/backend"
             npm install --omit=dev
             npx prisma migrate deploy
+            npx prisma db seed
 
             # ── 4. Reload backend (or start if first time) ───────────────────
             pm2 reload qflow-backend --update-env || pm2 start src/app.js --name qflow-backend
