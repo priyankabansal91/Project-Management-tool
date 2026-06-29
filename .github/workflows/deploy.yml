@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to EC2
+      # ── STEP A: Pull code + write .env ──────────────────────────────────
+      - name: Pull code and write .env
         uses: appleboy/ssh-action@v1.0.3
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -33,12 +34,13 @@ jobs:
             set -e
             APP_DIR=~/pmttest/Project-Management-tool
 
-            # ── 1. Pull latest code ──────────────────────────────────────────
+            echo "=== Pulling latest code ==="
             cd "$APP_DIR"
             git fetch origin
             git reset --hard origin/claude/saas-project-management-design-BsbSY
+            echo "Code pulled OK"
 
-            # ── 2. Write backend .env from GitHub Secrets ────────────────────
+            echo "=== Writing .env ==="
             printf '%s\n' \
               "NODE_ENV=production" \
               "PORT=4000" \
@@ -57,62 +59,90 @@ jobs:
               "EMAIL_FROM=${EMAIL_FROM}" \
               > "$APP_DIR/backend/.env"
 
-            # ── 3. Validate required secrets before proceeding ───────────────
-            echo "=== .env verification ==="
-            MISSING=0
+            echo "=== Validating secrets ==="
             for VAR in DATABASE_URL JWT_SECRET FRONTEND_URL; do
               VAL=$(grep "^${VAR}=" "$APP_DIR/backend/.env" | cut -d= -f2-)
               if [ -z "$VAL" ]; then
-                echo "ERROR: $VAR is empty — add it in GitHub Settings → Secrets → Actions"
-                MISSING=1
-              else
-                echo "$VAR = [set, ${#VAL} chars]"
+                echo "MISSING SECRET: $VAR"
+                exit 1
               fi
+              echo "$VAR = [${#VAL} chars]"
             done
+            echo ".env OK"
 
-            # JWT_SECRET must be >= 32 chars (enforced by config/index.js in production)
-            JWT_LEN=$(grep "^JWT_SECRET=" "$APP_DIR/backend/.env" | cut -d= -f2- | wc -c)
-            if [ "$JWT_LEN" -lt 33 ]; then
-              echo "ERROR: JWT_SECRET is only ${JWT_LEN} chars — must be at least 32 characters"
-              MISSING=1
-            fi
-
-            if [ "$MISSING" -eq 1 ]; then exit 1; fi
-            echo "All required secrets present"
-
-            # ── 4. Install deps ──────────────────────────────────────────────
-            cd "$APP_DIR/backend"
+      # ── STEP B: npm install ──────────────────────────────────────────────
+      - name: Install backend dependencies
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/pmttest/Project-Management-tool/backend
+            echo "=== npm install ==="
             npm install --omit=dev
+            echo "npm install OK"
 
-            # ── 5. DB migrations + seed ──────────────────────────────────────
+      # ── STEP C: DB migrate + seed ────────────────────────────────────────
+      - name: Run DB migrations and seed
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -e
+            cd ~/pmttest/Project-Management-tool/backend
+            echo "=== prisma migrate deploy ==="
             npx prisma migrate deploy
+            echo "migrate OK"
+            echo "=== prisma db seed ==="
             npx prisma db seed
+            echo "seed OK"
 
-            # ── 6. Restart backend cleanly so dotenv picks up the new .env ───
-            # pm2 reload --update-env reads from the shell, not from .env file.
-            # Delete + start ensures the fresh process loads .env via dotenv.config()
-            echo "=== Restarting backend ==="
+      # ── STEP D: Restart backend + health check ───────────────────────────
+      - name: Restart backend and verify
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/pmttest/Project-Management-tool/backend
+            echo "=== Restarting PM2 ==="
             pm2 delete qflow-backend 2>/dev/null || true
             pm2 start src/app.js --name qflow-backend
             pm2 save
-
-            # ── 7. Health check — surface crash reason in the Actions log ────
-            echo "=== Waiting 15s for backend to initialise ==="
+            echo "=== Waiting 15s for startup ==="
             sleep 15
             if curl -sf http://localhost:4000/health; then
               echo ""
-              echo "Backend health check PASSED"
+              echo "Health check PASSED"
             else
-              echo "ERROR: Backend health check FAILED — PM2 logs:"
+              echo "Health check FAILED — PM2 logs:"
               pm2 logs qflow-backend --lines 80 --nostream
               pm2 status
               exit 1
             fi
 
-            # ── 8. Build & deploy frontend ───────────────────────────────────
-            cd "$APP_DIR/frontend"
+      # ── STEP E: Build + deploy frontend ─────────────────────────────────
+      - name: Build and deploy frontend
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -e
+            cd ~/pmttest/Project-Management-tool/frontend
+            echo "=== npm install ==="
             npm install
+            echo "=== npm run build ==="
             npm run build
+            echo "=== deploying to /var/www/html ==="
             sudo cp -r dist/* /var/www/html/
-
-            echo "=== Deploy complete ==="
+            echo "Frontend deployed OK"
