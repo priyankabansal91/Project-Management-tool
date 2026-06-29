@@ -6,153 +6,45 @@ on:
       - claude/saas-project-management-design-BsbSY
 
 jobs:
-  deploy:
+  deploy-backend:
+    name: Deploy Backend to Vercel
     runs-on: ubuntu-latest
-
     steps:
-      # ── STEP A: Open port 22 for this runner, deploy, then close it ──────
-      - name: Pull code and write .env
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy backend
+        run: |
+          cp backend/.vercel/project.json .vercel/project.json
+          vercel --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
-          FRONTEND_URL_ALT: ${{ secrets.FRONTEND_URL_ALT }}
-          BACKEND_URL: ${{ secrets.BACKEND_URL }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          VERCEL_ORG_ID: team_PkCqsJsJYy2R6iYJwGfEAslo
+          VERCEL_PROJECT_ID: prj_sa0e0J5tI1f1JmDMuVpNIK8gXitU
+
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          timeout: 60s
-          command_timeout: 10m
-          debug: true
-          envs: DATABASE_URL,DIRECT_URL,JWT_SECRET,FRONTEND_URL,FRONTEND_URL_ALT,BACKEND_URL,SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,EMAIL_FROM
-          script: |
-            set -e
-            APP_DIR=~/pmttest/Project-Management-tool
+          node-version: '20'
 
-            echo "=== Pulling latest code ==="
-            cd "$APP_DIR"
-            git fetch origin
-            git reset --hard origin/claude/saas-project-management-design-BsbSY
-            echo "Code pulled OK"
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
 
-            echo "=== Writing .env ==="
-            printf '%s\n' \
-              "NODE_ENV=production" \
-              "PORT=4000" \
-              "DATABASE_URL=${DATABASE_URL}" \
-              "DIRECT_URL=${DIRECT_URL}" \
-              "JWT_SECRET=${JWT_SECRET}" \
-              "JWT_EXPIRES_IN=15m" \
-              "REFRESH_TOKEN_EXPIRES_IN=7d" \
-              "FRONTEND_URL=${FRONTEND_URL}" \
-              "FRONTEND_URL_ALT=${FRONTEND_URL_ALT}" \
-              "BACKEND_URL=${BACKEND_URL}" \
-              "SMTP_HOST=${SMTP_HOST}" \
-              "SMTP_PORT=${SMTP_PORT:-587}" \
-              "SMTP_USER=${SMTP_USER}" \
-              "SMTP_PASS=${SMTP_PASS}" \
-              "EMAIL_FROM=${EMAIL_FROM}" \
-              > "$APP_DIR/backend/.env"
-
-            echo "=== Validating secrets ==="
-            for VAR in DATABASE_URL JWT_SECRET FRONTEND_URL; do
-              VAL=$(grep "^${VAR}=" "$APP_DIR/backend/.env" | cut -d= -f2-)
-              if [ -z "$VAL" ]; then
-                echo "MISSING SECRET: $VAR"
-                exit 1
-              fi
-              echo "$VAR = [${#VAL} chars]"
-            done
-            echo ".env OK"
-
-      # ── STEP B: npm install ──────────────────────────────────────────────
-      - name: Install backend dependencies
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 5m
-          script: |
-            set -e
-            cd ~/pmttest/Project-Management-tool/backend
-            echo "=== npm install ==="
-            npm install --omit=dev
-            echo "npm install OK"
-
-      # ── STEP C: DB migrate + seed ────────────────────────────────────────
-      - name: Run DB migrations and seed
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 5m
-          script: |
-            set -e
-            cd ~/pmttest/Project-Management-tool/backend
-            echo "=== prisma migrate deploy ==="
-            npx prisma migrate deploy
-            echo "migrate OK"
-            echo "=== prisma db seed ==="
-            npx prisma db seed
-            echo "seed OK"
-
-      # ── STEP D: Restart backend + health check ───────────────────────────
-      - name: Restart backend and verify
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 5m
-          script: |
-            set -e
-            cd ~/pmttest/Project-Management-tool/backend
-            echo "=== Restarting PM2 ==="
-            pm2 delete qflow-backend 2>/dev/null || true
-            pm2 start src/app.js --name qflow-backend
-            pm2 save
-            echo "=== Waiting 15s for startup ==="
-            sleep 15
-            if curl -sf http://localhost:4000/health; then
-              echo ""
-              echo "Health check PASSED"
-            else
-              echo "Health check FAILED — PM2 logs:"
-              pm2 logs qflow-backend --lines 80 --nostream
-              pm2 status
-              exit 1
-            fi
-
-      # ── STEP E: Build + deploy frontend ─────────────────────────────────
-      - name: Build and deploy frontend
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 60s
-          command_timeout: 10m
-          script: |
-            set -e
-            cd ~/pmttest/Project-Management-tool/frontend
-            echo "=== npm install ==="
-            npm install
-            echo "=== npm run build ==="
-            npm run build
-            echo "=== deploying to /var/www/html ==="
-            sudo cp -r dist/* /var/www/html/
-            echo "Frontend deployed OK"
+      - name: Deploy frontend
+        run: |
+          cp frontend/.vercel/project.json .vercel/project.json
+          vercel --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: team_PkCqsJsJYy2R6iYJwGfEAslo
+          VERCEL_PROJECT_ID: prj_SxIQ8BWkOxA8tt3pauhNsQ4wrBBa
