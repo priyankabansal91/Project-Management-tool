@@ -57,42 +57,59 @@ jobs:
               "EMAIL_FROM=${EMAIL_FROM}" \
               > "$APP_DIR/backend/.env"
 
-            # Verify key vars are non-empty before proceeding
+            # ── 3. Validate required secrets before proceeding ───────────────
             echo "=== .env verification ==="
+            MISSING=0
             for VAR in DATABASE_URL JWT_SECRET FRONTEND_URL; do
               VAL=$(grep "^${VAR}=" "$APP_DIR/backend/.env" | cut -d= -f2-)
               if [ -z "$VAL" ]; then
-                echo "ERROR: $VAR is empty — check GitHub Secrets"
-                exit 1
+                echo "ERROR: $VAR is empty — add it in GitHub Settings → Secrets → Actions"
+                MISSING=1
               else
                 echo "$VAR = [set, ${#VAL} chars]"
               fi
             done
 
-            # ── 3. Install deps ──────────────────────────────────────────────
+            # JWT_SECRET must be >= 32 chars (enforced by config/index.js in production)
+            JWT_LEN=$(grep "^JWT_SECRET=" "$APP_DIR/backend/.env" | cut -d= -f2- | wc -c)
+            if [ "$JWT_LEN" -lt 33 ]; then
+              echo "ERROR: JWT_SECRET is only ${JWT_LEN} chars — must be at least 32 characters"
+              MISSING=1
+            fi
+
+            if [ "$MISSING" -eq 1 ]; then exit 1; fi
+            echo "All required secrets present"
+
+            # ── 4. Install deps ──────────────────────────────────────────────
             cd "$APP_DIR/backend"
             npm install --omit=dev
 
-            # ── 4. DB migrations + seed ──────────────────────────────────────
+            # ── 5. DB migrations + seed ──────────────────────────────────────
             npx prisma migrate deploy
             npx prisma db seed
 
-            # ── 5. Reload backend ────────────────────────────────────────────
-            pm2 reload qflow-backend --update-env || pm2 start src/app.js --name qflow-backend
+            # ── 6. Restart backend cleanly so dotenv picks up the new .env ───
+            # pm2 reload --update-env reads from the shell, not from .env file.
+            # Delete + start ensures the fresh process loads .env via dotenv.config()
+            echo "=== Restarting backend ==="
+            pm2 delete qflow-backend 2>/dev/null || true
+            pm2 start src/app.js --name qflow-backend
+            pm2 save
 
-            # ── 6. Health check — show PM2 logs if backend fails to start ────
-            echo "=== Waiting 8s for backend to start ==="
-            sleep 8
-            if curl -sf http://localhost:4000/health > /dev/null 2>&1; then
+            # ── 7. Health check — surface crash reason in the Actions log ────
+            echo "=== Waiting 15s for backend to initialise ==="
+            sleep 15
+            if curl -sf http://localhost:4000/health; then
+              echo ""
               echo "Backend health check PASSED"
             else
-              echo "ERROR: Backend health check FAILED — dumping PM2 logs:"
-              pm2 logs qflow-backend --lines 50 --nostream
+              echo "ERROR: Backend health check FAILED — PM2 logs:"
+              pm2 logs qflow-backend --lines 80 --nostream
               pm2 status
               exit 1
             fi
 
-            # ── 7. Build & deploy frontend ───────────────────────────────────
+            # ── 8. Build & deploy frontend ───────────────────────────────────
             cd "$APP_DIR/frontend"
             npm install
             npm run build
