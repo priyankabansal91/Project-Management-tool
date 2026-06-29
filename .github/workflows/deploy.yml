@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ── STEP A: Pull code + write .env ──────────────────────────────────
+      # ── STEP A: Open port 22 for this runner, deploy, then close it ──────
       - name: Pull code and write .env
         uses: appleboy/ssh-action@v1.0.3
         env:
@@ -29,6 +29,10 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          timeout: 60s
+          command_timeout: 10m
+          debug: true
           envs: DATABASE_URL,DIRECT_URL,JWT_SECRET,FRONTEND_URL,FRONTEND_URL_ALT,BACKEND_URL,SMTP_HOST,SMTP_PORT,SMTP_USER,SMTP_PASS,EMAIL_FROM
           script: |
             set -e
@@ -77,6 +81,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 5m
           script: |
             set -e
             cd ~/pmttest/Project-Management-tool/backend
@@ -91,7 +97,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 3m
+          timeout: 60s
+          command_timeout: 5m
           script: |
             set -e
             cd ~/pmttest/Project-Management-tool/backend
@@ -109,6 +116,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 5m
           script: |
             set -e
             cd ~/pmttest/Project-Management-tool/backend
@@ -135,7 +144,8 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 5m
+          timeout: 60s
+          command_timeout: 10m
           script: |
             set -e
             cd ~/pmttest/Project-Management-tool/frontend
