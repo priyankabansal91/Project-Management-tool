@@ -200,7 +200,7 @@ export const useAuthStore = create<AuthState>()(
 
       setAccessToken: (token) => set({ accessToken: token }),
       setUser: (user) => set({ user }),
-      login: (token, user, role) => set({ accessToken: token, user, currentRole: role }),
+      login: (token, user, role) => set({ accessToken: token, user, currentRole: role, currentDivisionId: null }),
       logout: () => set({ accessToken: null, user: null, currentRole: null, currentDivisionId: null }),
 
       switchRole: (role, persona) => {

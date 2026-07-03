@@ -28,7 +28,8 @@ export function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
   const [showDivisionMenu, setShowDivisionMenu] = useState(false);
-  const { data: myDivisions = [] } = useMyDivisions();
+  const { data: myDivisionsRaw } = useMyDivisions();
+  const myDivisions: any[] = Array.isArray(myDivisionsRaw) ? myDivisionsRaw : [];
   const activeDivision = myDivisions.find((d: any) => d.divisionId === currentDivisionId);
 
   const handleLogout = () => {

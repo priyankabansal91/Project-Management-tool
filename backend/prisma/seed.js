@@ -23,7 +23,7 @@ async function main() {
 
   // ── Users ────────────────────────────────────────────────
   const users = [
-    { id: 'dev-org_admin-id',       email: 'admin@example.local',          firstName: 'Priya',   lastName: 'Sharma' },
+    { id: 'dev-org_admin-id',       email: 'admin@example.local',          firstName: 'Priyanka', lastName: 'B' },
     { id: 'dev-division_admin-id',  email: 'div-admin@example.local',      firstName: 'Vikram',  lastName: 'Mehta' },
     { id: 'dev-vertical_head-id',   email: 'vertical-head@example.local',  firstName: 'Deepa',   lastName: 'Nair' },
     { id: 'dev-project_manager-id', email: 'pm@example.local',             firstName: 'Anjali',  lastName: 'Singh' },

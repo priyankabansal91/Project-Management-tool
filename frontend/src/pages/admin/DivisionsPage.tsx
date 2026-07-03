@@ -260,6 +260,8 @@ export function DivisionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
   const [formData, setFormData] = useState<DivisionFormData>({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const { data: hierarchy, isLoading } = useDivisionHierarchy();
   const createDivision = useCreateDivision();
@@ -295,21 +297,39 @@ export function DivisionsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCreateError(null);
     try {
-      await createDivision.mutateAsync(formData);
+      const payload: Record<string, unknown> = { ...formData };
+      if (payload.head_count === '') delete payload.head_count;
+      else if (payload.head_count) payload.head_count = Number(payload.head_count);
+      if (payload.budget === '') delete payload.budget;
+      if (payload.manager_id === '') delete payload.manager_id;
+      await createDivision.mutateAsync(payload);
       setFormData({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
       setShowForm(false);
-    } catch {}
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message ?? err?.response?.data?.error ?? err?.message ?? 'Failed to create division';
+      setCreateError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    }
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
+    setUpdateError(null);
     try {
-      await updateDivision.mutateAsync({ divisionId: editingId, ...formData });
+      const payload: Record<string, unknown> = { divisionId: editingId, ...formData };
+      if (payload.head_count === '') delete payload.head_count;
+      else if (payload.head_count) payload.head_count = Number(payload.head_count);
+      if (payload.budget === '') delete payload.budget;
+      if (payload.manager_id === '') delete payload.manager_id;
+      await updateDivision.mutateAsync(payload as any);
       setEditingId(null);
       setFormData({ name: '', code: '', description: '', budget: '', head_count: '', manager_id: '' });
-    } catch {}
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message ?? err?.response?.data?.error ?? err?.message ?? 'Failed to update division';
+      setUpdateError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    }
   };
 
   const flatList = (divisions: any[], out: any[] = []): any[] => {
@@ -416,12 +436,17 @@ export function DivisionsPage() {
                 The Division Head (HOD/CEO) is responsible for approving project closures and major decisions.
               </p>
             </div>
+            {createError && (
+              <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                {createError}
+              </div>
+            )}
             <div className="flex gap-2">
               <Button type="submit" disabled={createDivision.isPending}>
                 {createDivision.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Create Division
               </Button>
-              <Button type="button" variant="outline" onClick={() => { setShowForm(false); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => { setShowForm(false); setCreateError(null); }}>Cancel</Button>
             </div>
           </form>
         </Card>

@@ -479,7 +479,8 @@ function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNav
   const misQ = useDivisionOverviewMIS();
   const divisionItems: any[] = misQ.data ?? [];
   const burnQ = useMilestoneBurnDashboard();
-  const burnItems: any[] = burnQ.data?.items ?? burnQ.data ?? [];
+  const rawBurnDA = burnQ.data?.items ?? burnQ.data;
+  const burnItems: any[] = Array.isArray(rawBurnDA) ? rawBurnDA : [];
   const approvalsQ = usePendingApprovals({ page_size: 1 });
   void useDashboardV2();
 
@@ -1545,7 +1546,8 @@ function EffortVarianceChart({ navigate }: { navigate: ReturnType<typeof useNavi
 function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const burnQ = useMilestoneBurnDashboard();
   const dv2Q  = useDashboardV2();
-  const burnItems: any[] = burnQ.data?.items ?? burnQ.data ?? [];
+  const rawBurn = burnQ.data?.items ?? burnQ.data;
+  const burnItems: any[] = Array.isArray(rawBurn) ? rawBurn : [];
 
   const milestones: any[] = burnItems;
   const [selectedId, setSelectedId] = useState<string>(milestones[0]?.id ?? '');

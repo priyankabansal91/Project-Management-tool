@@ -101,7 +101,8 @@ class DivisionService {
   }
 
   async listMembers(orgId, divisionId) {
-    await this.getById(orgId, divisionId);
+    const exists = await prisma.division.findFirst({ where: { id: divisionId, orgId, deletedAt: null }, select: { id: true } });
+    if (!exists) return [];
     const members = await prisma.divisionMember.findMany({
       where: { divisionId },
       include: { user: { select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true } } },

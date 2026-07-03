@@ -866,7 +866,7 @@ export function useMyDivisions() {
     queryKey: ['myDivisions'],
     queryFn: async () => {
       const { data } = await api.get('/division-config/my');
-      return data.data as { divisionId: string; divisionName: string; role: string; color: string; description: string }[];
+      return (data.data ?? []) as { divisionId: string; divisionName: string; role: string; color: string; description: string }[];
     },
   });
 }
