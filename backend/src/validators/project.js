@@ -23,6 +23,8 @@ const createProjectSchema = z.object({
     stage_name: z.string().optional().nullable(),
   })).optional(),
   stage_template_id: z.string().optional().nullable(),
+  expense_heads: z.any().optional().nullable(),
+  submit_for_approval: z.boolean().optional(),
 });
 
 const updateProjectSchema = createProjectSchema.partial().extend({

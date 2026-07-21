@@ -127,7 +127,7 @@ router.post('/', authorize('org_admin', 'division_admin', 'project_manager', 've
 
       // Create approval request if requested
       let appr = null;
-      if (req.body.submit_for_approval && data.vertical_id) {
+      if (data.submit_for_approval && data.vertical_id) {
         try {
           await tx.vertical.findFirst({
             where: { id: data.vertical_id, orgId: req.user.orgId },
