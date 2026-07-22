@@ -7,13 +7,13 @@ import { Avatar } from '@/components/ui/avatar';
 import {
   Plus, Search, MoreHorizontal, Shield, Mail, UserX, UserCheck,
   Trash2, Eye, Loader2, CheckCircle2, Clock, X, Copy, Check, Link2,
-  UserPlus, RefreshCw,
+  UserPlus, RefreshCw, Key,
 } from 'lucide-react';
 import { cn, formatDate } from '@/lib/utils';
 import {
   useMembers, useInviteMember, useUpdateMemberStatus, useRemoveMember,
   usePendingInvites, useCancelInvite, useDivisionMembers, useMyDivisions,
-  useCreateMemberDirect,
+  useCreateMemberDirect, useResetMemberPassword,
 } from '@/api/hooks';
 import { useAuthStore } from '@/store/authStore';
 import { Building2 } from 'lucide-react';
@@ -42,12 +42,116 @@ const statusColors: Record<string, string> = {
   suspended: 'bg-orange-100 text-orange-700',
 };
 
+// ─── Reset Password Dialog ──────────────────────────────
+
+function ResetPasswordDialog({ member, onClose }: { member: Member; onClose: () => void }) {
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [done, setDone] = useState(false);
+  const resetPw = useResetMemberPassword();
+
+  const generate = () => {
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+    let pw = '';
+    for (let i = 0; i < 12; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+    setPassword(pw);
+    setShowPw(true);
+    setCopied(false);
+  };
+
+  const copyPw = () => {
+    navigator.clipboard.writeText(password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 8) return;
+    try {
+      await resetPw.mutateAsync({ userId: member.id, password });
+      setDone(true);
+    } catch { /* error shown below */ }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-background rounded-lg border shadow-xl w-full max-w-sm mx-4 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-base flex items-center gap-2">
+            <Key className="h-4 w-4 text-primary" /> Reset Password
+          </h3>
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted"><X className="h-4 w-4" /></button>
+        </div>
+
+        {done ? (
+          <div className="space-y-3 text-center py-2">
+            <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto" />
+            <p className="text-sm font-medium">Password reset successfully</p>
+            <p className="text-xs text-muted-foreground">
+              Share the new password with <span className="font-medium">{member.first_name}</span> through a secure channel.
+            </p>
+            <Button className="w-full" onClick={onClose}>Done</Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Set a new password for <span className="font-medium text-foreground">{member.first_name} {member.last_name}</span>
+              <br /><span className="text-xs">{member.email}</span>
+            </p>
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={generate}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Generate secure password
+            </Button>
+            <div className="relative">
+              <Input
+                type={showPw ? 'text' : 'password'}
+                placeholder="Enter new password (min 8 chars)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-16 font-mono text-sm"
+                minLength={8}
+                required
+              />
+              <div className="absolute right-1 top-1 flex gap-0.5">
+                <button type="button" className="p-1 rounded hover:bg-muted" onClick={() => setShowPw((s) => !s)}>
+                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+                {password && (
+                  <button type="button" className="p-1 rounded hover:bg-muted" onClick={copyPw}>
+                    {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
+                  </button>
+                )}
+              </div>
+            </div>
+            {password.length > 0 && password.length < 8 && (
+              <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+            )}
+            {resetPw.isError && (
+              <p className="text-xs text-destructive">
+                {(resetPw.error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Failed to reset password'}
+              </p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+              <Button type="submit" className="flex-1" disabled={password.length < 8 || resetPw.isPending}>
+                {resetPw.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reset Password'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Action Menu ────────────────────────────────────────
 
-function ActionMenu({ member, onStatusChange, onRemove }: {
+function ActionMenu({ member, onStatusChange, onRemove, onResetPassword }: {
   member: Member;
   onStatusChange: (id: string, status: string) => void;
   onRemove: (id: string) => void;
+  onResetPassword: (member: Member) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -86,6 +190,12 @@ function ActionMenu({ member, onStatusChange, onRemove }: {
             onClick={() => { alert(`${member.first_name} ${member.last_name}\n${member.email}\nStatus: ${member.status}`); setOpen(false); }}
           >
             <Eye className="h-4 w-4 text-muted-foreground" /> View Profile
+          </button>
+          <button
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted text-primary"
+            onClick={() => { onResetPassword(member); setOpen(false); }}
+          >
+            <Key className="h-4 w-4" /> Reset Password
           </button>
           <div className="my-1 border-t" />
 
@@ -166,6 +276,7 @@ export function UserManagementPage() {
   const [tab, setTab] = useState<'members' | 'invites'>('members');
   const [search, setSearch] = useState('');
   const [showInvite, setShowInvite] = useState(false);
+  const [resetPwMember, setResetPwMember] = useState<Member | null>(null);
   const [inviteMode, setInviteMode] = useState<'link' | 'direct'>('link');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
@@ -385,6 +496,7 @@ export function UserManagementPage() {
                             member={m}
                             onStatusChange={(id, status) => updateStatus.mutate({ userId: id, status })}
                             onRemove={(id) => removeMember.mutate(id)}
+                            onResetPassword={(mem) => setResetPwMember(mem)}
                           />
                         )}
                       </td>
@@ -643,6 +755,10 @@ export function UserManagementPage() {
             </div>
           </Card>
         </div>
+      )}
+
+      {resetPwMember && (
+        <ResetPasswordDialog member={resetPwMember} onClose={() => setResetPwMember(null)} />
       )}
     </div>
   );

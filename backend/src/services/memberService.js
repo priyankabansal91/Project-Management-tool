@@ -142,6 +142,15 @@ class MemberService {
     return { success: true };
   }
 
+  async resetPassword(orgId, userId, newPassword) {
+    const bcrypt = require('bcryptjs');
+    const member = await prisma.orgMember.findFirst({ where: { orgId, userId } });
+    if (!member) throw ApiError.notFound('Member not found');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash, failedLoginCount: 0, lockedUntil: null } });
+    return { success: true };
+  }
+
   async createDirect(orgId, { email, firstName, lastName, password, role }) {
     const bcrypt = require('bcryptjs');
     const existing = await prisma.user.findUnique({ where: { email } });

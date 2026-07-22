@@ -106,6 +106,18 @@ router.patch('/:userId/status', authorize('org_admin'), async (req, res, next) =
   } catch (err) { next(err); }
 });
 
+// Reset member password (org_admin only)
+router.patch('/:userId/reset-password', authorize('org_admin'), async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Password must be at least 8 characters' } });
+    }
+    await memberService.resetPassword(req.user.orgId, req.params.userId, password);
+    res.json({ success: true, data: { message: 'Password reset successfully' } });
+  } catch (err) { next(err); }
+});
+
 // Remove member
 router.delete('/:userId', authorize('org_admin'), async (req, res, next) => {
   try {

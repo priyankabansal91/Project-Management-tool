@@ -343,6 +343,15 @@ export function useRemoveMember() {
   });
 }
 
+export function useResetMemberPassword() {
+  return useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      const { data } = await api.patch(`/members/${userId}/reset-password`, { password });
+      return data.data;
+    },
+  });
+}
+
 // ─── Workflows ──────────────────────────────────────────
 
 export function useWorkflows() {
