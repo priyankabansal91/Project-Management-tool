@@ -173,7 +173,7 @@ function OrgAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate
             <CardContent className="space-y-3">
               {execQ.isLoading ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
-              ) : (execQ.data?.scorecards ?? []).slice(0, 5).map((sc: any) => {
+              ) : (Array.isArray(execQ.data?.scorecards) ? execQ.data!.scorecards : []).slice(0, 5).map((sc: any) => {
                 const pct = sc.completionRate ?? sc.completionPct ?? sc.health_score ?? 0;
                 const rag = ragColor(pct);
                 return (
@@ -477,9 +477,9 @@ function calcDelayRisk(m: any): { label: string; cls: string } {
 
 function DivisionAdminSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const misQ = useDivisionOverviewMIS();
-  const divisionItems: any[] = misQ.data ?? [];
+  const divisionItems: any[] = Array.isArray(misQ.data) ? misQ.data : [];
   const burnQ = useMilestoneBurnDashboard();
-  const rawBurnDA = burnQ.data?.items ?? burnQ.data;
+  const rawBurnDA = burnQ.data?.items ?? burnQ.data?.milestones ?? burnQ.data;
   const burnItems: any[] = Array.isArray(rawBurnDA) ? rawBurnDA : [];
   const approvalsQ = usePendingApprovals({ page_size: 1 });
   void useDashboardV2();
@@ -687,7 +687,7 @@ function MilestoneTrack({ milestones }: { milestones: VHMilestone[] }) {
     <div className="space-y-1">
       <div className="flex items-center">
         {milestones.map((ms, i) => (
-          <div key={i} className="flex items-center flex-1 last:flex-none" title={`${ms.title} — ${ms.status.replace('_', ' ')}${ms.burnRate ? ` · ${ms.burnRate}% burn` : ''}`}>
+          <div key={i} className="flex items-center flex-1 last:flex-none" title={`${ms.title} — ${(ms.status ?? '').replace('_', ' ')}${ms.burnRate ? ` · ${ms.burnRate}% burn` : ''}`}>
             <MsDot status={ms.status} />
             {i < milestones.length - 1 && (
               <div className={cn('h-0.5 flex-1 transition-colors', lineCls(ms.status))} />
@@ -1038,7 +1038,8 @@ function VHActiveRisksPanel({ navigate }: { navigate: ReturnType<typeof useNavig
 
 function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const projectsQ = useProjects({ status: 'active' });
-  const projects: any[] = projectsQ.data?.items ?? [];
+  const rawProjects = projectsQ.data?.items ?? projectsQ.data;
+  const projects: any[] = Array.isArray(rawProjects) ? rawProjects : [];
   const dv2Q = useDashboardV2();
   const burnQ = useMilestoneBurnDashboard();
 
@@ -1547,7 +1548,7 @@ function EffortVarianceChart({ navigate }: { navigate: ReturnType<typeof useNavi
 function ProjectManagerSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const burnQ = useMilestoneBurnDashboard();
   const dv2Q  = useDashboardV2();
-  const rawBurn = burnQ.data?.items ?? burnQ.data;
+  const rawBurn = burnQ.data?.items ?? burnQ.data?.milestones ?? burnQ.data;
   const burnItems: any[] = Array.isArray(rawBurn) ? rawBurn : [];
 
   const milestones: any[] = burnItems;
@@ -1727,7 +1728,8 @@ function TeamLeadSection({ navigate }: { navigate: ReturnType<typeof useNavigate
   ];
 
   const myTasksQ = useMyTasks();
-  const myTasks: any[] = myTasksQ.data?.items ?? myTasksQ.data ?? [];
+  const rawMyTasks = myTasksQ.data?.items ?? myTasksQ.data;
+  const myTasks: any[] = Array.isArray(rawMyTasks) ? rawMyTasks : [];
   const overdue = myTasks.filter((t: any) => t.is_overdue || t.isOverdue).length;
   const dueToday = myTasks.filter((t: any) => {
     if (!t.due_date && !t.dueDate) return false;
@@ -2237,7 +2239,8 @@ function NotificationsPanelMember({ navigate }: { navigate: ReturnType<typeof us
 
 function MemberSection({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
   const myTasksQ = useMyTasks();
-  const tasks: any[] = myTasksQ.data?.items ?? myTasksQ.data ?? [];
+  const rawTasks = myTasksQ.data?.items ?? myTasksQ.data;
+  const tasks: any[] = Array.isArray(rawTasks) ? rawTasks : [];
   const weekQ = useWeeklySummary();
 
   // Local status overrides (optimistic UI without mutation)
