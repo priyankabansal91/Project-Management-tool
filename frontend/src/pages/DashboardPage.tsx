@@ -1053,7 +1053,8 @@ function VerticalHeadSection({ navigate }: { navigate: ReturnType<typeof useNavi
   const activeRisks    = 0;
   const highRisks      = 0;
 
-  const burnQ_items: any[] = burnQ.data?.items ?? burnQ.data ?? [];
+  const rawBurnVH = burnQ.data?.items ?? burnQ.data?.milestones ?? burnQ.data;
+  const burnQ_items: any[] = Array.isArray(rawBurnVH) ? rawBurnVH : [];
   const delayedCount = burnQ_items.filter((m: any) => m.isOverdue || m.is_overdue).length;
 
   return (
