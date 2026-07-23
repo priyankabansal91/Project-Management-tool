@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import {
   useCustomRoles, useAvailablePermissions, useCreateCustomRole, useUpdateCustomRole,
   useDeleteCustomRole, useSystemRoleMatrix, useUpdateSystemRolePermissions,
@@ -410,7 +411,7 @@ function CustomRolesTab() {
                       setFormData({ name: role.name, description: role.description || '', color: role.color || '#3B82F6', permissions: role.permissions || [] });
                       setShowForm(true);
                     }}><Edit2 className="h-3.5 w-3.5" /></Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => confirm('Delete this role?') && deleteRole.mutate(role.id)}>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={async () => { if (await dialog.danger({ title: 'Delete Role', message: 'Delete this role? Members with this role will lose their custom permissions.', confirmLabel: 'Delete' })) deleteRole.mutate(role.id); }}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -551,6 +552,7 @@ const TABS = [
 ];
 
 export function CustomRolesPage() {
+  const dialog = useDialog();
   const [activeTab, setActiveTab] = useState('matrix');
 
   return (

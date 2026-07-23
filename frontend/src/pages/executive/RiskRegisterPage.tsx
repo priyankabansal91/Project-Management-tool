@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -79,6 +80,7 @@ function matrixColor(p: number, i: number): string {
 }
 
 export function RiskRegisterPage() {
+  const dialog = useDialog();
   const [search, setSearch] = useState('');
   const [filterSeverity, setFilterSeverity] = useState<Severity | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<RiskStatus | 'all'>('all');
@@ -111,7 +113,7 @@ export function RiskRegisterPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowMatrix(!showMatrix)}>{showMatrix ? 'Hide' : 'Show'} Matrix</Button>
-          <Button size="sm" onClick={() => alert('Exporting risk register as PDF...')}><Download className="h-3.5 w-3.5" /> Export</Button>
+          <Button size="sm" onClick={() => dialog.alert({ title: 'Exporting', message: 'Exporting risk register as PDF...', variant: 'info' })}><Download className="h-3.5 w-3.5" /> Export</Button>
         </div>
       </div>
 

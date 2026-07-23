@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -559,6 +560,7 @@ function ManageMembersPanel({ vertical, allOrgMembers, onClose }: {
 // ─── Main Page ───────────────────────────────────────────
 
 export function VerticalsPage() {
+  const dialog = useDialog();
   const { user, currentRole } = useAuthStore();
 
   const { data: apiData, isLoading } = useVerticals();
@@ -617,8 +619,8 @@ export function VerticalsPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Delete this vertical? This action cannot be undone.')) return;
+  const handleDelete = async (id: string) => {
+    if (!await dialog.danger({ title: 'Delete Vertical', message: 'Delete this vertical? This action cannot be undone.', confirmLabel: 'Delete' })) return;
     deleteMutation.mutate(id);
   };
 

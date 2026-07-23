@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ function monthDiff(d1: string, d2: string): number {
 }
 
 export function RoadmapPage() {
+  const dialog = useDialog();
   const [filterDivision, setFilterDivision] = useState('all');
   const [showDeps, setShowDeps] = useState(true);
 
@@ -77,7 +79,7 @@ export function RoadmapPage() {
           <Button variant="outline" size="sm" onClick={() => setShowDeps(!showDeps)}>
             {showDeps ? 'Hide' : 'Show'} Dependencies
           </Button>
-          <Button size="sm" onClick={() => alert('Exporting roadmap as PowerPoint...')}><Download className="h-3.5 w-3.5" /> Export</Button>
+          <Button size="sm" onClick={() => dialog.alert({ title: 'Exporting', message: 'Exporting roadmap as PowerPoint...', variant: 'info' })}><Download className="h-3.5 w-3.5" /> Export</Button>
         </div>
       </div>
 

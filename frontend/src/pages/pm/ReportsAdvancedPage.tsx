@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -131,6 +132,7 @@ const defaultWidgets: Widget[] = [
 
 // ─── Component ────────────────────────────────────────────────
 export function ReportsAdvancedPage() {
+  const dialog = useDialog();
   const [widgets, setWidgets] = useState<Widget[]>(defaultWidgets);
   const [editMode, setEditMode] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
@@ -168,12 +170,12 @@ export function ReportsAdvancedPage() {
   };
 
   const handleExportPDF = () => {
-    alert(`Exporting "${dashboardName}" as PDF (${widgets.length} widgets)...\n\nIn production: uses html2canvas + jsPDF to render the dashboard to a multi-page PDF.`);
+    dialog.alert({ title: 'Exporting PDF', message: `Exporting "${dashboardName}" as PDF (${widgets.length} widgets)...\n\nIn production: uses html2canvas + jsPDF to render the dashboard to a multi-page PDF.`, variant: 'info' });
     setShowExport(false);
   };
 
   const handleExportCSV = () => {
-    alert(`Exporting raw data as CSV...\n\nColumns: widget, metric, value, timestamp`);
+    dialog.alert({ title: 'Exporting CSV', message: 'Exporting raw data as CSV...\n\nColumns: widget, metric, value, timestamp', variant: 'info' });
     setShowExport(false);
   };
 
@@ -327,7 +329,7 @@ export function ReportsAdvancedPage() {
                 </div>
               </button>
               <button
-                onClick={() => { alert('PNG snapshot copied to clipboard'); setShowExport(false); }}
+                onClick={() => { dialog.success({ title: 'Snapshot Copied', message: 'PNG snapshot copied to clipboard.' }); setShowExport(false); }}
                 className="w-full flex items-start gap-3 rounded-lg border p-4 text-left hover:border-primary hover:bg-primary/5 transition-colors"
               >
                 <Share2 className="h-6 w-6 text-blue-500 shrink-0" />

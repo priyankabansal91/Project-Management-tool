@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -109,6 +110,7 @@ const hierarchyLabels: Record<number, string> = {
 };
 
 export function IssueTypesPage() {
+  const dialog = useDialog();
   const [types, setTypes] = useState<IssueType[]>(defaultIssueTypes);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -166,8 +168,8 @@ export function IssueTypesPage() {
     setShowForm(false);
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Archive this issue type? Existing items will keep their type but you can\'t create new ones.')) return;
+  const handleDelete = async (id: string) => {
+    if (!await dialog.warning({ title: 'Archive Issue Type', message: "Archive this issue type? Existing items will keep their type but you can't create new ones.", confirmLabel: 'Archive' })) return;
     setTypes((prev) => prev.map((t) => t.id === id ? { ...t, is_archived: true } : t));
     if (selectedType.id === id && activeTypes.length > 1) {
       setSelectedType(activeTypes.find((t) => t.id !== id) || activeTypes[0]);

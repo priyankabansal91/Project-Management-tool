@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { useDivisionHierarchy, useCreateDivision, useUpdateDivision, useDeleteDivision, useMembers } from '@/api/hooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -256,6 +257,7 @@ function DivisionNode({
 }
 
 export function DivisionsPage() {
+  const dialog = useDialog();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
@@ -286,9 +288,8 @@ export function DivisionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this division and all sub-divisions? This cannot be undone.')) {
-      await deleteDivision.mutateAsync(id).catch(() => {});
-    }
+    if (!await dialog.danger({ title: 'Delete Division', message: 'Delete this division and all sub-divisions? This cannot be undone.', confirmLabel: 'Delete' })) return;
+    await deleteDivision.mutateAsync(id).catch(() => {});
   };
 
   const handleLifecycleChange = async (id: string, status: string) => {

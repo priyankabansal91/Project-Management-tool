@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -797,6 +798,7 @@ function CloseMilestoneDialog({
 // ─── Main Page ────────────────────────────────────────────
 
 export function MilestonesPage() {
+  const dialog = useDialog();
   const { projectId = '' } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
 
@@ -847,8 +849,8 @@ export function MilestonesPage() {
   const openCreate = () => { setEditingMilestone(null); setShowPanel(true); };
   const openEdit = (m: Milestone) => { setEditingMilestone(m); setShowPanel(true); };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Delete this milestone? This action cannot be undone.')) return;
+  const handleDelete = async (id: string) => {
+    if (!await dialog.danger({ title: 'Delete Milestone', message: 'Delete this milestone? This action cannot be undone.', confirmLabel: 'Delete' })) return;
     deleteMutation.mutate(id);
   };
 
