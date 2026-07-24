@@ -15,6 +15,7 @@ import {
   usePendingInvites, useCancelInvite, useDivisionMembers, useMyDivisions,
   useCreateMemberDirect, useResetMemberPassword,
 } from '@/api/hooks';
+import { useDialog } from '@/components/ui/AppDialog';
 import { useAuthStore } from '@/store/authStore';
 import { Building2 } from 'lucide-react';
 
@@ -147,11 +148,12 @@ function ResetPasswordDialog({ member, onClose }: { member: Member; onClose: () 
 
 // ─── Action Menu ────────────────────────────────────────
 
-function ActionMenu({ member, onStatusChange, onRemove, onResetPassword }: {
+function ActionMenu({ member, onStatusChange, onRemove, onResetPassword, onViewProfile }: {
   member: Member;
   onStatusChange: (id: string, status: string) => void;
   onRemove: (id: string) => void;
   onResetPassword: (member: Member) => void;
+  onViewProfile: (member: Member) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -187,7 +189,7 @@ function ActionMenu({ member, onStatusChange, onRemove, onResetPassword }: {
           </button>
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
-            onClick={() => { alert(`${member.first_name} ${member.last_name}\n${member.email}\nStatus: ${member.status}`); setOpen(false); }}
+            onClick={() => { onViewProfile(member); setOpen(false); }}
           >
             <Eye className="h-4 w-4 text-muted-foreground" /> View Profile
           </button>
@@ -273,6 +275,7 @@ function ActionMenu({ member, onStatusChange, onRemove, onResetPassword }: {
 // ─── Main Page ──────────────────────────────────────────
 
 export function UserManagementPage() {
+  const dialog = useDialog();
   const [tab, setTab] = useState<'members' | 'invites'>('members');
   const [search, setSearch] = useState('');
   const [showInvite, setShowInvite] = useState(false);
@@ -318,7 +321,7 @@ export function UserManagementPage() {
       setInviteEmail('');
       setInviteRole('member');
     } catch (err: unknown) {
-      alert((err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Failed to send invitation');
+      await dialog.error({ title: 'Invitation Failed', message: (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || 'Failed to send invitation' });
     }
   };
 
@@ -497,6 +500,11 @@ export function UserManagementPage() {
                             onStatusChange={(id, status) => updateStatus.mutate({ userId: id, status })}
                             onRemove={(id) => removeMember.mutate(id)}
                             onResetPassword={(mem) => setResetPwMember(mem)}
+                            onViewProfile={(mem) => dialog.alert({
+                              title: `${mem.first_name} ${mem.last_name}`,
+                              message: `Email: ${mem.email}\nRole: ${mem.role.replace(/_/g, ' ')}\nStatus: ${mem.status}${mem.last_login_at ? `\nLast login: ${new Date(mem.last_login_at).toLocaleDateString()}` : ''}`,
+                              variant: 'info',
+                            })}
                           />
                         )}
                       </td>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,7 @@ const mockReports: WeeklyReport[] = [
 ];
 
 export function StatusReportsPage() {
+  const dialog = useDialog();
   const [selectedReport, setSelectedReport] = useState<WeeklyReport | null>(mockReports[0]);
   const [filterWeek, setFilterWeek] = useState('2026-04-19');
   const [filterProject, setFilterProject] = useState('all');
@@ -104,8 +106,8 @@ export function StatusReportsPage() {
     return true;
   });
 
-  const handleGenerate = () => alert('Generating AI-powered status reports for all active projects...\n\nClaude AI analyzes: tasks completed, velocity, overdue items, health changes, and risks to auto-write executive summaries.');
-  const handleEmailAll = () => alert(`Sending ${filtered.length} reports to configured stakeholders...`);
+  const handleGenerate = () => dialog.alert({ title: 'Generating Reports', message: 'Generating AI-powered status reports for all active projects...\n\nClaude AI analyzes tasks completed, velocity, overdue items, health changes, and risks to auto-write executive summaries.', variant: 'info' });
+  const handleEmailAll = () => dialog.alert({ title: 'Sending Reports', message: `Sending ${filtered.length} reports to configured stakeholders...`, variant: 'info' });
 
   return (
     <div className="space-y-5">
@@ -121,7 +123,7 @@ export function StatusReportsPage() {
           <Button variant="outline" size="sm" onClick={handleEmailAll}>
             <Send className="h-3.5 w-3.5" /> Email All
           </Button>
-          <Button size="sm" onClick={() => alert('Exporting all reports as PDF bundle...')}>
+          <Button size="sm" onClick={() => dialog.alert({ title: 'Exporting', message: 'Exporting all reports as PDF bundle...', variant: 'info' })}>
             <Download className="h-3.5 w-3.5" /> Export PDF
           </Button>
         </div>
@@ -193,9 +195,9 @@ export function StatusReportsPage() {
                     </p>
                   </div>
                   <div className="flex gap-1.5">
-                    <Button variant="outline" size="sm" onClick={() => alert('Copied to clipboard')}><Copy className="h-3.5 w-3.5" /></Button>
-                    <Button variant="outline" size="sm" onClick={() => alert('Opening print view...')}><Printer className="h-3.5 w-3.5" /></Button>
-                    <Button variant="outline" size="sm" onClick={() => alert(`Re-sending to: ${selectedReport.sent_to.join(', ')}`)}><Mail className="h-3.5 w-3.5" /></Button>
+                    <Button variant="outline" size="sm" onClick={() => dialog.success({ title: 'Copied', message: 'Report copied to clipboard.' })}><Copy className="h-3.5 w-3.5" /></Button>
+                    <Button variant="outline" size="sm" onClick={() => dialog.alert({ title: 'Print View', message: 'Opening print view...', variant: 'info' })}><Printer className="h-3.5 w-3.5" /></Button>
+                    <Button variant="outline" size="sm" onClick={() => dialog.alert({ title: 'Resending Report', message: `Re-sending to: ${selectedReport.sent_to.join(', ')}`, variant: 'info' })}><Mail className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               </CardHeader>

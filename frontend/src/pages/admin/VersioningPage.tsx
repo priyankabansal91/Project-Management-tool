@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { useSnapshots, useCreateSnapshot } from '@/api/hooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Loader, Plus, Download, Trash2, Clock } from 'lucide-react';
 
 export function VersioningPage() {
+  const dialog = useDialog();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -166,10 +168,9 @@ export function VersioningPage() {
 
               {/* Actions */}
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => {
-                  if (window.confirm('Restore this snapshot? Current state will be replaced.')) {
-                    alert('Snapshot restore initiated. Contact your system administrator if issues persist.');
-                  }
+                <Button size="sm" variant="outline" onClick={async () => {
+                  if (!await dialog.warning({ title: 'Restore Snapshot', message: 'Restore this snapshot? Current state will be replaced.', confirmLabel: 'Restore' })) return;
+                  await dialog.success({ title: 'Restore Initiated', message: 'Snapshot restore initiated. Contact your system administrator if issues persist.' });
                 }}>
                   <Download className="h-4 w-4 mr-1" />
                   Restore

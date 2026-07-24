@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import {
   CheckCircle2, XCircle, CornerUpLeft, Users2, Clock,
   AlertTriangle, MessageSquare, ChevronDown, ChevronUp,
@@ -210,6 +211,7 @@ function DelegateModal({
 // ── Approval Card ─────────────────────────────────────────────────────────────
 
 function ApprovalCard({ approval, canAct }: { approval: any; canAct: boolean }) {
+  const dialog = useDialog();
   const [expanded, setExpanded] = useState(false);
   const [action, setAction] = useState<'approve' | 'reject' | 'send_back' | null>(null);
   const [comment, setComment] = useState('');
@@ -238,7 +240,7 @@ function ApprovalCard({ approval, canAct }: { approval: any; canAct: boolean }) 
       setDone(label);
     } catch (err: any) {
       // show inline error — don't clear action
-      alert(err?.response?.data?.error?.message || 'Action failed. Please try again.');
+      await dialog.error({ title: 'Action Failed', message: err?.response?.data?.error?.message || 'Action failed. Please try again.' });
       return;
     }
     setAction(null);

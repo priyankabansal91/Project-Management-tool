@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import { useWorkflows, useCreateWorkflow, useUpdateWorkflow, useDeleteWorkflow }
 import type { WorkflowConfig } from '@/types';
 
 export function WorkflowsPage() {
+  const dialog = useDialog();
   const [selectedWf, setSelectedWf] = useState<WorkflowConfig | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowConfig | null>(null);
@@ -44,7 +46,7 @@ export function WorkflowsPage() {
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
-    if (!confirm('Are you sure you want to delete this workflow?')) return;
+    if (!await dialog.danger({ title: 'Delete Workflow', message: 'Are you sure you want to delete this workflow? This cannot be undone.', confirmLabel: 'Delete' })) return;
     try {
       await deleteMutation.mutateAsync(workflowId);
       if (selectedWf?.id === workflowId) {

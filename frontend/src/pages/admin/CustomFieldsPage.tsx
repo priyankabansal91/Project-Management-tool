@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +51,7 @@ interface FieldFormData {
 const emptyForm: FieldFormData = { name: '', field_key: '', field_type: 'text', is_required: false, applies_to: 'task', options: {} };
 
 export function CustomFieldsPage() {
+  const dialog = useDialog();
   const [fields, setFields] = useState(mockFields);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -120,8 +122,8 @@ export function CustomFieldsPage() {
     setFields((prev) => prev.map((f) => f.id === id ? { ...f, is_archived: true } : f));
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Delete this field permanently? Data in existing tasks will be lost.')) return;
+  const handleDelete = async (id: string) => {
+    if (!await dialog.danger({ title: 'Delete Field', message: 'Delete this field permanently? Data in existing tasks will be lost.', confirmLabel: 'Delete' })) return;
     setFields((prev) => prev.filter((f) => f.id !== id));
   };
 

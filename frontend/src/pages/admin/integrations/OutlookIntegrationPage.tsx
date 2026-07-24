@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ interface IntegrationStatus {
 }
 
 export function OutlookIntegrationPage() {
+  const dialog = useDialog();
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -54,7 +56,7 @@ export function OutlookIntegrationPage() {
   }
 
   async function handleDisconnect() {
-    if (!confirm('Disconnect your Microsoft account? Calendar sync and email notifications will stop.')) return;
+    if (!await dialog.warning({ title: 'Disconnect Microsoft Account', message: 'Calendar sync and email notifications will stop. You can reconnect at any time.', confirmLabel: 'Disconnect' })) return;
     try {
       await api.post('/integrations/outlook/disconnect');
       setStatus({ connected: false });

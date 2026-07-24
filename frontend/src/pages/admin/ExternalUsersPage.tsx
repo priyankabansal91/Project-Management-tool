@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { useExternalUsers, useInviteExternalUser, useUpdateExternalUser, useRevokeExternalUser } from '@/api/hooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Loader, Plus, Mail, Clock, CheckCircle, XCircle } from 'lucide-react';
 
 export function ExternalUsersPage() {
+  const dialog = useDialog();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -32,12 +34,11 @@ export function ExternalUsersPage() {
   };
 
   const handleRevoke = async (userId: string) => {
-    if (confirm('Are you sure you want to revoke this user\'s access?')) {
-      try {
-        await revokeUser.mutateAsync(userId);
-      } catch (error) {
-        console.error('Error:', error);
-      }
+    if (!await dialog.danger({ title: 'Revoke Access', message: "Are you sure you want to revoke this user's access?", confirmLabel: 'Revoke' })) return;
+    try {
+      await revokeUser.mutateAsync(userId);
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 

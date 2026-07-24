@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDialog } from '@/components/ui/AppDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -227,6 +228,7 @@ const emptyForm: FormData = {
 };
 
 export function TaskTemplatesPage() {
+  const dialog = useDialog();
   const [templates, setTemplates] = useState<TaskTemplate[]>(mockTemplates);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -282,8 +284,8 @@ export function TaskTemplatesPage() {
     if (selectedTpl?.id === id) setSelectedTpl((p) => p ? { ...p, is_favorite: !p.is_favorite } : p);
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Delete this template permanently?')) return;
+  const handleDelete = async (id: string) => {
+    if (!await dialog.danger({ title: 'Delete Template', message: 'Delete this template permanently?', confirmLabel: 'Delete' })) return;
     setTemplates((prev) => prev.filter((t) => t.id !== id));
     if (selectedTpl?.id === id) setSelectedTpl(templates[0] || null);
   };
@@ -341,7 +343,7 @@ export function TaskTemplatesPage() {
   };
 
   const handleUseTemplate = (t: TaskTemplate) => {
-    alert(`Applied template "${t.name}" — ${t.items.length} checklist items will be created as tasks.`);
+    dialog.success({ title: 'Template Applied', message: `Applied template "${t.name}" — ${t.items.length} checklist items will be created as tasks.` });
     setTemplates((prev) => prev.map((x) => x.id === t.id ? { ...x, usage_count: x.usage_count + 1 } : x));
   };
 
