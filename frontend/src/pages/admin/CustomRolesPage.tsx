@@ -252,6 +252,7 @@ function PermissionsMatrix() {
 // ─── Tab 2: Custom Roles ─────────────────────────────────
 
 function CustomRolesTab() {
+  const dialog = useDialog();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
@@ -552,7 +553,6 @@ const TABS = [
 ];
 
 export function CustomRolesPage() {
-  const dialog = useDialog();
   const [activeTab, setActiveTab] = useState('matrix');
 
   return (

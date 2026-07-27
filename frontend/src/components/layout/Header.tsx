@@ -161,8 +161,8 @@ export function Header() {
           </div>
         )}
 
-        {/* Role Switcher — pill badge */}
-        <div className="relative">
+        {/* Role Switcher — pill badge (org_admin only) */}
+        {currentRole === 'org_admin' && <div className="relative">
           <button
             onClick={() => { setShowRoleSwitcher(!showRoleSwitcher); setShowUserMenu(false); }}
             className={cn(
@@ -258,7 +258,7 @@ export function Header() {
               </div>
             </>
           )}
-        </div>
+        </div>}
 
         {/* Notification bell */}
         <div className="flex-shrink-0">
@@ -302,41 +302,43 @@ export function Header() {
                   )}
                 </div>
 
-                {/* Mobile role switcher */}
-                <div className="border-t p-2 lg:hidden">
-                  <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
-                    Core Roles
-                  </p>
-                  {STAKEHOLDER_PERSONAS.filter(p => p.defaultDivisionId !== 'div_ppid').map((persona) => (
-                    <button
-                      key={persona.email}
-                      onClick={() => handleSwitchRole(persona)}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted',
-                        user?.id === persona.devUserId && 'bg-muted font-medium'
-                      )}
-                    >
-                      <span className={cn('h-2 w-2 rounded-full flex-shrink-0', persona.color.split(' ')[0])} />
-                      {persona.label}
-                    </button>
-                  ))}
-                  <p className="px-2 py-1 mt-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest border-t pt-2">
-                    PPID Division
-                  </p>
-                  {STAKEHOLDER_PERSONAS.filter(p => p.defaultDivisionId === 'div_ppid').map((persona) => (
-                    <button
-                      key={persona.email}
-                      onClick={() => handleSwitchRole(persona)}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted',
-                        user?.id === persona.devUserId && 'bg-muted font-medium'
-                      )}
-                    >
-                      <span className={cn('h-2 w-2 rounded-full flex-shrink-0', persona.color.split(' ')[0])} />
-                      {persona.label}
-                    </button>
-                  ))}
-                </div>
+                {/* Mobile role switcher — org_admin only */}
+                {currentRole === 'org_admin' && (
+                  <div className="border-t p-2 lg:hidden">
+                    <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                      Core Roles
+                    </p>
+                    {STAKEHOLDER_PERSONAS.filter(p => p.defaultDivisionId !== 'div_ppid').map((persona) => (
+                      <button
+                        key={persona.email}
+                        onClick={() => handleSwitchRole(persona)}
+                        className={cn(
+                          'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted',
+                          user?.id === persona.devUserId && 'bg-muted font-medium'
+                        )}
+                      >
+                        <span className={cn('h-2 w-2 rounded-full flex-shrink-0', persona.color.split(' ')[0])} />
+                        {persona.label}
+                      </button>
+                    ))}
+                    <p className="px-2 py-1 mt-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest border-t pt-2">
+                      PPID Division
+                    </p>
+                    {STAKEHOLDER_PERSONAS.filter(p => p.defaultDivisionId === 'div_ppid').map((persona) => (
+                      <button
+                        key={persona.email}
+                        onClick={() => handleSwitchRole(persona)}
+                        className={cn(
+                          'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-muted',
+                          user?.id === persona.devUserId && 'bg-muted font-medium'
+                        )}
+                      >
+                        <span className={cn('h-2 w-2 rounded-full flex-shrink-0', persona.color.split(' ')[0])} />
+                        {persona.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Sign out */}
                 <div className="border-t p-1">
