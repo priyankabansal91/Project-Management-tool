@@ -147,7 +147,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
   const [dialogs, setDialogs] = useState<DialogState[]>([]);
   const idRef = useRef(0);
 
-  const push = useCallback((state: Omit<DialogState, 'id'>): Promise<boolean> => {
+  const push = useCallback((state: Omit<DialogState, 'id' | 'resolve'>): Promise<boolean> => {
     return new Promise((resolve) => {
       const id = ++idRef.current;
       const wrapped: DialogState = {
