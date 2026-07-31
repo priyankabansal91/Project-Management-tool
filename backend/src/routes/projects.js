@@ -27,7 +27,11 @@ router.use(divisionScope);
 
 router.get('/', async (req, res, next) => {
   try {
+    const MEMBER_ROLES = ['project_manager', 'team_lead', 'member', 'viewer'];
     let userVerticals;
+    let userDivisions = req.userDivisions;
+    let memberUserId = null;
+
     if (req.user.role === 'vertical_head') {
       const myVerticals = await prisma.vertical.findMany({
         where: { orgId: req.user.orgId, headId: req.user.id },
@@ -35,14 +39,30 @@ router.get('/', async (req, res, next) => {
       });
       userVerticals = myVerticals.map((v) => v.id);
     }
+
+    if (req.user.role === 'division_admin') {
+      // Use actual DB division memberships, not hardcoded dev map
+      const divMemberships = await prisma.divisionMember.findMany({
+        where: { userId: req.user.id },
+        select: { divisionId: true },
+      });
+      userDivisions = divMemberships.map((d) => d.divisionId);
+    }
+
+    if (MEMBER_ROLES.includes(req.user.role)) {
+      // Filter by actual project membership
+      memberUserId = req.user.id;
+    }
+
     const result = await projectService.list(
       req.user.orgId,
       req.query,
       {
-        userDivisions: req.userDivisions,
+        userDivisions,
         isScopeAll: req.isScopeAll,
         divisionId: req.query.division_id,
         userVerticals,
+        memberUserId,
       }
     );
     res.json({ success: true, data: result });

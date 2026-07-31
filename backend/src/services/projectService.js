@@ -56,8 +56,11 @@ class ProjectService {
     if (status) where.status = status;
     if (search) where.name = { contains: search, mode: 'insensitive' };
 
-    const { isScopeAll, divisionId, userDivisions, userVerticals } = divisionScope;
-    if (!isScopeAll) {
+    const { isScopeAll, divisionId, userDivisions, userVerticals, memberUserId } = divisionScope;
+    if (memberUserId) {
+      // Member-level roles: only show projects the user is explicitly allocated to
+      where.members = { some: { userId: memberUserId } };
+    } else if (!isScopeAll) {
       if (userVerticals?.length) where.verticalId = { in: userVerticals };
       else if (divisionId) where.divisionId = divisionId;
       else if (userDivisions?.length) where.divisionId = { in: userDivisions };
