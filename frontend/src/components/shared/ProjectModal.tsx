@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -79,6 +80,10 @@ const VISIBILITY_OPTIONS = [
 
 export function ProjectModal({ open, onClose, onSave, project, workflows = [], verticals = [], saving = false, error: externalError }: ProjectModalProps) {
   const isEdit = !!project;
+  const { currentRole } = useAuthStore();
+  // Roles that bypass approval — they ARE the approvers
+  const BYPASS_APPROVAL_ROLES = ['org_admin', 'vertical_head', 'division_admin'];
+  const needsApproval = !BYPASS_APPROVAL_ROLES.includes(currentRole || '');
   const [step, setStep] = useState<1 | 2>(1);
   interface StageEntry {
     id: string;
@@ -88,7 +93,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
   }
   const [stages, setStages] = useState<StageEntry[]>([]);
   const [expenseHeads, setExpenseHeads] = useState<ExpenseHead[]>([]);
-  const [submitForApproval, setSubmitForApproval] = useState(true);
+  const [submitForApproval, setSubmitForApproval] = useState(false);
   const [form, setForm] = useState<ProjectFormData>({
     name: '',
     description: '',
@@ -145,7 +150,7 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
     setStep(1);
     setStages([]);
     setExpenseHeads([]);
-    setSubmitForApproval(true);
+    setSubmitForApproval(false);
     setManualHours(false);
   }, [project, open, workflows]);
 
@@ -659,8 +664,8 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
                 </div>
               )}
 
-              {/* Submit for Approval checkbox */}
-              {form.vertical_id && (
+              {/* Submit for Approval checkbox — only for roles that require approval */}
+              {needsApproval && form.vertical_id && (
                 <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
                   <input
                     type="checkbox"

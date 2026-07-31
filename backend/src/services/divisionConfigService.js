@@ -167,7 +167,7 @@ const divisionMemberships = new Map([
   ]],
 ]);
 
-const SCOPE_ALL_ROLES = new Set(['org_admin', 'executive', 'hod', 'division_admin']);
+const SCOPE_ALL_ROLES = new Set(['org_admin', 'executive', 'hod']);
 
 class DivisionConfigService {
   /**
