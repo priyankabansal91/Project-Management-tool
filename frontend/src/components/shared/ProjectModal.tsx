@@ -192,6 +192,10 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
       const flatMilestones = stages.flatMap((s) =>
         s.milestones.filter((m) => m.title.trim()).map((m) => ({ ...m, stage_name: s.name.trim() || undefined }))
       );
+      if (flatMilestones.length === 0) {
+        setSubmitError('At least one milestone is required. Please add a milestone before creating the project.');
+        return;
+      }
       await onSave({
         ...form,
         key: form.key.toUpperCase(),
@@ -548,8 +552,8 @@ export function ProjectModal({ open, onClose, onSave, project, workflows = [], v
             <>
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-semibold text-foreground">Stages & Milestones</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Add stages, then add milestones under each stage</p>
+                  <h3 className="text-base font-semibold text-foreground">Stages & Milestones <span className="text-destructive">*</span></h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">At least one milestone is required to create a project</p>
                 </div>
                 <button
                   type="button"
