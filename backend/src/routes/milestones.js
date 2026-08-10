@@ -44,6 +44,34 @@ router.post(
         req.params.projectId,
         bodyData
       );
+
+      // Fire-and-forget: create approval for vertical head if project has a vertical
+      const prisma = require('../config/prisma');
+      prisma.project.findFirst({
+        where: { id: req.params.projectId, orgId: req.user.orgId },
+        select: { name: true, verticalId: true },
+      }).then(async (project) => {
+        if (project?.verticalId) {
+          await prisma.approval.create({
+            data: {
+              orgId: req.user.orgId,
+              requestedBy: req.user.id,
+              title: `Milestone Added: ${milestone.title}`,
+              description: `A new milestone "${milestone.title}" was added to project "${project.name}". Please review and approve.`,
+              status: 'pending',
+              relatedProjectId: req.params.projectId,
+              relatedMilestoneId: milestone.id,
+              relatedVerticalId: project.verticalId,
+              workflowType: 'milestone_addition',
+              entityType: 'milestone',
+              entityId: milestone.id,
+            },
+          });
+        }
+      }).catch((approvalErr) => {
+        console.error('[Milestone] Approval creation failed:', approvalErr);
+      });
+
       res.status(201).json({ success: true, data: milestone });
     } catch (err) {
       if (err.statusCode === 400) {
