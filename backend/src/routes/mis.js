@@ -333,10 +333,10 @@ router.get('/division-overview', async (req, res) => {
   try {
     const { role, orgId } = req.user;
 
-    if (role !== 'org_admin') {
+    if (role !== 'org_admin' && role !== 'division_admin' && role !== 'hod') {
       return res.status(403).json({
         success: false,
-        error: { code: 'FORBIDDEN', message: 'Org admin access required' },
+        error: { code: 'FORBIDDEN', message: 'Admin access required' },
       });
     }
 

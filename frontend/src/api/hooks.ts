@@ -1482,6 +1482,11 @@ export function useDivisionOverviewMIS() {
       return data.data;
     },
     staleTime: 30_000,
+    retry: (failureCount, error: any) => {
+      // Don't retry on auth/permission errors
+      if (error?.response?.status === 403 || error?.response?.status === 401) return false;
+      return failureCount < 2;
+    },
   });
 }
 
