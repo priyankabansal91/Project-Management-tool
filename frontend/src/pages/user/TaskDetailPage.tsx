@@ -411,7 +411,7 @@ export function TaskDetailPage() {
               {/* Due Date */}
               {task?.due_date && (
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due Date</label>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">End Date</label>
                   <div className="flex items-center gap-2 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>{formatDate(task.due_date)}</span>
@@ -433,10 +433,14 @@ export function TaskDetailPage() {
               {/* Time Tracking */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Time Tracking</label>
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{task?.logged_hours || 0}h logged{task?.estimated_hours ? ` / ${task.estimated_hours}h est.` : ''}</span>
-                </div>
+                {((task?.logged_hours ?? 0) > 0 || task?.estimated_hours) && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>{(task?.logged_hours ?? 0) > 0 ? `${task!.logged_hours}h logged` : ''}
+                      {task?.estimated_hours ? `${(task?.logged_hours ?? 0) > 0 ? ' / ' : ''}${task.estimated_hours}h est.` : ''}
+                    </span>
+                  </div>
+                )}
                 {task?.estimated_hours && (
                   <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                     <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(((task.logged_hours || 0) / task.estimated_hours) * 100, 100)}%` }} />

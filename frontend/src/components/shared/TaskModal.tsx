@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useCreateMilestone } from '@/api/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +47,7 @@ interface TaskModalProps {
   onSave: (data: TaskFormData) => void;
   task?: Task | null;               // null = create mode
   projectKey?: string;
+  projectId?: string;
   statuses?: WorkflowStatus[];
   members?: { id: string; name: string; avatar_url: string | null }[];
   milestones?: MilestoneOption[];
@@ -70,8 +73,11 @@ export interface TaskFormData {
 
 const PRIORITIES = ['critical', 'high', 'medium', 'low', 'none'] as const;
 
-export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = [], members = [], milestones, saving, error }: TaskModalProps) {
+export function TaskModal({ open, onClose, onSave, task, projectKey, projectId, statuses = [], members = [], milestones, saving, error }: TaskModalProps) {
   const isEdit = !!task;
+  const { user, currentDivisionId } = useAuthStore();
+  const isItDivision = currentDivisionId === 'div_it';
+  const createMilestone = useCreateMilestone(projectId || '');
 
   const [form, setForm] = useState<TaskFormData>({
     title: '',
@@ -91,6 +97,8 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
   const [milestoneError, setMilestoneError] = useState('');
   const [assigneeError, setAssigneeError] = useState('');
   const [manualHours, setManualHours] = useState(false);
+  const [newMilestoneName, setNewMilestoneName] = useState('');
+  const [newMilestoneAmount, setNewMilestoneAmount] = useState('');
 
   const [tagInput, setTagInput] = useState('');
   const [previewMode, setPreviewMode] = useState(false);
@@ -206,8 +214,8 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
     e.preventDefault();
     if (!form.title.trim()) return;
 
-    // Milestone required on create
-    if (!isEdit && milestones !== undefined) {
+    // Milestone required on create — only for IT division
+    if (!isEdit && milestones !== undefined && isItDivision) {
       if (milestones.length === 0) {
         setMilestoneError('No milestones exist. Create a milestone for this project first.');
         return;
@@ -237,6 +245,20 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
     if (e.key === 'Escape') {
       onClose();
     }
+  };
+
+  const handleAddMilestone = async () => {
+    if (!newMilestoneName.trim() || !projectId) return;
+    try {
+      const res = await createMilestone.mutateAsync({
+        title: newMilestoneName.trim(),
+        ...(newMilestoneAmount ? { budget: parseFloat(newMilestoneAmount) } : {}),
+      });
+      const newId = (res as any).data?.data?.id;
+      if (newId) { updateField('milestone_id', newId); setMilestoneError(''); }
+      setNewMilestoneName('');
+      setNewMilestoneAmount('');
+    } catch { /* error handled by mutation */ }
   };
 
   const selectedAssignee = members.find((m) => m.id === form.assignee_id);
@@ -434,34 +456,86 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
 
             {/* Sidebar (Right) */}
             <div className="p-4 space-y-4 bg-secondary/20">
-              {/* Milestone — required on create */}
+              {/* Milestone */}
               {milestones !== undefined && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                     <Flag className="h-3 w-3" /> Milestone
-                    {!isEdit && <span className="text-destructive">*</span>}
+                    {isItDivision && !isEdit && <span className="text-destructive">*</span>}
+                    {!isItDivision && <span className="text-[10px] font-normal text-muted-foreground ml-1">(optional)</span>}
                   </label>
-                  <select
-                    value={form.milestone_id}
-                    onChange={(e) => { updateField('milestone_id', e.target.value); setMilestoneError(''); }}
-                    className={cn(
-                      'w-full rounded-md border p-2 text-sm bg-card',
-                      milestoneError ? 'border-destructive ring-1 ring-destructive' : ''
-                    )}
-                  >
-                    <option value="">— Select milestone —</option>
-                    {milestones.map((m) => (
-                      <option key={m.id} value={m.id}>{m.title}</option>
-                    ))}
-                  </select>
+
+                  {isItDivision ? (
+                    /* IT division: existing dropdown only */
+                    <>
+                      <select
+                        value={form.milestone_id}
+                        onChange={(e) => { updateField('milestone_id', e.target.value); setMilestoneError(''); }}
+                        className={cn('w-full rounded-md border p-2 text-sm bg-card', milestoneError ? 'border-destructive ring-1 ring-destructive' : '')}
+                      >
+                        <option value="">— Select milestone —</option>
+                        {milestones.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+                      </select>
+                      {milestones.length === 0 && (
+                        <p className="text-xs text-amber-600 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> No milestones exist yet. Create one first.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    /* Non-IT division: existing dropdown (if any) + inline create */
+                    <div className="space-y-2">
+                      {milestones.length > 0 && (
+                        <select
+                          value={form.milestone_id}
+                          onChange={(e) => { updateField('milestone_id', e.target.value); setMilestoneError(''); }}
+                          className="w-full rounded-md border p-2 text-sm bg-card"
+                        >
+                          <option value="">— None —</option>
+                          {milestones.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+                        </select>
+                      )}
+                      <div className="rounded-md border border-dashed bg-secondary/30 p-2.5 space-y-2">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                          {milestones.length > 0 ? 'Or create new milestone' : 'Create milestone'}
+                        </p>
+                        <Input
+                          placeholder="Milestone name"
+                          value={newMilestoneName}
+                          onChange={(e) => setNewMilestoneName(e.target.value)}
+                          className="text-sm h-8"
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Amount (optional)"
+                            value={newMilestoneAmount}
+                            onChange={(e) => setNewMilestoneAmount(e.target.value)}
+                            className="text-sm h-8 flex-1"
+                            min="0"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 px-3 text-xs"
+                            disabled={!newMilestoneName.trim() || !projectId || createMilestone.isPending}
+                            onClick={handleAddMilestone}
+                          >
+                            {createMilestone.isPending ? '…' : 'Add'}
+                          </Button>
+                        </div>
+                        {form.milestone_id && milestones.find((m) => m.id === form.milestone_id) === undefined && (
+                          <p className="text-[10px] text-green-600 flex items-center gap-1">
+                            ✓ New milestone created and selected
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {milestoneError && (
                     <p className="text-xs text-destructive flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" /> {milestoneError}
-                    </p>
-                  )}
-                  {milestones.length === 0 && (
-                    <p className="text-xs text-amber-600 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> No milestones exist yet. Create one first.
                     </p>
                   )}
                 </div>
@@ -538,6 +612,16 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
                       >
                         <span className="text-muted-foreground">Unassigned</span>
                       </button>
+                      {user && members.some((m) => m.id === user.id) && (
+                        <button
+                          type="button"
+                          onClick={() => { updateField('assignee_id', user.id); setShowAssigneeDropdown(false); setAssigneeError(''); }}
+                          className={cn('flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent border-b', form.assignee_id === user.id && 'bg-primary/5')}
+                        >
+                          <Avatar name={user.firstName || user.first_name || user.email} src={user.avatar_url} size="sm" />
+                          <span className="font-medium">Assign to me</span>
+                        </button>
+                      )}
                       {members.map((m) => (
                         <button
                           key={m.id}
@@ -559,9 +643,9 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
                 )}
               </div>
 
-              {/* Due Date */}
+              {/* End Date */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Due Date</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">End Date</label>
                 <Input type="date" value={form.due_date} onChange={(e) => updateField('due_date', e.target.value)} className="text-sm" />
               </div>
 
@@ -618,7 +702,7 @@ export function TaskModal({ open, onClose, onSave, task, projectKey, statuses = 
                 <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
                 <Button
                   type="submit"
-                  disabled={!form.title.trim() || saving || (!isEdit && milestones && milestones.length > 0 && !form.milestone_id)}
+                  disabled={!form.title.trim() || saving || (isItDivision && !isEdit && milestones && milestones.length > 0 && !form.milestone_id)}
                 >
                   {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Task'}
                 </Button>

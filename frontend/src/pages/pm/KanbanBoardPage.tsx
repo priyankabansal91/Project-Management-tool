@@ -613,6 +613,7 @@ export function KanbanBoardPage() {
         onSave={handleSaveTask}
         task={editingTask}
         projectKey={projectData?.key || 'CPR'}
+        projectId={projectId}
         statuses={modalStatuses}
         members={modalMembers}
         milestones={(milestonesQuery.data ?? []).map((m: any) => ({ id: m.id, title: m.title, waterfall_status: m.waterfallStatus || m.waterfall_status }))}

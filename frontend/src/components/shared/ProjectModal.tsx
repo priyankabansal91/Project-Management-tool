@@ -7,14 +7,17 @@ import { X, Plus, Trash2 } from 'lucide-react';
 import { calcBusinessHours } from '@/lib/utils';
 
 const EXPENSE_HEAD_OPTIONS = [
-  { value: 'assessment_cost', label: 'Assessment Cost' },
-  { value: 'travel_expenses', label: 'Travel Expenses' },
-  { value: 'manpower_cost', label: 'Manpower Cost' },
-  { value: 'infrastructure_cost', label: 'Infrastructure Cost' },
-  { value: 'training_cost', label: 'Training Cost' },
-  { value: 'documentation_cost', label: 'Documentation Cost' },
-  { value: 'contingency', label: 'Contingency' },
-  { value: 'miscellaneous', label: 'Miscellaneous' },
+  { value: 'assessment_cost',   label: 'Assessment Cost' },
+  { value: 'technology_cost',   label: 'Technology Cost' },
+  { value: 'manpower_cost',     label: 'Manpower Cost' },
+  { value: 'professional_cost', label: 'Professional Cost' },
+  { value: 'travel_lodging',    label: 'Travel & Lodging' },
+  { value: 'infrastructure',    label: 'Infrastructure Cost' },
+  { value: 'training',          label: 'Training Cost' },
+  { value: 'documentation',     label: 'Documentation Cost' },
+  { value: 'overheads',         label: 'Overheads' },
+  { value: 'contingency',       label: 'Contingency' },
+  { value: 'other',             label: 'Other' },
 ];
 
 interface ExpenseHead { head: string; label: string; amount: string; description: string; }

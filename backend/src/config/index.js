@@ -29,7 +29,7 @@ module.exports = {
   jwt: {
     // No insecure fallback — throws in prod, warns in dev
     secret: process.env.JWT_SECRET || (isProd ? null : 'dev-secret-change-in-production-min-32-chars'),
-    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    expiresIn: process.env.JWT_EXPIRES_IN || '8h',
     refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d',
   },
 

@@ -87,14 +87,17 @@ const MILESTONE_TYPES = ['general', 'planning', 'design', 'development', 'testin
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 
 const EXPENSE_HEAD_OPTIONS = [
-  { value: 'assessment_cost',    label: 'Assessment Cost' },
-  { value: 'technology_cost',    label: 'Technology Cost' },
-  { value: 'professional_cost',  label: 'Professional Cost' },
-  { value: 'travel_lodging',     label: 'Travel & Lodging' },
-  { value: 'infrastructure',     label: 'Infrastructure Cost' },
-  { value: 'training',           label: 'Training Cost' },
-  { value: 'overheads',          label: 'Overheads' },
-  { value: 'other',              label: 'Other' },
+  { value: 'assessment_cost',   label: 'Assessment Cost' },
+  { value: 'technology_cost',   label: 'Technology Cost' },
+  { value: 'manpower_cost',     label: 'Manpower Cost' },
+  { value: 'professional_cost', label: 'Professional Cost' },
+  { value: 'travel_lodging',    label: 'Travel & Lodging' },
+  { value: 'infrastructure',    label: 'Infrastructure Cost' },
+  { value: 'training',          label: 'Training Cost' },
+  { value: 'documentation',     label: 'Documentation Cost' },
+  { value: 'overheads',         label: 'Overheads' },
+  { value: 'contingency',       label: 'Contingency' },
+  { value: 'other',             label: 'Other' },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -427,10 +430,6 @@ function MilestoneFormPanel({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return;
-    if (!form.budget || parseFloat(form.budget) <= 0) {
-      setBudgetError('Budget is required and must be greater than 0');
-      return;
-    }
     if (budgetError) return;
     const dErr = validateDates(form.start_date, form.due_date);
     if (dErr) { setDateError(dErr); return; }
@@ -498,13 +497,18 @@ function MilestoneFormPanel({
             </div>
             <div>
               <label className="text-sm font-medium block mb-1">Status</label>
-              <select value={form.status} onChange={(e) => set({ status: e.target.value as MilestoneStatus })}
-                className="w-full px-3 py-2 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring">
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="on_hold">On Hold</option>
-              </select>
+              <div className="relative">
+                <select value={form.status} onChange={(e) => set({ status: e.target.value as MilestoneStatus })}
+                  className="w-full appearance-none px-3 py-2 pr-8 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring">
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="on_hold">On Hold</option>
+                </select>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -519,7 +523,7 @@ function MilestoneFormPanel({
                   onChange={(e) => handleDateChange('start_date', e.target.value)} />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">Due Date</label>
+                <label className="text-sm font-medium block mb-1">End Date</label>
                 <Input type="date" value={form.due_date}
                   min={projectStartDate || form.start_date}
                   max={projectDueDate}
@@ -558,7 +562,7 @@ function MilestoneFormPanel({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm font-medium flex items-center gap-1.5">
-                  Planned / Proposed Budget <span className="text-destructive">*</span>
+                  Planned / Proposed Budget
                   {form.budgetLocked && (
                     <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
                       <Lock className="h-2.5 w-2.5" /> Locked
@@ -598,7 +602,7 @@ function MilestoneFormPanel({
               )}
               {!isCreate && form.budgetLocked && (
                 <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
-                  <Lock className="h-2.5 w-2.5" /> Planned budget is locked and cannot be changed.
+                  <Lock className="h-2.5 w-2.5" /> Planned budget amount is locked. Other milestone details and expense heads can still be edited.
                 </p>
               )}
             </div>

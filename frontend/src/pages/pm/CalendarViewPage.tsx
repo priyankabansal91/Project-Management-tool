@@ -7,7 +7,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { ChevronLeft, ChevronRight, Plus, Filter, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { cn, priorityColor } from '@/lib/utils';
 import { TaskModal, type TaskFormData } from '@/components/shared/TaskModal';
-import { useMyTasks, useCreateTask, useProjects, useWorkflows, useMilestones } from '@/api/hooks';
+import { useMyTasks, useCreateTask, useProjects, useWorkflows, useMilestones, useProject, useMembers } from '@/api/hooks';
 
 interface CalendarTask {
   id: string;
@@ -98,6 +98,8 @@ export function CalendarViewPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const createTaskMutation = useCreateTask(selectedProjectId || '');
   const milestonesQuery = useMilestones(selectedProjectId || '');
+  const selectedProjectQuery = useProject(selectedProjectId || '');
+  const membersQuery = useMembers();
 
   const today = dateKey(new Date());
   const monthLabel = currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
@@ -140,6 +142,18 @@ export function CalendarViewPage() {
 
   const selectedProject = allProjects.find((p: any) => p.id === selectedProjectId) as any;
   const projectWorkflow = workflows.find((w) => w.id === selectedProject?.workflow_config_id);
+
+  const projectMembers = (selectedProjectQuery.data?.members ?? []).map((m: { id: string; name: string; avatar_url: string | null }) => ({
+    id: m.id,
+    name: m.name,
+    avatar_url: m.avatar_url,
+  }));
+  const orgMembers = membersQuery.data?.items ?? [];
+  const modalMembers = projectMembers.length > 0
+    ? projectMembers
+    : orgMembers
+        .filter((m: any) => m.status === 'active')
+        .map((m: any) => ({ id: m.id, name: `${m.first_name} ${m.last_name}`.trim(), avatar_url: m.avatar_url }));
 
   const projectTaskCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -186,7 +200,9 @@ export function CalendarViewPage() {
         onClose={() => { setModalOpen(false); setSelectedDateForTask(null); }}
         onSave={handleCreateTask}
         projectKey={selectedProject?.key}
+        projectId={selectedProjectId || undefined}
         statuses={projectWorkflow?.statuses || []}
+        members={modalMembers}
         milestones={(milestonesQuery.data ?? []).map((m: any) => ({ id: m.id, title: m.title }))}
         saving={createTaskMutation.isPending}
         error={(createTaskMutation.error as any)?.response?.data?.error?.message}

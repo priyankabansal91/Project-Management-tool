@@ -961,7 +961,7 @@ function VerticalApprovalsWidget({ navigate }: { navigate: ReturnType<typeof use
                     <p className="text-sm font-medium truncate">{a.title || 'Approval Request'}</p>
                     <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground flex-wrap">
                       <span className={cn('px-1.5 py-0.5 rounded font-medium', typeColors[aType] || 'bg-gray-100 text-gray-600')}>{aType}</span>
-                      {a.project && <span>{a.project}</span>}
+                      {a.project && <span>{typeof a.project === 'string' ? a.project : (a.project?.name ?? a.project?.key)}</span>}
                       {a.requestedBy && <span>by {a.requestedBy}</span>}
                     </div>
                   </div>
@@ -1885,7 +1885,7 @@ function EnhancedTaskRow({ t, onStatusChange }: { t: any; onStatusChange: (id: s
         </div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-        <Badge variant="outline" className="text-[10px] h-4">{t.project || t.projectKey || '—'}</Badge>
+        <Badge variant="outline" className="text-[10px] h-4">{t.project?.key ?? t.project?.name ?? t.projectKey ?? '—'}</Badge>
         {t.estimatedHours && (
           <span className="text-[10px] text-muted-foreground hidden sm:inline">{t.estimatedHours}h</span>
         )}
