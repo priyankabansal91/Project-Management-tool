@@ -47,6 +47,10 @@ const dashboardV2Routes = require('./routes/dashboardV2');
 
 const app = express();
 
+// Trust the Vercel / reverse-proxy X-Forwarded-For header so that
+// express-rate-limit can identify real client IPs correctly.
+app.set('trust proxy', 1);
+
 // ─── GLOBAL MIDDLEWARE ──────────────────────────────────
 
 app.use(helmet({
