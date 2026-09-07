@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useMyDivisions } from '@/api/hooks';
 import api from '@/api/client';
+import { IT_MODE, IT_BRAND } from '@/config/itMode';
 
 const IS_DEV = (import.meta as any).env?.DEV === true;
 
@@ -76,9 +77,11 @@ export function Header() {
       {/* Mobile logo — only visible when search is hidden */}
       <div className="flex items-center gap-2 sm:hidden flex-shrink-0">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs flex-shrink-0">
-          QF
+          {IT_MODE ? IT_BRAND.abbrev : 'QF'}
         </div>
-        <span className="text-xs font-semibold truncate text-foreground">Q-Flow</span>
+        <span className="text-xs font-semibold truncate text-foreground">
+          {IT_MODE ? IT_BRAND.appName : 'Q-Flow'}
+        </span>
       </div>
 
       {/* ── RIGHT: Controls ── */}

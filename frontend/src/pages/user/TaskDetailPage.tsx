@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Calendar, Clock, Send, Loader, CheckCircle2, Link2, Unlink, AlertTriangle, ArrowRight, Search, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Send, Loader, CheckCircle2, Link2, Unlink, AlertTriangle, ArrowRight, Search, X, MonitorCheck } from 'lucide-react';
+import { IT_MODE } from '@/config/itMode';
 import { cn, priorityColor, formatDate, timeAgo } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/api/client';
@@ -521,6 +522,33 @@ export function TaskDetailPage() {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* IT Fields — shown only in IT deployment */}
+              {IT_MODE && task?.custom_fields && (
+                Object.entries({
+                  'Environment': (task.custom_fields as any).it_environment,
+                  'Change Type': (task.custom_fields as any).it_change_type,
+                  'Ticket Ref': (task.custom_fields as any).it_ticket_ref,
+                  'Release Tag': (task.custom_fields as any).it_release_tag,
+                }).some(([, v]) => v) && (
+                  <div className="pt-3 border-t space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+                      <MonitorCheck className="h-3.5 w-3.5" /> IT Details
+                    </div>
+                    {Object.entries({
+                      'Environment': (task.custom_fields as any).it_environment,
+                      'Change Type': (task.custom_fields as any).it_change_type,
+                      'Ticket Ref': (task.custom_fields as any).it_ticket_ref,
+                      'Release Tag': (task.custom_fields as any).it_release_tag,
+                    }).filter(([, v]) => v).map(([label, value]) => (
+                      <div key={label} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-medium">{value as string}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
 
               {/* Timestamps */}

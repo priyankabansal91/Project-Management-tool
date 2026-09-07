@@ -456,8 +456,8 @@ function DivisionCard({ division }: { division: any }) {
               <Building2 className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base">{division.name}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{division.description}</p>
+              <h3 className="font-bold text-base text-gray-900">{division.name}</h3>
+              <p className="text-xs text-gray-600 mt-0.5">{division.description}</p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
@@ -465,7 +465,7 @@ function DivisionCard({ division }: { division: any }) {
               {enabledModulesCount}/{MODULES.length} modules on
             </span>
             {division.budget && (
-              <span className="text-[11px] text-muted-foreground">Budget: ₹{(division.budget / 100000).toFixed(1)}L</span>
+              <span className="text-[11px] text-gray-600">Budget: ₹{(division.budget / 100000).toFixed(1)}L</span>
             )}
           </div>
         </div>

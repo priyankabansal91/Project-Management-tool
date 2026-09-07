@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useSidebarConfigStore } from '@/store/sidebarConfigStore';
 import { useState, useCallback } from 'react';
 import type { OrgRole } from '@/types';
+import { IT_MODE, IT_BRAND, IT_HIDDEN_PATHS } from '@/config/itMode';
 
 interface NavItem {
   label: string;
@@ -105,9 +106,10 @@ export function Sidebar() {
 
   const userId = user?.id ?? 'guest';
 
-  // Items visible to this role and not admin-hidden
+  // Items visible to this role, not admin-hidden, and not IT-hidden
   const visibleItems = navItems.filter(
     (item) => currentRole && item.roles.includes(currentRole) && !isAdminHidden(currentRole, item.path)
+      && !(IT_MODE && IT_HIDDEN_PATHS.has(item.path))
   );
 
   // Favourites: ordered list of paths the user has starred
@@ -239,14 +241,20 @@ export function Sidebar() {
       {/* ── Logo ── */}
       <div style={{ borderBottomColor: dividerColor }} className="flex h-[60px] items-center gap-3 px-4 flex-shrink-0 border-b">
         <div className="relative flex-shrink-0">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white font-bold text-sm">QF</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white font-bold text-sm">
+            {IT_MODE ? IT_BRAND.abbrev : 'QF'}
+          </div>
           <div style={{ background: activeBorder, borderColor: sidebarBg }}
             className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2" />
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <span className="block text-white font-semibold text-sm leading-tight">Q-Flow</span>
-            <p className="text-[10px] text-white/40 mt-0 leading-tight">Quality Council of India</p>
+            <span className="block text-white font-semibold text-sm leading-tight">
+              {IT_MODE ? IT_BRAND.appName : 'Q-Flow'}
+            </span>
+            <p className="text-[10px] text-white/40 mt-0 leading-tight">
+              {IT_MODE ? IT_BRAND.subtitle : 'Quality Council of India'}
+            </p>
           </div>
         )}
       </div>
