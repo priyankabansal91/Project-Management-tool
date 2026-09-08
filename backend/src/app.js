@@ -101,8 +101,8 @@ const ENV_ORIGINS = new Set(
   (process.env.ALLOWED_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean)
 );
 
-// Allow any preview deploy for this project (frontend-*-priyankabansal91s-projects.vercel.app)
-const VERCEL_PREVIEW_RE = /^https:\/\/frontend-[a-z0-9]+-priyankabansal91s-projects\.vercel\.app$/;
+// Allow any preview deploy for this project (frontend-* or qflow-*-priyankabansal91s-projects.vercel.app)
+const VERCEL_PREVIEW_RE = /^https:\/\/(frontend|qflow-[a-z0-9-]+)-[a-z0-9]+-priyankabansal91s-projects\.vercel\.app$/;
 
 app.use(cors({
   origin: (origin, cb) => {
@@ -112,7 +112,7 @@ app.use(cors({
     if (STATIC_ORIGINS.has(origin)) return cb(null, true);
     // Check env-var allowlist
     if (ENV_ORIGINS.size > 0 && ENV_ORIGINS.has(origin)) return cb(null, true);
-    // Allow any Vercel preview URL for this project
+    // Allow any Vercel preview URL for this project (frontend-* or qflow-*-*)
     if (VERCEL_PREVIEW_RE.test(origin)) return cb(null, true);
     cb(new Error('Not allowed by CORS'));
   },
