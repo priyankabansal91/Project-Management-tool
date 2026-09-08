@@ -1,7 +1,7 @@
 // IT Mode — enabled when VITE_IT_MODE=true in environment
 // Used to switch branding, task fields, and sidebar for the IT Division deployment.
 
-export const IT_MODE = import.meta.env.VITE_IT_MODE === 'true';
+export const IT_MODE = (import.meta as any).env?.VITE_IT_MODE === 'true';
 
 export const IT_BRAND = {
   appName: 'Q-Flow IT',
